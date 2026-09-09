@@ -135,7 +135,7 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
       {/* Directions summary — the same split the expanded marker draws. One
           row per direction rather than side-by-side cards: a two-column grid
           halved the width available to the destination text, and real names
-          ("Alboraia Peris Aragó · Marítim · Rafelbunyol") wrapped and got cut
+          (several termini joined by middle dots) wrapped and got cut
           in that half-width even at two lines. Full width, single line,
           ellipsis beyond it — still the full name on hover/long-press via
           title, but the common case reads at a glance instead of wrapping. */}

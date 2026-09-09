@@ -8,6 +8,7 @@ import LocateButton from './components/LocateButton';
 import { locate } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
+import { lineColor } from './utils/lineColor';
 import { Sun, Moon, X, LayoutDashboard, Menu } from 'lucide-react';
 import './index.css';
 
@@ -123,8 +124,7 @@ function App() {
 
   // Get the active line color for the filter banner
   const getLineColor = (lineId) => {
-    const colors = { '1': '#FFD100', '3': '#E2001A', '5': '#00994D' };
-    return colors[lineId] || '#888';
+    return lineColor(lineId);
   };
 
   const selectMode = (next) => {

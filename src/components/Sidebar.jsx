@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, Check } from 'lucide-react';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 
@@ -37,8 +37,8 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
               V
             </div>
             <div>
-              <h1 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Metro Valencia</h1>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Real-Time Tracker</div>
+              <h1 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Vienna U-Bahn</h1>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Live train estimates</div>
             </div>
           </div>
 
@@ -104,14 +104,14 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
                       color: '#fff', fontWeight: 'bold', fontSize: '0.95rem',
                       boxShadow: `0 0 10px ${line.properties.color}44`
                     }}>
-                      L{lineId}
+                      {lineId}
                     </div>
 
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{line.properties.name}</div>
                       <div style={{ fontSize: '0.75rem', color: '#4CAF50', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4CAF50' }}></span>
-                        Good Service
+                        Live departures
                       </div>
                     </div>
 
@@ -160,7 +160,7 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>
-              <span>📍 FGV Metrovalència System</span>
+              <span>📍 Wiener Linien U-Bahn</span>
               <span style={{ opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>v{__APP_VERSION__}</span>
             </div>
           </div>
@@ -172,4 +172,3 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
 };
 
 export default Sidebar;
-

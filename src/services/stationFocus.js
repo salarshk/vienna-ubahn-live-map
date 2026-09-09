@@ -42,8 +42,7 @@ export const getStationFocus = (stationProps, now = Date.now()) => {
   const arrivals = cached ? cached.arrivals : [];
 
   // Keyed by direction so several Lines heading the same way merge, which is
-  // the whole point: at Àngel Guimerà, one group per Line per direction would
-  // be ten columns, and that is a table, not a glance.
+  // the whole point: one group per service would become a table, not a glance.
   const groups = new Map();
 
   for (const arrival of arrivals) {

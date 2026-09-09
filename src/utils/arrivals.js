@@ -1,4 +1,4 @@
-// Real-time MetroValencia API integration with Arrival Memory & Rate Budgeting
+// Real-time Vienna U-Bahn integration with arrival memory and rate budgeting.
 import metroData from '../data/metro_lines.json';
 import arrivalStore, { STATION_ID_MAP } from '../services/arrivalStore';
 
@@ -24,14 +24,10 @@ export const getStationArrivalsFallback = (stationProps) => {
       f => f.properties.line === lineId && f.geometry.type === 'LineString'
     );
     const lineName = lineFeature ? lineFeature.properties.name : `Line ${lineId}`;
-    const lineColor = lineFeature ? lineFeature.properties.color : (lineId === '1' ? '#FFD100' : lineId === '3' ? '#E2001A' : '#00994D');
-
-    let destinations = [];
-    if (lineId === '1') destinations = ['Bétera', 'Castellón'];
-    else if (lineId === '3') destinations = ['Rafelbunyol', 'Aeroport'];
-    else if (lineId === '5') destinations = ['Marítim', 'Aeroport'];
-    else if (lineId === '2') destinations = ['Llíria', 'Torrent Avinguda'];
-    else destinations = ['Station Central'];
+    const lineColor = lineFeature ? lineFeature.properties.color : '#8a8a8a';
+    const destinations = lineFeature && Array.isArray(lineFeature.properties.terminals)
+      ? lineFeature.properties.terminals
+      : ['Terminus'];
 
     destinations.forEach((dest, i) => {
       const seed = (stationProps.name.length * 17 + lineId.charCodeAt(0) * 31 + i * 47) % 600000;

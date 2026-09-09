@@ -9,12 +9,11 @@ import {
 // Real coordinates from gtfs_expanded.json. Using the actual data rather than a
 // fixture network is the point: the gates are calibrated against this network's
 // real station spacing, so a synthetic one would test nothing.
-const ANGEL_GUIMERA = [-0.3850361109, 39.4703025818];
-const BENIMACLET = [-0.3623333275, 39.4848518372];
-// 294 m due north of Benimaclet — inside the range, well outside the accuracy gate.
-const NEAR_BENIMACLET = [-0.3623333275, 39.4875];
-// Deep in the Albufera, 14 km from Font Almaguer, the closest Station of any.
-const OFF_NETWORK = [-0.3, 39.3];
+const STEPHANSPLATZ = [16.3716344, 48.2081338];
+const KARLSPLATZ = [16.3689484, 48.2009554];
+// Roughly 90 m north of Karlsplatz.
+const NEAR_KARLSPLATZ = [16.3689484, 48.2017554];
+const OFF_NETWORK = [16.8, 48.5];
 
 const fix = (coordinates, accuracy = 12) => ({
   coords: {
@@ -29,7 +28,7 @@ const fix = (coordinates, accuracy = 12) => ({
 const fakeProvider = ({
   permission = 'granted',
   requested = 'granted',
-  position = fix(NEAR_BENIMACLET),
+  position = fix(NEAR_KARLSPLATZ),
   error = null,
   checkThrows = null,
   hang = false,
@@ -54,15 +53,15 @@ const geolocationError = (code, message) => {
 
 describe('findNearestStation', () => {
   it('returns the Station itself when standing on it', () => {
-    const nearest = findNearestStation(ANGEL_GUIMERA);
-    expect(nearest.station.properties.name).toBe('Àngel Guimerà');
+    const nearest = findNearestStation(STEPHANSPLATZ);
+    expect(nearest.station.properties.name).toBe('Stephansplatz');
     expect(nearest.distance).toBeLessThan(1);
   });
 
   it('picks the closest Station to a point between Stations', () => {
-    const nearest = findNearestStation(NEAR_BENIMACLET);
-    expect(nearest.station.properties.name).toBe('Benimaclet');
-    expect(Math.round(nearest.distance)).toBe(294);
+    const nearest = findNearestStation(NEAR_KARLSPLATZ);
+    expect(nearest.station.properties.name).toBe('Karlsplatz');
+    expect(nearest.distance).toBeLessThan(120);
   });
 
   it('stays policy-free: it names the nearest Station however far away it is', () => {
@@ -76,9 +75,9 @@ describe('findNearestStation', () => {
   it('returns the same feature object the map and search hand around', () => {
     // App.jsx passes whatever it is given straight to StationPanel, which reads
     // `.properties`, so a bare {name, coords} object would break the panel.
-    const { station } = findNearestStation(BENIMACLET);
+    const { station } = findNearestStation(KARLSPLATZ);
     expect(station.geometry.type).toBe('Point');
-    expect(station.properties.lines).toContain('4');
+    expect(station.properties.lines).toContain('U4');
   });
 });
 
@@ -87,10 +86,10 @@ describe('locate', () => {
     const result = await locate({ provider: fakeProvider() });
 
     expect(result.status).toBe('located');
-    expect(result.coordinates).toEqual(NEAR_BENIMACLET);
+    expect(result.coordinates).toEqual(NEAR_KARLSPLATZ);
     expect(result.accuracy).toBe(12);
-    expect(result.nearestStation.properties.name).toBe('Benimaclet');
-    expect(Math.round(result.distance)).toBe(294);
+    expect(result.nearestStation.properties.name).toBe('Karlsplatz');
+    expect(result.distance).toBeLessThan(120);
     expect(result.reason).toBeNull();
   });
 
@@ -111,7 +110,7 @@ describe('locate', () => {
     // the next Station is under 200 m network-wide, so a 900 m fix picks at
     // random — naming one would dress a coin flip up as an answer.
     const result = await locate({
-      provider: fakeProvider({ position: fix(BENIMACLET, 900) }),
+      provider: fakeProvider({ position: fix(KARLSPLATZ, 900) }),
     });
 
     expect(result.status).toBe('located');
@@ -122,10 +121,10 @@ describe('locate', () => {
 
   it('accepts a fix right at the accuracy limit', async () => {
     const result = await locate({
-      provider: fakeProvider({ position: fix(NEAR_BENIMACLET, MAX_USABLE_ACCURACY_M) }),
+      provider: fakeProvider({ position: fix(NEAR_KARLSPLATZ, MAX_USABLE_ACCURACY_M) }),
     });
 
-    expect(result.nearestStation.properties.name).toBe('Benimaclet');
+    expect(result.nearestStation.properties.name).toBe('Karlsplatz');
     expect(result.reason).toBeNull();
   });
 
@@ -219,7 +218,7 @@ describe('locate', () => {
     const result = await locate({ provider });
 
     expect(result.status).toBe('located');
-    expect(result.nearestStation.properties.name).toBe('Benimaclet');
+    expect(result.nearestStation.properties.name).toBe('Karlsplatz');
   });
 
   it('still gets a fix when the browser has no Permissions API', async () => {

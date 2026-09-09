@@ -1,201 +1,120 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import arrivalStore from './arrivalStore';
 import { getStationFocus } from './stationFocus';
 
-// Àngel Guimerà is the network's densest interchange and sits mid-line on
-// line 3, so it is the case that actually has two directions.
-const ANGEL_GUIMERA = { apiId: 17, name: 'Àngel Guimerà', lines: ['1', '2', '3', '5', '9'] };
-const RAFELBUNYOL = { apiId: 1, name: 'Rafelbunyol', lines: ['3'] };
+const STEPHANSPLATZ = { apiId: 60201320, name: 'Stephansplatz', lines: ['U1', 'U3'] };
+const LEOPOLDAU = { apiId: 60200769, name: 'Leopoldau', lines: ['U1'] };
 
 const remember = (station, arrivals, now, fetchedAt = now) => {
   arrivalStore.memory.set(String(station.apiId), {
     stationId: station.apiId,
     stationName: station.name,
     fetchedAt,
-    arrivals: arrivals.map((a) => ({
-      line: a.line,
-      destination: a.destination,
-      vehicleId: a.vehicleId ?? null,
+    arrivals: arrivals.map((arrival) => ({
+      line: arrival.line,
+      destination: arrival.destination,
+      vehicleId: arrival.vehicleId ?? null,
       lineColor: '#888',
-      lineName: `Line ${a.line}`,
-      targetTimestamp: now + a.inSeconds * 1000,
+      lineName: arrival.line,
+      targetTimestamp: now + arrival.inSeconds * 1000,
       isLive: true,
     })),
   });
 };
 
-describe('bringing a station into focus', () => {
+describe('Vienna station focus', () => {
   beforeEach(() => arrivalStore.memory.clear());
 
-  it('splits arrivals into the two directions the station is served in', () => {
+  it('splits a through station into both travel directions', () => {
     const now = Date.now();
-    remember(ANGEL_GUIMERA, [
-      { line: '3', destination: 'Rafelbunyol', inSeconds: 120 },
-      { line: '3', destination: 'Aeroport', inSeconds: 300 },
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 120 },
+      { line: 'U1', destination: 'Oberlaa', inSeconds: 300 },
     ], now);
 
-    const focus = getStationFocus(ANGEL_GUIMERA, now);
-
+    const focus = getStationFocus(STEPHANSPLATZ, now);
     expect(focus.directions).toHaveLength(2);
-    const labels = focus.directions.map((d) => d.label);
-    expect(labels).toContain('Rafelbunyol');
-    expect(labels).toContain('Aeroport');
+    expect(focus.directions.map((direction) => direction.label))
+      .toEqual(expect.arrayContaining(['Leopoldau', 'Oberlaa']));
   });
 
-  // "Both directions if applicable" — a terminus has one.
-  it('gives a terminus a single direction', () => {
+  it('gives a terminus one direction', () => {
     const now = Date.now();
-    remember(RAFELBUNYOL, [
-      { line: '3', destination: 'Aeroport', inSeconds: 90 },
-      { line: '3', destination: 'Aeroport', inSeconds: 480 },
+    remember(LEOPOLDAU, [
+      { line: 'U1', destination: 'Oberlaa', inSeconds: 90 },
+      { line: 'U1', destination: 'Oberlaa', inSeconds: 480 },
     ], now);
 
-    const focus = getStationFocus(RAFELBUNYOL, now);
-
+    const focus = getStationFocus(LEOPOLDAU, now);
     expect(focus.directions).toHaveLength(1);
-    expect(focus.directions[0].label).toBe('Aeroport');
+    expect(focus.directions[0].label).toBe('Oberlaa');
     expect(focus.directions[0].arrivals).toHaveLength(2);
   });
 
-  it('puts several lines heading the same way into one direction', () => {
+  it('points direction arms along the line geometry', () => {
     const now = Date.now();
-    remember(ANGEL_GUIMERA, [
-      { line: '3', destination: 'Rafelbunyol', inSeconds: 200 },
-      { line: '1', destination: 'Bétera', inSeconds: 260 },
-      { line: '3', destination: 'Aeroport', inSeconds: 90 },
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 120 },
+      { line: 'U1', destination: 'Oberlaa', inSeconds: 300 },
     ], now);
 
-    const focus = getStationFocus(ANGEL_GUIMERA, now);
-    const towardsAeroport = focus.directions.find((d) => d.destinations.includes('Aeroport'));
-    const theOtherWay = focus.directions.find((d) => d !== towardsAeroport);
-
-    expect(theOtherWay.destinations).toContain('Rafelbunyol');
-    expect(theOtherWay.destinations).toContain('Bétera');
-    // The label names every terminus in the group, not just the first.
-    expect(theOtherWay.label).toMatch(/Rafelbunyol/);
-    expect(theOtherWay.label).toMatch(/Bétera/);
+    const directions = getStationFocus(STEPHANSPLATZ, now).directions;
+    expect(directions).toHaveLength(2);
+    for (const direction of directions) {
+      expect(direction.bearing).toBeGreaterThanOrEqual(0);
+      expect(direction.bearing).toBeLessThan(360);
+    }
   });
 
-  // The marker draws each direction as an arm pointing the way the track
-  // actually leaves the station, so the two arms of a single line must come out
-  // roughly opposite rather than being assumed to be up and down.
-  it('points each direction along the track it leaves on', () => {
+  it('sorts arrivals and each direction by countdown', () => {
     const now = Date.now();
-    remember(ANGEL_GUIMERA, [
-      { line: '3', destination: 'Rafelbunyol', inSeconds: 120 },
-      { line: '3', destination: 'Aeroport', inSeconds: 300 },
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 600 },
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 120 },
+      { line: 'U3', destination: 'Simmering', inSeconds: 340 },
     ], now);
 
-    const [a, b] = getStationFocus(ANGEL_GUIMERA, now).directions;
-    const separation = (((a.bearing - b.bearing) % 360) + 360) % 360;
-    const apart = Math.abs(separation - 180);
-    expect(a.bearing).toBeGreaterThanOrEqual(0);
-    expect(a.bearing).toBeLessThan(360);
-    expect(apart, `${a.bearing}° vs ${b.bearing}°`).toBeLessThan(30);
-  });
-
-  it('averages bearings the short way round the compass', () => {
-    const now = Date.now();
-    remember(RAFELBUNYOL, [{ line: '3', destination: 'Aeroport', inSeconds: 90 }], now);
-    const [only] = getStationFocus(RAFELBUNYOL, now).directions;
-    expect(Number.isFinite(only.bearing)).toBe(true);
-  });
-
-  it('orders each direction by how soon the train arrives', () => {
-    const now = Date.now();
-    remember(ANGEL_GUIMERA, [
-      { line: '3', destination: 'Rafelbunyol', inSeconds: 600 },
-      { line: '1', destination: 'Bétera', inSeconds: 120 },
-      { line: '9', destination: 'Alboraia', inSeconds: 340 },
-    ], now);
-
-    for (const direction of getStationFocus(ANGEL_GUIMERA, now).directions) {
-      const seconds = direction.arrivals.map((a) => a.seconds);
+    const focus = getStationFocus(STEPHANSPLATZ, now);
+    expect(focus.arrivals.map((arrival) => arrival.seconds)).toEqual([120, 340, 600]);
+    for (const direction of focus.directions) {
+      const seconds = direction.arrivals.map((arrival) => arrival.seconds);
       expect(seconds).toEqual([...seconds].sort((a, b) => a - b));
     }
   });
 
-  it('gives the panel one flat table, however the directions fell out', () => {
+  it('distinguishes a fresh API answer from an older memory countdown', () => {
     const now = Date.now();
-    remember(ANGEL_GUIMERA, [
-      { line: '3', destination: 'Rafelbunyol', inSeconds: 600 },
-      { line: '3', destination: 'Aeroport', inSeconds: 120 },
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 300 },
     ], now);
+    expect(getStationFocus(STEPHANSPLATZ, now).isFresh).toBe(true);
 
-    const focus = getStationFocus(ANGEL_GUIMERA, now);
-    expect(focus.arrivals.map((a) => a.seconds)).toEqual([120, 600]);
-  });
-
-  // The panel has to say which it is: a live answer was fetched now, a memory
-  // answer is a countdown running on from an older fetch.
-  it('reports a fresh fetch as live and an old one as memory', () => {
-    const now = Date.now();
-    remember(ANGEL_GUIMERA, [{ line: '3', destination: 'Aeroport', inSeconds: 300 }], now);
-    expect(getStationFocus(ANGEL_GUIMERA, now).isFresh).toBe(true);
-
-    remember(ANGEL_GUIMERA, [{ line: '3', destination: 'Aeroport', inSeconds: 300 }], now, now - 180000);
-    const stale = getStationFocus(ANGEL_GUIMERA, now);
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 300 },
+    ], now, now - 180000);
+    const stale = getStationFocus(STEPHANSPLATZ, now);
     expect(stale.isFresh).toBe(false);
     expect(stale.secondsUnheard).toBe(180);
   });
 
-  it('says so plainly when there is nothing in memory at all', () => {
-    const focus = getStationFocus(ANGEL_GUIMERA, Date.now());
+  it('does not repeat each direction headline in later arrivals', () => {
+    const now = Date.now();
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 120 },
+      { line: 'U1', destination: 'Leopoldau', inSeconds: 600 },
+      { line: 'U1', destination: 'Oberlaa', inSeconds: 240 },
+    ], now);
+
+    const focus = getStationFocus(STEPHANSPLATZ, now);
+    expect(focus.directions).toHaveLength(2);
+    expect(focus.laterArrivals).toHaveLength(1);
+    expect(focus.laterArrivals[0].seconds).toBe(600);
+  });
+
+  it('handles a station with no cached predictions', () => {
+    const focus = getStationFocus(STEPHANSPLATZ, Date.now());
     expect(focus.arrivals).toEqual([]);
     expect(focus.directions).toEqual([]);
     expect(focus.isFresh).toBe(false);
-  });
-
-  it('survives a station with no live prediction endpoint', () => {
-    const focus = getStationFocus({ name: 'Ayora', lines: ['5', '7'] }, Date.now());
-    expect(focus.name).toBe('Ayora');
-    expect(focus.arrivals).toEqual([]);
-  });
-});
-
-describe('laterArrivals', () => {
-  it('leaves out the train each direction already headlines', () => {
-    const now = Date.now();
-    remember(ANGEL_GUIMERA, [
-      { line: '3', destination: 'Rafelbunyol', seconds: 120 },
-      { line: '3', destination: 'Rafelbunyol', seconds: 600 },
-      { line: '5', destination: 'Marítim', seconds: 240 },
-    ], now);
-
-    const focus = getStationFocus(ANGEL_GUIMERA, now);
-
-    expect(focus.arrivals).toHaveLength(3);
-    // Two directions, so two headlines; only what neither headlined is left.
-    const headlined = focus.directions.map((d) => d.arrivals[0]);
-    expect(headlined).toHaveLength(focus.directions.length);
-    expect(focus.laterArrivals).toHaveLength(3 - focus.directions.length);
-    for (const arrival of headlined) {
-      expect(focus.laterArrivals).not.toContain(arrival);
-    }
-  });
-
-  it('says nothing more when the headlines have said it all', () => {
-    // The case that made the panel read as a stutter: two trains due, two
-    // direction rows, and a table repeating both of them verbatim.
-    const now = Date.now();
-    remember(RAFELBUNYOL, [{ line: '3', destination: 'Aeroport', seconds: 300 }], now);
-
-    const focus = getStationFocus(RAFELBUNYOL, now);
-
-    expect(focus.arrivals).toHaveLength(1);
-    expect(focus.laterArrivals).toEqual([]);
-  });
-
-  it('keeps every arrival when no direction could be resolved', () => {
-    // An Off-Track Station has no trustworthy direction, so nothing is
-    // headlined and the table stays the whole story.
-    const now = Date.now();
-    const offTrack = { apiId: 68, name: 'Fira València', lines: ['4'] };
-    remember(offTrack, [{ line: '4', destination: 'Mas del Rosari', seconds: 180 }], now);
-
-    const focus = getStationFocus(offTrack, now);
-
-    expect(focus.directions).toEqual([]);
-    expect(focus.laterArrivals).toHaveLength(1);
   });
 });

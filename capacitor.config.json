@@ -1,6 +1,6 @@
 {
-  "appId": "com.jielei.metrovalencia",
-  "appName": "Metro Valencia",
+  "appId": "at.vienna.ubahnmap",
+  "appName": "Vienna U-Bahn",
   "webDir": "dist",
   "plugins": {
     "CapacitorHttp": {

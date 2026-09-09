@@ -17,12 +17,11 @@ import { lineColor } from '../utils/lineColor';
 
 const ROTATE_MS = 12000;
 
-// Chosen for Line coverage rather than footfall: between them these three
-// carry every Line on the network.
+// Three interchanges cover all five operating U-Bahn lines.
 const BOARD_STATIONS = [
-  { apiId: 17, name: 'Àngel Guimerà', lines: ['1', '2', '3', '5', '9'] },
-  { apiId: 115, name: 'Marítim', lines: ['5', '6', '7', '8'] },
-  { apiId: 34, name: 'Torrent Avinguda', lines: ['1', '2'] },
+  { apiId: 60201320, name: 'Stephansplatz', lines: ['U1', 'U3'] },
+  { apiId: 60201182, name: 'Schottenring', lines: ['U2', 'U4'] },
+  { apiId: 60201468, name: 'Westbahnhof', lines: ['U3', 'U6'] },
 ];
 
 const DashboardBoard = ({ theme, onExit }) => {

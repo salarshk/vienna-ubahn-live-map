@@ -1,11 +1,11 @@
-// Arrival Memory Store: Client-side cache, wall-clock countdown memory & Hub Seeder
-// Manages the API rate budget, 60s memory pause, and minimal 3-hub initial network seeding.
+// Vienna U-Bahn arrival memory: client-side cache, wall-clock countdowns and
+// a small network seeder for Wiener Linien's keyless real-time monitor API.
 import { Capacitor } from '@capacitor/core';
 import metroData from '../data/metro_lines.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import paradasApi from '../data/paradas_api.json';
 
-// Build complete 141-station API ID map
+// Build the U-Bahn station name -> Wiener Linien DIVA identifier map.
 export const STATION_ID_MAP = {};
 if (Array.isArray(paradasApi)) {
   for (const p of paradasApi) {
@@ -15,38 +15,25 @@ if (Array.isArray(paradasApi)) {
     }
   }
 }
-// Known spelling variations & aliases
-STATION_ID_MAP['Fira València'] = 68;
-STATION_ID_MAP['fira valència'] = 68;
-STATION_ID_MAP['Pl. Espanya'] = 51;
-STATION_ID_MAP['pl. espanya'] = 51;
-STATION_ID_MAP['Plaça Espanya'] = 51;
-STATION_ID_MAP['plaça espanya'] = 51;
+const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
 
-// 3 Strategic Hubs that cover all major corridors with minimal API calls.
-// Every id here must be the station's id in paradas_api.json — 122 is Francesc
-// Cubells, not Marítim, and seeding it left lines 5 and 7 with no live trains
-// at all. `npm test` guards this.
+// Three interchanges cover all five operating Vienna U-Bahn lines.
 export const STRATEGIC_HUBS = [
-  { id: 17, name: 'Àngel Guimerà', lines: ['1', '2', '3', '5', '9'] },
-  { id: 115, name: 'Marítim', lines: ['5', '6', '7', '8'] },
-  { id: 33, name: 'Torrent', lines: ['1', '2', '7'] },
+  { id: 60201320, name: 'Stephansplatz', lines: ['U1', 'U3'] },
+  { id: 60201182, name: 'Schottenring', lines: ['U2', 'U4'] },
+  { id: 60201468, name: 'Westbahnhof', lines: ['U3', 'U6'] },
 ];
 
-// Fetched together by a Network Sync. Four stations would cover all ten lines
-// (Benimaclet, Torrent Avinguda, Dr. Lluch, Alacant); the rest are termini and
-// interchanges added for geographic spread, because a train far from every
-// queried station has a long chain to walk and accumulates more error.
+// A geographically spread set of interchanges keeps the position walk short
+// without placing an unreasonable request load on the public endpoint.
 export const MAJOR_STATIONS = [
-  { id: 12, name: 'Benimaclet' },
-  { id: 34, name: 'Torrent Avinguda' },
-  { id: 83, name: 'Dr. Lluch' },
-  { id: 190, name: 'Alacant' },
-  { id: 17, name: 'Àngel Guimerà' },
-  { id: 115, name: 'Marítim' },
-  { id: 121, name: 'Aeroport' },
-  { id: 186, name: 'Riba-roja de Túria' },
-  { id: 1, name: 'Rafelbunyol' },
+  { id: 60201320, name: 'Stephansplatz' },
+  { id: 60201182, name: 'Schottenring' },
+  { id: 60201468, name: 'Westbahnhof' },
+  { id: 60200657, name: 'Karlsplatz' },
+  { id: 60201040, name: 'Praterstern' },
+  { id: 60200820, name: 'Längenfeldgasse' },
+  { id: 60200743, name: 'Mitte-Landstraße' },
 ];
 
 // How often a Network Sync sweeps the Major Stations. Long enough to stay well
@@ -61,20 +48,13 @@ const MIN_REFRESH_COOLDOWN_MS = 30000; // 30 seconds cooldown between manual ref
 const MIN_DISPATCH_INTERVAL_MS = 1000; // 1 second minimum delay between outbound API requests
 const DWELL_GRACE_PERIOD_MS = 40000; // 40 seconds dwell before train rolls off
 
-// Propagation Lag — real-world observation (2026-09-09): the map displays vehicle
-// positions behind their true location because the API timestamp already lags the
-// physical train. Subtracting the lag from the Target Arrival Timestamp at fetch
-// time moves the displayed position forward to match reality.
-//   Metro lines (1–3, 5, 7–10): 15 s behind reality
-//   Tram lines 4 and 6:         10 s behind reality
-const METRO_PROPAGATION_LAG_MS = 15_000;
-const TRAM_PROPAGATION_LAG_MS  = 10_000;
-const TRAM_LINE_IDS = new Set(['4', '6']);
-
-/** Returns the Propagation Lag in ms for a given line ID string. */
-function propagationLagMs(lineId) {
-  return TRAM_LINE_IDS.has(lineId) ? TRAM_PROPAGATION_LAG_MS : METRO_PROPAGATION_LAG_MS;
-}
+const parseWienerTimestamp = (value) => {
+  if (!value) return NaN;
+  // Wiener Linien uses +0200; normalising to +02:00 keeps parsing reliable in
+  // WebKit as well as Chromium.
+  const normalised = String(value).replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+  return Date.parse(normalised);
+};
 
 
 class ArrivalStore {
@@ -115,7 +95,7 @@ class ArrivalStore {
   hydrateFromSessionStorage() {
     try {
       if (typeof window === 'undefined' || !window.sessionStorage) return;
-      const raw = sessionStorage.getItem('metrovalencia_arrival_memory');
+      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v2');
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const now = Date.now();
@@ -139,7 +119,7 @@ class ArrivalStore {
           obj[k] = v;
         }
       }
-      sessionStorage.setItem('metrovalencia_arrival_memory', JSON.stringify(obj));
+      sessionStorage.setItem('vienna_ubahn_arrival_memory_v2', JSON.stringify(obj));
     } catch {
       // Ignore storage errors
     }
@@ -357,23 +337,15 @@ class ArrivalStore {
       const timeoutId = setTimeout(() => controller.abort(), 4500);
 
       try {
-        // The API requires a User-Agent containing contact=, which browser
-        // fetch can never set (a forbidden header, unconditionally, in every
-        // browser). A browser context has no way around that but a Node-side
-        // relay, so it goes through the dev-server proxy below. The native
-        // app has no such server to relay through, but CapacitorHttp (enabled
-        // in capacitor.config.json) patches fetch to run over native
-        // networking instead of the WebView's, which is not subject to the
-        // forbidden-header list, so it can set User-Agent directly.
+        // The web build uses Vite's relay to avoid cross-origin restrictions;
+        // the native build can call the same keyless endpoint directly.
         const isNative = Capacitor.isNativePlatform();
         const url = isNative
-          ? `https://metroapi.alexbadi.es/prevision/${stationId}/parse`
-          : `/api/metro/prevision/${stationId}/parse`;
+          ? `https://www.wienerlinien.at/ogd_realtime/monitor?diva=${stationId}`
+          : `/api/vienna/monitor?diva=${stationId}`;
         const response = await fetch(url, {
           signal: controller.signal,
-          headers: isNative
-            ? { 'Accept': 'application/json', 'User-Agent': 'vib-metro-valencia/1.0 (Native iOS; contact=dev@example.com)' }
-            : { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json' },
         });
 
         if (!response.ok) {
@@ -384,43 +356,59 @@ class ArrivalStore {
         }
 
         const data = await response.json().catch(() => null);
-        if (data && Array.isArray(data.previsiones)) {
+        const monitors = data && data.data && Array.isArray(data.data.monitors)
+          ? data.data.monitors
+          : null;
+        if (monitors) {
           const fetchTime = Date.now();
-          const parsedArrivals = data.previsiones.map((p) => {
-            const seconds = Number(p.seconds ?? 0);
-            const lineId = String(p.line || p.line_id || '');
-            const lineFeature = metroData.features.find(
-              f => f.properties.line === lineId && f.geometry.type === 'LineString'
-            );
-            const lineName = lineFeature ? lineFeature.properties.name : `Line ${lineId}`;
-            const defaultColor = lineFeature ? lineFeature.properties.color : (lineId === '1' ? '#FFD100' : lineId === '3' ? '#E2001A' : lineId === '5' ? '#00994D' : '#8F6DB8');
-            const lineColor = (imageLineColors && imageLineColors[lineId]) ? imageLineColors[lineId] : defaultColor;
+          const arrivals = monitors.flatMap((monitor) =>
+            (monitor.lines || []).flatMap((line) => {
+              const lineId = String(line.name || '');
+              if (!U_BAHN_LINES.has(lineId)) return [];
 
-            // The API stamps each prediction with the absolute epoch it expects
-            // the train to arrive. Preferring it over fetchTime + seconds keeps
-            // countdowns honest when the client clock is off, and keeps two
-            // sightings of the same train on one timeline so they can be fused.
-            //
-            // Propagation Lag correction: the API timestamp itself lags the
-            // physical train (15 s for metro, 10 s for trams 4 & 6). Subtracting
-            // the lag brings the displayed vehicle position forward to match reality.
-            const serverTimestamp = Number(p.trainTimestamp) * 1000;
-            const rawTimestamp = Number.isFinite(serverTimestamp) && serverTimestamp > 0
-              ? serverTimestamp
-              : fetchTime + (seconds * 1000);
-            const targetTimestamp = rawTimestamp - propagationLagMs(lineId);
+              return ((line.departures && line.departures.departure) || []).map((departure) => {
+                const timing = departure.departureTime || {};
+                const realTimestamp = parseWienerTimestamp(timing.timeReal);
+                const plannedTimestamp = parseWienerTimestamp(timing.timePlanned);
+                const countdown = Number(timing.countdown);
+                const targetTimestamp = Number.isFinite(realTimestamp)
+                  ? realTimestamp
+                  : Number.isFinite(plannedTimestamp)
+                    ? plannedTimestamp
+                    : fetchTime + (Number.isFinite(countdown) ? countdown * 60000 : 0);
+                const vehicle = departure.vehicle || {};
+                const destination = vehicle.towards || line.towards || 'Unknown destination';
+                const lineFeature = metroData.features.find(
+                  f => f.properties.line === lineId && f.geometry.type === 'LineString'
+                );
+                const lineName = lineFeature ? lineFeature.properties.name : lineId;
+                const defaultColor = lineFeature ? lineFeature.properties.color : '#8a8a8a';
+                const lineColor = (imageLineColors && imageLineColors[lineId])
+                  ? imageLineColors[lineId]
+                  : defaultColor;
 
-            return {
-              line: lineId,
-              lineName,
-              lineColor,
-              destination: p.destino || p.destination,
-              targetTimestamp,
-              initialSeconds: seconds,
-              isLive: true,
-              vehicleId: p.vehicle !== undefined && p.vehicle !== null ? String(p.vehicle) : undefined,
-            };
-          });
+                return {
+                  line: lineId,
+                  lineName,
+                  lineColor,
+                  destination,
+                  targetTimestamp,
+                  initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
+                  isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
+                  vehicleId: vehicle.id || vehicle.vehicleId || undefined,
+                  barrierFree: vehicle.barrierFree ?? line.barrierFree,
+                };
+              });
+            })
+          ).filter((arrival) => Number.isFinite(arrival.targetTimestamp));
+
+          // A DIVA query can return the same platform through more than one
+          // monitor object. Collapse those repeats without merging real trains,
+          // whose U-Bahn headways are comfortably longer than 30 seconds.
+          const parsedArrivals = [...new Map(arrivals.map((arrival) => [
+            `${arrival.line}|${arrival.destination}|${Math.round(arrival.targetTimestamp / 30000)}`,
+            arrival,
+          ])).values()];
 
           // Store in memory
           const updatedEntry = {
@@ -443,7 +431,7 @@ class ArrivalStore {
         }
 
         throw new Error('Malformed API payload');
-      } catch (_err) {
+      } catch {
         // Resilient Fallback: If network/rate limit failed, check if we have prior memory!
         const existingEntry = this.memory.get(key);
         if (existingEntry) {

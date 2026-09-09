@@ -1,5 +1,5 @@
 {
-  "name": "vibe-vlc-metro-map",
+  "name": "vienna-u-bahn-live-map",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,19 +9,11 @@
     "build": "vite build",
     "postbuild": "npx cap sync ios",
     "test": "vitest run",
-    "fetch:gtfs": "node scripts/fetch_gtfs.cjs",
-    "build:data": "npm run build:stations && npm run build:segments",
-    "build:geometry": "node scripts/simplify_line_geometry.cjs",
-    "build:timetable": "node scripts/build_line3_timetable.cjs",
-    "build:segments": "node scripts/build_segment_times.cjs",
-    "build:stations": "node scripts/generate_gtfs_geojson.cjs",
-    "fetch:line4": "node --no-warnings scripts/fetch_line4_overpass.cjs",
+    "build:vienna-data": "node scripts/build_vienna_data.cjs",
     "lint": "oxlint",
     "preview": "vite preview",
-    "build:line4": "node scripts/convert_line4_osm_to_geojson.cjs",
     "ios:sync": "npm run build && npx cap sync ios",
-    "ios:open": "npx cap open ios",
-    "fetch:basemap": "node scripts/fetch_basemap.cjs"
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.1",

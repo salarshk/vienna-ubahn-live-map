@@ -9,14 +9,6 @@ import imageLineColors from '../data/line_colors_from_image.json';
 import lineRenderConfig from '../data/line_render_config.js';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
 
-// Line 4's OSM-derived geometry is fetched rather than imported, so its 209 KB
-// stays out of the JS chunk. It lives in public/ because that is the only
-// directory Vite copies into a build verbatim — served from src/ it resolved in
-// dev and 404'd in production, where the catch below swallowed the failure and
-// line 4 silently fell back to the coarser metro_lines.json geometry.
-// Failing to load it is not fatal — line 4 falls back to the metro_lines.json
-// alignment — but it must not be silent, because that silence is exactly how
-// the production 404 went unnoticed.
 // MapLibre derives its worker's URL from import.meta.url, which resolves to a
 // file Vite's bundler never writes (maplibre-gl is bundled into the app chunk,
 // not kept as its own file) — a build-only 404 that a dev server's raw module
@@ -30,11 +22,10 @@ import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
 // for the same reason — sidesteps both failure modes entirely. Re-copy
 // public/vendor/maplibre/*.mjs from node_modules/maplibre-gl/dist/ if the
 // maplibre-gl version ever changes.
-setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
+const APP_BASE_URL = new URL(import.meta.env.BASE_URL, window.location.origin);
+setWorkerUrl(new URL('vendor/maplibre/maplibre-gl-worker.mjs', APP_BASE_URL).href);
 
-// The offline basemap: one PMTiles archive of the Valencia region, read
-// straight off disk in the native app and by HTTP range request on the web, so
-// a visitor pulls the handful of tiles they look at rather than all 34 MB.
+// Optional offline basemap archive. A fresh clone falls back to online tiles.
 //
 // Vector rather than raster because the complaint that started this was zoom:
 // every raster provider that needs no API key stops having real tiles around
@@ -46,26 +37,10 @@ setWorkerUrl('/vendor/maplibre/maplibre-gl-worker.mjs');
 // outright ("must be absolute"), and having the archive, glyphs and sprite all
 // resolve the same way keeps the native app — served from capacitor://localhost
 // rather than http — working off the same three lines.
-const BASEMAP_DIR = `${window.location.origin}/basemap`;
-const BASEMAP_ARCHIVE = `${BASEMAP_DIR}/valencia.pmtiles`;
+const BASEMAP_DIR = new URL('basemap', APP_BASE_URL).href.replace(/\/$/, '');
+const BASEMAP_ARCHIVE = `${BASEMAP_DIR}/vienna.pmtiles`;
 
 addProtocol('pmtiles', new Protocol().tile);
-
-let line4Osm = null;
-try {
-  // eslint-disable-next-line no-undef
-  const response = await fetch('/line4_osm.geojson');
-  if (response.ok) {
-    line4Osm = await response.json();
-  } else {
-    console.warn(
-      `Line 4 OSM geometry unavailable (HTTP ${response.status}); ` +
-      'falling back to the coarser metro_lines.json alignment.'
-    );
-  }
-} catch (error) {
-  console.warn('Line 4 OSM geometry failed to load; falling back to metro_lines.json.', error);
-}
 // Absent until `npm run fetch:basemap` has been run — it is refetchable input,
 // not committed data (ADR-0003's rule, and 34 MB of binary has no business in
 // git history).
@@ -79,11 +54,12 @@ let OFFLINE_BASEMAP_AVAILABLE = false;
 try {
   // eslint-disable-next-line no-undef
   const probe = await fetch(BASEMAP_ARCHIVE, { headers: { Range: 'bytes=0-0' } });
-  OFFLINE_BASEMAP_AVAILABLE = probe.ok;
-  if (!probe.ok) {
+  const contentType = probe.headers.get('content-type') || '';
+  OFFLINE_BASEMAP_AVAILABLE = probe.ok && !contentType.includes('text/html');
+  if (!OFFLINE_BASEMAP_AVAILABLE) {
     console.warn(
       `Offline basemap unavailable (HTTP ${probe.status}); falling back to online raster tiles, ` +
-      'which stop resolving past zoom 16. Run `npm run fetch:basemap`.'
+      'which stop resolving past zoom 16.'
     );
   }
 } catch (error) {
@@ -95,12 +71,6 @@ import trainPositionEngine from '../services/trainPositionEngine';
 import { getStationFocus } from '../services/stationFocus';
 import { countdownHeat, countdownLabel } from '../utils/countdownHeat';
 import { getDistance, nearestFeature, nearestPointOnPath } from '../utils/geoUtils';
-
-// ─── Static data (computed once at module load) ────────────────────────────────
-const allFeatures = [
-  ...metroData.features,
-  ...(gtfsData && gtfsData.features ? gtfsData.features : []),
-];
 
 // Chaikin subdivision to smooth a polyline. Returns a new array of coordinates.
 const chaikinSmooth = (coords, iterations = 2) => {
@@ -128,22 +98,6 @@ const lineById = new Map();
 for (const f of metroData.features.filter(f => f.geometry && f.geometry.type === 'LineString')) {
   if (f.properties && f.properties.line) lineById.set(String(f.properties.line), { ...f });
 }
-// If an OSM-derived Line 4 file is present, prefer its longest LineString as the authoritative Line 4 geometry
-try {
-  if (line4Osm && Array.isArray(line4Osm.features) && line4Osm.features.length) {
-    const longest = line4Osm.features.reduce((best, cur) => {
-      if (!cur.geometry || cur.geometry.type !== 'LineString') return best;
-      const len = cur.geometry.coordinates.length;
-      if (!best || len > best.len) return { feat: cur, len };
-      return best;
-    }, null);
-    if (longest && longest.feat) {
-      const f = { ...longest.feat };
-      f.properties = { ...f.properties, line: '4', source: 'osm' };
-      lineById.set('4', f);
-    }
-  }
-} catch (e) { /* ignore */ }
 // Then add GTFS lines only if not present or if configured to prefer GTFS for a given line
 for (const f of (gtfsData && gtfsData.features ? gtfsData.features : []).filter(f => f.geometry && f.geometry.type === 'LineString')) {
   const id = f.properties && f.properties.line && String(f.properties.line);
@@ -178,7 +132,7 @@ lineFeatures = lineFeatures.map((f) => {
       try {
         const smoothed = chaikinSmooth(coords, smoothingIterations);
         return { ...f, geometry: { ...f.geometry, coordinates: smoothed } };
-      } catch (e) {
+      } catch {
         return f;
       }
     }
@@ -202,8 +156,7 @@ const rawStations = [
 // would be a lie rather than a correction. Beyond this it is an Off-Track
 // Station — the geometry omits the branch it actually sits on (ADR-0002), and
 // dragging it onto the wrong track would put it visibly nowhere near where it
-// is. Fira València and Ll. Llarga - Terramelar, 642 m and 546 m out, are the
-// two that stay where the data puts them.
+// is. Anything beyond this stays where the source data puts it.
 const SNAP_LIMIT_M = 200;
 
 // Two features this close together, resolving to the same station in the live
@@ -254,9 +207,7 @@ const mergeDuplicateStations = (stations) => {
   return kept;
 };
 
-// Station coordinates come from the GTFS Feed and the track alignment from OSM,
-// two surveys that disagree by tens of metres — Xàtiva sits 45 m off the line
-// it serves, which at station zoom is a station floating beside its own track.
+// Station centres and platform alignments can disagree by tens of metres.
 // Snapping the marker onto the alignment the map actually draws is a rendering
 // correction only: the Timetable Walk keeps projecting from the feed's own
 // coordinates, so nothing about where trains are placed changes.
@@ -407,7 +358,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
     [tileSourceId]: { type: 'raster', tiles, tileSize: 256, attribution: TILE_ATTRIBUTION, maxzoom: 16 },
-    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128 },
+    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn data: Stadt Wien – data.wien.gv.at' },
   },
   layers: [
     { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
@@ -432,7 +383,7 @@ const buildVectorStyle = (flavour) => ({
       url: `pmtiles://${BASEMAP_ARCHIVE}`,
       attribution: '© OpenStreetMap · Protomaps',
     },
-    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128 },
+    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn data: Stadt Wien – data.wien.gv.at' },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
@@ -489,7 +440,7 @@ const renderFocusNode = (focus, theme) => {
   const border = theme === 'light' ? 'rgba(0,0,0,.14)' : 'rgba(255,255,255,.16)';
 
   // No destination text here — only badge, arrow and countdown. The full
-  // "Aeroport · Torrent Avinguda" style label lives in the docked Station
+  // The combined destination label lives in the docked Station
   // panel, which has the width for it; found by testing against real station
   // names that even two names joined don't fit this bubble's width, and
   // showing it twice (truncated here, in full in the panel) was the
@@ -685,13 +636,13 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
   // how many independent sightings pin it down.
   const describeVehicle = (v) => {
     if (!v.isLive) {
-      return `L${v.line} → ${v.direction} • simulated from the timetable, not a reported train`;
+      return `${v.line} → ${v.direction} • simulated from the timetable, not a reported train`;
     }
     const eta = v.secondsToTarget <= 0
       ? 'at platform'
       : `${Math.round(v.secondsToTarget / 60)} min to`;
     const pin = v.sightingCount > 1 ? ` • ${v.sightingCount} sightings` : '';
-    return `L${v.line} → ${v.direction} • ${eta} ${v.targetStation}${pin}${describePositionDoubt(v)}`;
+    return `${v.line} → ${v.direction} • ${eta} ${v.targetStation}${pin}${describePositionDoubt(v)}`;
   };
 
   const updateTrainCount = () => {
@@ -802,7 +753,7 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
       const currentScale = zoomScaleRef.current;
       const isHidden = currentScale < 0.3;
       
-      inner.innerHTML = `<span style="pointer-events:none">L${v.line}</span>`;
+      inner.innerHTML = `<span style="pointer-events:none">${v.line}</span>`;
       // A simulated train is a guess at a headway, not a train anyone reported.
       // It reads as hollow and unlit so it can never be mistaken for live data.
       inner.style.cssText = `
@@ -888,7 +839,6 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
         // If no filter, reset offsets to 0.
         const allLines = lineFeatures.map(l => String(l.properties.line));
         const visible = Array.isArray(filter) && filter.length > 0 ? filter.map(String) : allLines;
-        const n = visible.length;
         const spacing = (lineRenderConfig && Number.isFinite(lineRenderConfig.offsetSpacing)) ? lineRenderConfig.offsetSpacing : 6; // pixels
         const offsets = {};
         // Group visible lines by an approximate geometry key so identical/shared
@@ -939,11 +889,11 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     const map = new MapLibreMap({
       container: containerRef.current,
       style: styleFor(theme),
-      center: [-0.3763, 39.4699],
+      center: [16.3738, 48.2082],
       // 12.3 is where updateZoomScale's formula below caps marker scale at its
       // 1.2x maximum, so the default view opens with stations already at their
       // largest, easiest-to-tap size rather than the network's full extent.
-      zoom: 12.3,
+      zoom: 11.4,
     });
 
     const trainCount = document.createElement('div');

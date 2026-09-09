@@ -3,8 +3,8 @@
 // Answers one question: given the live arrival predictions we hold, where is
 // each train right now?
 //
-// A prediction is "vehicle 5301 reaches Àngel Guimerà in 415 seconds". Turning
-// that into a coordinate means walking back along the line from Àngel Guimerà,
+// A prediction such as "U1 reaches Stephansplatz in 4 minutes" becomes a
+// coordinate by walking backwards along the line from Stephansplatz,
 // spending each segment's real timetabled interval, until those 415 seconds are
 // used up. The obvious shortcut — multiply the countdown by one commercial
 // speed — is wrong in both directions, because real segments run anywhere from
@@ -57,18 +57,17 @@ export const projectPointOntoPolyline = (point, coords, cumDists) => {
 };
 
 const DWELL_SECONDS = segmentTimes.dwellSeconds ?? 25;
+const LINE_IDS = (metroData.features || [])
+  .filter((feature) => feature.geometry && feature.geometry.type === 'LineString')
+  .map((feature) => String(feature.properties.line));
 
 // A prediction this far past its arrival time is stale enough to drop, and one
 // this far out has accumulated too much walk error to place with confidence.
 const MAX_SECONDS_PAST = 40;
 const MAX_SECONDS_AHEAD = 1080;
 
-// Several lines serve branches their polyline in metro_lines.json does not
-// cover — line 9 lists Rafelbunyol among its stations but its geometry stops
-// 9.8 km short at Alboraia. Projecting those onto the nearest point of the
-// wrong track would silently corrupt the station order the walk depends on, so
-// they are held out of the chain instead. Real platforms sit a little to the
-// side of the alignment, hence the tolerance rather than an exact test.
+// A platform must sit close to its line geometry before it participates in the
+// walk. This protects the station order if an upstream geometry ever changes.
 const MAX_STATION_OFFSET_METRES = 250;
 
 // ─── How much to trust a placed train ────────────────────────────────────────
@@ -157,8 +156,7 @@ class TrainPositionEngine {
       f => f.geometry && f.geometry.type === 'Point'
     );
 
-    for (let l = 1; l <= 10; l++) {
-      const lineId = String(l);
+    for (const lineId of LINE_IDS) {
       const feature = (metroData.features || []).find(
         f => f.properties && f.properties.line === lineId && f.geometry && f.geometry.type === 'LineString'
       );
@@ -302,6 +300,21 @@ class TrainPositionEngine {
     return stations.find(
       s => normalise(s.name).includes(target) || target.includes(normalise(s.name))
     ) || null;
+  }
+
+  /** Timetabled seconds between two stations on one line. */
+  getSecondsBetweenStations(lineId, from, to) {
+    const stations = this.getLineStations(lineId);
+    const fromIndex = stations.findIndex((station) => station.id === from.id);
+    const toIndex = stations.findIndex((station) => station.id === to.id);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return 0;
+
+    const step = toIndex > fromIndex ? 1 : -1;
+    let seconds = 0;
+    for (let index = fromIndex; index !== toIndex; index += step) {
+      seconds += this.getSegmentSeconds(lineId, stations[index], stations[index + step]);
+    }
+    return seconds;
   }
 
   /**
@@ -497,11 +510,18 @@ class TrainPositionEngine {
         const station = this.findStation(lineId, entry.stationName);
         if (!station) continue;
 
-        // Without a vehicle id from the API, a sighting cannot be tied to any
-        // other, so it stands alone as its own train.
+        // Wiener Linien does not normally expose a vehicle number. Projecting
+        // each sighting forward to its destination produces a stable trip slot
+        // that can join the same train seen at two different stations.
+        const destinationStation = this.findStation(lineId, arrival.destination);
+        const destinationTimestamp = destinationStation
+          ? arrival.targetTimestamp + this.getSecondsBetweenStations(
+            lineId, station, destinationStation
+          ) * 1000
+          : arrival.targetTimestamp;
         const key = arrival.vehicleId
           ? `${lineId}-${arrival.vehicleId}`
-          : `${lineId}-${arrival.destination}-${Math.round(arrival.targetTimestamp / 60000)}`;
+          : `${lineId}-${arrival.destination}-${Math.round(destinationTimestamp / 60000)}`;
 
         if (!byVehicle.has(key)) {
           byVehicle.set(key, {
@@ -698,8 +718,7 @@ class TrainPositionEngine {
     const liveVehicles = this.getLiveVehiclesFromMemory(now);
     const allVehicles = [...liveVehicles];
 
-    for (let l = 1; l <= 10; l++) {
-      const lineId = String(l);
+    for (const lineId of LINE_IDS) {
       const liveOnLine = liveVehicles.filter(v => v.line === lineId);
 
       if (liveOnLine.length === 0) {

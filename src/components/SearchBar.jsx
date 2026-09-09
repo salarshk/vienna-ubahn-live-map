@@ -56,7 +56,7 @@ const SearchBar = ({ onSelectStation, onSelectLine, activeLineFilter }) => {
 
   const handleSelectLine = useCallback((line) => {
     onSelectLine(line.properties.line);
-    setQuery(`Line ${line.properties.line}`);
+    setQuery(line.properties.line);
     setIsOpen(false);
     setHighlighted(-1);
   }, [onSelectLine]);
@@ -104,7 +104,7 @@ const SearchBar = ({ onSelectStation, onSelectLine, activeLineFilter }) => {
           onChange={e => { setQuery(e.target.value); setIsOpen(true); setHighlighted(-1); }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search for a station or line..."
+          placeholder="Search Vienna stations and lines..."
           aria-label="Search stations and lines"
           style={{
             background: 'transparent',

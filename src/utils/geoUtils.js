@@ -81,8 +81,8 @@ export const interpolatePath = (coords, t) => {
 // The point on a polyline closest to a given point, with how far off it was.
 //
 // Works in a local flat projection centred on the query point rather than in
-// degrees: a degree of longitude is 771 m at Valencia's latitude and a degree
-// of latitude is 1110 m, so treating lon/lat as a plane without that correction
+// degrees: longitude and latitude have different scales, so treating lon/lat
+// as a plane without that correction
 // biases every answer eastward. Over a segment a few hundred metres long the
 // flat approximation is otherwise exact to well under a metre.
 //

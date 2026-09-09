@@ -5,9 +5,11 @@ import react from '@vitejs/plugin-react'
 // always report which build it is. Format: YYYY.MM.DD (UTC). Baked in at
 // compile time — no manual version bump needed.
 const buildDate = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+const isGitHubPages = process.env.GITHUB_PAGES === 'true';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: isGitHubPages ? '/vienna-ubahn-live-map/' : '/',
   define: {
     __APP_VERSION__: JSON.stringify(buildDate),
   },
@@ -34,19 +36,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1300,
   },
   server: {
-    // Browser fetch() can never set User-Agent (a forbidden header in the
-    // Fetch spec), and the API requires one containing contact=, so a browser
-    // context has to go through this Node-side proxy, which can set it. The
-    // native iOS app has no dev server to proxy through, so it takes a
-    // different path — see arrivalStore.js.
+    // Relay Wiener Linien's monitor endpoint in development. The native app
+    // calls the same keyless endpoint directly through CapacitorHttp.
     proxy: {
-      '/api/metro': {
-        target: 'https://metroapi.alexbadi.es',
+      '/api/vienna': {
+        target: 'https://www.wienerlinien.at',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/metro/, ''),
-        headers: {
-          'User-Agent': 'vib-metro-valencia/1.0 (Web; contact=dev@example.com)'
-        }
+        rewrite: (path) => path.replace(/^\/api\/vienna/, '/ogd_realtime'),
       }
     }
   }
