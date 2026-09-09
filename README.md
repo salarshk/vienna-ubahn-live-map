@@ -63,6 +63,12 @@ This is an independent project and is not operated or endorsed by Wiener
 Linien. Live markers are inferred from arrivals and should not be treated as
 exact train locations.
 
+## Acknowledgements
+
+This Vienna adaptation is based on JieGH's original
+[vibe_VLCmetroMap](https://github.com/JieGH/vibe_VLCmetroMap) project. The
+original Git history and Apache 2.0 license are preserved.
+
 ## Privacy
 
 The locate button compares one device location fix against the station list in
