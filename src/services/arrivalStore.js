@@ -17,6 +17,11 @@ if (Array.isArray(paradasApi)) {
 }
 const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
 const PUBLIC_API_BASE = String(import.meta.env.VITE_VIENNA_API_BASE || '').replace(/\/$/, '');
+const LINE_METADATA = new Map(
+  metroData.features
+    .filter((feature) => feature.geometry.type === 'LineString')
+    .map((feature) => [feature.properties.line, feature.properties])
+);
 
 // Three interchanges cover all five operating Vienna U-Bahn lines.
 export const STRATEGIC_HUBS = [
@@ -55,6 +60,61 @@ const parseWienerTimestamp = (value) => {
   // WebKit as well as Chromium.
   const normalised = String(value).replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
   return Date.parse(normalised);
+};
+
+const buildMonitorUrl = (stationIds) => {
+  const query = stationIds.map((id) => `diva=${encodeURIComponent(id)}`).join('&');
+  if (Capacitor.isNativePlatform()) {
+    return `https://www.wienerlinien.at/ogd_realtime/monitor?${query}`;
+  }
+  if (PUBLIC_API_BASE) return `${PUBLIC_API_BASE}/monitor?${query}`;
+  return `/api/vienna/monitor?${query}`;
+};
+
+const parseMonitorArrivals = (monitors, fetchTime) => {
+  const arrivals = monitors.flatMap((monitor) =>
+    (monitor.lines || []).flatMap((line) => {
+      const lineId = String(line.name || '');
+      if (!U_BAHN_LINES.has(lineId)) return [];
+
+      return ((line.departures && line.departures.departure) || []).map((departure) => {
+        const timing = departure.departureTime || {};
+        const realTimestamp = parseWienerTimestamp(timing.timeReal);
+        const plannedTimestamp = parseWienerTimestamp(timing.timePlanned);
+        const countdown = Number(timing.countdown);
+        const targetTimestamp = Number.isFinite(realTimestamp)
+          ? realTimestamp
+          : Number.isFinite(plannedTimestamp)
+            ? plannedTimestamp
+            : fetchTime + (Number.isFinite(countdown) ? countdown * 60000 : 0);
+        const vehicle = departure.vehicle || {};
+        const destination = vehicle.towards || line.towards || 'Unknown destination';
+        const lineMetadata = LINE_METADATA.get(lineId);
+        const lineName = lineMetadata ? lineMetadata.name : lineId;
+        const defaultColor = lineMetadata ? lineMetadata.color : '#8a8a8a';
+        const lineColor = imageLineColors?.[lineId] || defaultColor;
+
+        return {
+          line: lineId,
+          lineName,
+          lineColor,
+          destination,
+          targetTimestamp,
+          initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
+          isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
+          vehicleId: vehicle.id || vehicle.vehicleId || undefined,
+          barrierFree: vehicle.barrierFree ?? line.barrierFree,
+        };
+      });
+    })
+  ).filter((arrival) => Number.isFinite(arrival.targetTimestamp));
+
+  // A DIVA query can return the same platform through more than one monitor
+  // object. Collapse repeats without merging real trains.
+  return [...new Map(arrivals.map((arrival) => [
+    `${arrival.line}|${arrival.destination}|${Math.round(arrival.targetTimestamp / 30000)}`,
+    arrival,
+  ])).values()];
 };
 
 
@@ -139,7 +199,6 @@ class ArrivalStore {
 
   /**
    * Seeds the network with the minimal 3-hub stations on initial map boot.
-   * Dispatches sequentially with a 1.2s delay to respect rate limits.
    */
   async seedStrategicHubs() {
     if (this.isSeedingHubs) return;
@@ -153,20 +212,77 @@ class ArrivalStore {
     if (hasFreshHubs) return;
 
     this.isSeedingHubs = true;
-
-    for (let i = 0; i < STRATEGIC_HUBS.length; i++) {
-      const hub = STRATEGIC_HUBS[i];
-      try {
-        await this.getStationArrivals({ apiId: hub.id, name: hub.name }, { forceRefresh: false });
-      } catch {
-        // Continue to next hub on failure
+    try {
+      await this.fetchStationBatch(STRATEGIC_HUBS);
+    } catch {
+      // The normal station request remains available when batching is refused.
+      for (const hub of STRATEGIC_HUBS) {
+        await this.getStationArrivals({ apiId: hub.id, name: hub.name });
       }
-      if (i < STRATEGIC_HUBS.length - 1) {
-        await new Promise(r => setTimeout(r, 1200));
-      }
+    } finally {
+      this.isSeedingHubs = false;
     }
+  }
 
-    this.isSeedingHubs = false;
+  /**
+   * Fetch several DIVA stations in one Wiener Linien monitor request. The API
+   * supports repeated diva parameters, which removes the hosted relay's
+   * per-request startup latency while also reducing upstream traffic.
+   */
+  async fetchStationBatch(stations) {
+    if (!Array.isArray(stations) || stations.length === 0) return 0;
+
+    const timeSinceLast = Date.now() - this.lastRequestTimestamp;
+    if (timeSinceLast < MIN_DISPATCH_INTERVAL_MS) {
+      await new Promise(r => setTimeout(r, MIN_DISPATCH_INTERVAL_MS - timeSinceLast));
+    }
+    this.lastRequestTimestamp = Date.now();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    try {
+      const response = await fetch(buildMonitorUrl(stations.map((station) => station.id)), {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!response.ok) {
+        if (response.status === 429) this.rateLimitedUntil = Date.now() + 20000;
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json().catch(() => null);
+      const monitors = data?.data?.monitors;
+      if (!Array.isArray(monitors)) throw new Error('Malformed API payload');
+
+      const stationById = new Map(stations.map((station) => [Number(station.id), station]));
+      const monitorsByStation = new Map(stations.map((station) => [Number(station.id), []]));
+      for (const monitor of monitors) {
+        const stationId = Number(monitor.locationStop?.properties?.name);
+        if (monitorsByStation.has(stationId)) monitorsByStation.get(stationId).push(monitor);
+      }
+
+      const fetchTime = Date.now();
+      let updated = 0;
+      for (const [stationId, stationMonitors] of monitorsByStation) {
+        const station = stationById.get(stationId);
+        if (!station || stationMonitors.length === 0) continue;
+        this.memory.set(String(stationId), {
+          stationId,
+          stationName: station.name,
+          fetchedAt: fetchTime,
+          arrivals: parseMonitorArrivals(stationMonitors, fetchTime),
+          fetchError: null,
+        });
+        updated += 1;
+      }
+
+      this.persistToSessionStorage();
+      this.notify();
+      return updated;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
@@ -185,17 +301,22 @@ class ArrivalStore {
     let skipped = 0;
 
     try {
-      for (const station of MAJOR_STATIONS) {
+      const staleStations = MAJOR_STATIONS.filter((station) => {
         const entry = this.memory.get(String(station.id));
         if (entry && (Date.now() - entry.fetchedAt) < CACHE_TTL_MS) {
           skipped += 1;
-          continue;
+          return false;
         }
-        try {
-          await this.getStationArrivals({ apiId: station.id, name: station.name });
-          fetched += 1;
-        } catch {
-          // One station failing must not abandon the rest of the sweep.
+        return true;
+      });
+
+      try {
+        fetched = await this.fetchStationBatch(staleStations);
+      } catch {
+        // Fall back to individual calls if an intermediary rejects a long URL.
+        for (const station of staleStations) {
+          const result = await this.getStationArrivals({ apiId: station.id, name: station.name });
+          if (!result.fetchError) fetched += 1;
         }
       }
     } finally {
@@ -338,16 +459,7 @@ class ArrivalStore {
       const timeoutId = setTimeout(() => controller.abort(), 9000);
 
       try {
-        // Development uses Vite's local relay, the native build calls Wiener
-        // Linien directly, and static hosts can provide a CORS-safe relay at
-        // build time through VITE_VIENNA_API_BASE.
-        const isNative = Capacitor.isNativePlatform();
-        const url = isNative
-          ? `https://www.wienerlinien.at/ogd_realtime/monitor?diva=${stationId}`
-          : PUBLIC_API_BASE
-            ? `${PUBLIC_API_BASE}/monitor?diva=${stationId}`
-            : `/api/vienna/monitor?diva=${stationId}`;
-        const response = await fetch(url, {
+        const response = await fetch(buildMonitorUrl([stationId]), {
           signal: controller.signal,
           headers: { 'Accept': 'application/json' },
         });
@@ -365,54 +477,7 @@ class ArrivalStore {
           : null;
         if (monitors) {
           const fetchTime = Date.now();
-          const arrivals = monitors.flatMap((monitor) =>
-            (monitor.lines || []).flatMap((line) => {
-              const lineId = String(line.name || '');
-              if (!U_BAHN_LINES.has(lineId)) return [];
-
-              return ((line.departures && line.departures.departure) || []).map((departure) => {
-                const timing = departure.departureTime || {};
-                const realTimestamp = parseWienerTimestamp(timing.timeReal);
-                const plannedTimestamp = parseWienerTimestamp(timing.timePlanned);
-                const countdown = Number(timing.countdown);
-                const targetTimestamp = Number.isFinite(realTimestamp)
-                  ? realTimestamp
-                  : Number.isFinite(plannedTimestamp)
-                    ? plannedTimestamp
-                    : fetchTime + (Number.isFinite(countdown) ? countdown * 60000 : 0);
-                const vehicle = departure.vehicle || {};
-                const destination = vehicle.towards || line.towards || 'Unknown destination';
-                const lineFeature = metroData.features.find(
-                  f => f.properties.line === lineId && f.geometry.type === 'LineString'
-                );
-                const lineName = lineFeature ? lineFeature.properties.name : lineId;
-                const defaultColor = lineFeature ? lineFeature.properties.color : '#8a8a8a';
-                const lineColor = (imageLineColors && imageLineColors[lineId])
-                  ? imageLineColors[lineId]
-                  : defaultColor;
-
-                return {
-                  line: lineId,
-                  lineName,
-                  lineColor,
-                  destination,
-                  targetTimestamp,
-                  initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
-                  isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
-                  vehicleId: vehicle.id || vehicle.vehicleId || undefined,
-                  barrierFree: vehicle.barrierFree ?? line.barrierFree,
-                };
-              });
-            })
-          ).filter((arrival) => Number.isFinite(arrival.targetTimestamp));
-
-          // A DIVA query can return the same platform through more than one
-          // monitor object. Collapse those repeats without merging real trains,
-          // whose U-Bahn headways are comfortably longer than 30 seconds.
-          const parsedArrivals = [...new Map(arrivals.map((arrival) => [
-            `${arrival.line}|${arrival.destination}|${Math.round(arrival.targetTimestamp / 30000)}`,
-            arrival,
-          ])).values()];
+          const parsedArrivals = parseMonitorArrivals(monitors, fetchTime);
 
           // Store in memory
           const updatedEntry = {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { arrivalStore, STATION_ID_MAP } from './arrivalStore';
 
 describe('Vienna U-Bahn station identifiers', () => {
@@ -12,5 +12,52 @@ describe('Vienna U-Bahn station identifiers', () => {
     for (const name of ['Stephansplatz', 'Karlsplatz', 'Westbahnhof']) {
       expect(arrivalStore.getStationApiId({ name })).not.toBeNull();
     }
+  });
+});
+
+describe('batched live synchronization', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    arrivalStore.memory.clear();
+    arrivalStore.lastRequestTimestamp = 0;
+  });
+
+  it('requests multiple DIVA stations at once and stores their live departures', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          monitors: [{
+            locationStop: { properties: { name: '60201320' } },
+            lines: [{
+              name: 'U1',
+              towards: 'Leopoldau',
+              realtimeSupported: true,
+              departures: {
+                departure: [{
+                  departureTime: {
+                    timeReal: '2026-09-09T18:10:00.000+0200',
+                    countdown: 2,
+                  },
+                  vehicle: { name: 'U1', towards: 'Leopoldau' },
+                }],
+              },
+            }],
+          }],
+        },
+      }),
+    }));
+
+    const updated = await arrivalStore.fetchStationBatch([
+      { id: 60201320, name: 'Stephansplatz' },
+      { id: 60201182, name: 'Schottenring' },
+    ]);
+
+    expect(fetch).toHaveBeenCalledOnce();
+    const requestedUrl = fetch.mock.calls[0][0];
+    expect(requestedUrl).toContain('diva=60201320');
+    expect(requestedUrl).toContain('diva=60201182');
+    expect(updated).toBe(1);
+    expect(arrivalStore.memory.get('60201320').arrivals[0].isLive).toBe(true);
   });
 });

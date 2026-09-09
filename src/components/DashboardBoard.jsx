@@ -30,10 +30,7 @@ const DashboardBoard = ({ theme, onExit }) => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    (async () => {
-      await arrivalStore.seedStrategicHubs();
-      await arrivalStore.syncNetwork();
-    })();
+    arrivalStore.syncNetwork();
     const sync = setInterval(() => arrivalStore.syncNetwork(), NETWORK_SYNC_INTERVAL_MS);
     const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => { clearInterval(sync); clearInterval(tick); };
