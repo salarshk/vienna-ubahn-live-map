@@ -31,6 +31,7 @@ jobs:
         run: npx vite build
         env:
           GITHUB_PAGES: 'true'
+          VITE_VIENNA_API_BASE: https://corsproxy.nl/https/www.wienerlinien.at/ogd_realtime
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload website

@@ -16,6 +16,7 @@ if (Array.isArray(paradasApi)) {
   }
 }
 const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
+const PUBLIC_API_BASE = String(import.meta.env.VITE_VIENNA_API_BASE || '').replace(/\/$/, '');
 
 // Three interchanges cover all five operating Vienna U-Bahn lines.
 export const STRATEGIC_HUBS = [
@@ -334,15 +335,18 @@ class ArrivalStore {
       this.lastRequestTimestamp = Date.now();
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4500);
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
 
       try {
-        // The web build uses Vite's relay to avoid cross-origin restrictions;
-        // the native build can call the same keyless endpoint directly.
+        // Development uses Vite's local relay, the native build calls Wiener
+        // Linien directly, and static hosts can provide a CORS-safe relay at
+        // build time through VITE_VIENNA_API_BASE.
         const isNative = Capacitor.isNativePlatform();
         const url = isNative
           ? `https://www.wienerlinien.at/ogd_realtime/monitor?diva=${stationId}`
-          : `/api/vienna/monitor?diva=${stationId}`;
+          : PUBLIC_API_BASE
+            ? `${PUBLIC_API_BASE}/monitor?diva=${stationId}`
+            : `/api/vienna/monitor?diva=${stationId}`;
         const response = await fetch(url, {
           signal: controller.signal,
           headers: { 'Accept': 'application/json' },

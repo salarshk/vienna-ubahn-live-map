@@ -40,7 +40,11 @@ npm run build
 ## GitHub Pages
 
 Pushes to `main` are automatically built and published through the Pages
-workflow in `.github/workflows/deploy-pages.yml`.
+workflow in `.github/workflows/deploy-pages.yml`. The hosted build routes its
+read-only departure requests through the open-source `corsproxy.nl` relay
+because the official endpoint does not provide browser CORS headers. The data
+still comes directly from Wiener Linien and the relay receives only public
+station identifiers.
 
 ## Refresh Vienna data
 
