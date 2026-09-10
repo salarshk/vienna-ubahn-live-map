@@ -13,8 +13,10 @@
 // 40% too far back: roughly two stations of error in the city centre.
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
+import sbahnData from '../data/sbahn_network.json';
 import segmentTimes from '../data/segment_times.json';
 import arrivalStore, { NETWORK_SYNC_INTERVAL_MS, POSITION_SOURCE_IDS } from './arrivalStore';
+import { getScheduledSbahnVehicles } from './sbahnSchedule';
 
 // Haversine distance in meters
 export const haversineDistance = (c1, c2) => {
@@ -57,9 +59,11 @@ export const projectPointOntoPolyline = (point, coords, cumDists) => {
 };
 
 const DWELL_SECONDS = segmentTimes.dwellSeconds ?? 25;
-const LINE_IDS = (metroData.features || [])
+const RAIL_FEATURES = [...(metroData.features || []), ...(sbahnData.features || [])];
+const LINE_IDS = RAIL_FEATURES
   .filter((feature) => feature.geometry && feature.geometry.type === 'LineString')
   .map((feature) => String(feature.properties.line));
+const U_BAHN_LINE_IDS = LINE_IDS.filter((line) => line.startsWith('U'));
 
 // A prediction this far past its arrival time is stale enough to drop, and one
 // this far out has accumulated too much walk error to place with confidence.
@@ -177,12 +181,12 @@ class TrainPositionEngine {
   }
 
   init() {
-    const allStationPoints = (gtfsData.features || []).filter(
+    const allStationPoints = [...(gtfsData.features || []), ...(sbahnData.features || [])].filter(
       f => f.geometry && f.geometry.type === 'Point'
     );
 
     for (const lineId of LINE_IDS) {
-      const feature = (metroData.features || []).find(
+      const feature = RAIL_FEATURES.find(
         f => f.properties && f.properties.line === lineId && f.geometry && f.geometry.type === 'LineString'
       );
       if (!feature) continue;
@@ -211,8 +215,12 @@ class TrainPositionEngine {
       });
 
       // 2. Project stations serving this line
-      const stationsForLine = allStationPoints.filter(
-        st => Array.isArray(st.properties.lines) && st.properties.lines.includes(lineId)
+      const allowedStationIds = Array.isArray(feature.properties.stationIds)
+        ? new Set(feature.properties.stationIds)
+        : null;
+      const stationsForLine = allStationPoints.filter((station) =>
+        Array.isArray(station.properties.lines) && station.properties.lines.includes(lineId) &&
+        (!allowedStationIds || allowedStationIds.has(station.properties.stop_id))
       );
 
       const projectedStations = stationsForLine.map((st) => {
@@ -354,7 +362,7 @@ class TrainPositionEngine {
     if (stations.length < 2 || !target) return true;
 
     const code = String(directionCode || '').toUpperCase();
-    if (code === 'H' || code === 'R') {
+    if ((code === 'H' || code === 'R') && H_DIRECTION_TERMINUS[lineId]) {
       const hTerminus = this.findStation(lineId, H_DIRECTION_TERMINUS[lineId]);
       const midpoint = (stations[0].trackDist + stations[stations.length - 1].trackDist) / 2;
       const hIsForward = hTerminus ? hTerminus.trackDist > midpoint : true;
@@ -811,9 +819,10 @@ class TrainPositionEngine {
    */
   getAllVehicles(now = Date.now()) {
     const liveVehicles = this.getLiveVehiclesFromMemory(now);
-    const allVehicles = [...liveVehicles];
+    const scheduledVehicles = getScheduledSbahnVehicles(now);
+    const allVehicles = [...liveVehicles, ...scheduledVehicles];
 
-    for (const lineId of LINE_IDS) {
+    for (const lineId of U_BAHN_LINE_IDS) {
       const liveOnLine = liveVehicles.filter(v => v.line === lineId);
 
       if (liveOnLine.length === 0) {

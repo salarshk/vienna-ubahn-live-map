@@ -20,9 +20,10 @@ export default defineConfig({
   build: {
     // maplibre-gl alone is ~1 MB of ES modules (546K + 470K shared), and a
     // full-screen map cannot defer its map engine for any real gain. The
-    // default 500 kB warning can therefore never be satisfied, so it is raised
-    // to just above the current bundle rather than silenced: that keeps it
-    // working as a ratchet, tripping if the bundle grows again.
+    // default 500 kB warning can therefore never be satisfied. The compact
+    // annual S-Bahn timetable adds another ~1.5 MB uncompressed (~215 kB gzip),
+    // so the limit is raised just above the combined bundle rather than
+    // silenced; it still works as a ratchet if the app grows again.
     //
     // The only real reduction available was the line geometry, simplified by
     // scripts/simplify_line_geometry.cjs: 1,373 kB → 1,265 kB, essentially all
@@ -33,7 +34,7 @@ export default defineConfig({
     // Remaining option if this ever matters: lazy-load MapView so the sidebar
     // paints before the map engine arrives. It defers bytes rather than
     // removing them, which is why it was not done here.
-    chunkSizeWarningLimit: 1300,
+    chunkSizeWarningLimit: 3100,
   },
   server: {
     // Relay Wiener Linien's monitor endpoint in development. The native app

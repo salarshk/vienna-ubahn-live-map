@@ -12,6 +12,7 @@
 import { Geolocation } from '@capacitor/geolocation';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
+import sbahnData from '../data/sbahn_network.json';
 import { getDistance } from '../utils/geoUtils';
 
 // Beyond this, there is no Nearest Station worth naming — only a far one. Set
@@ -47,6 +48,7 @@ const gtfsStations = (gtfsData && gtfsData.features)
 const gtfsStationNames = new Set(gtfsStations.map((f) => f.properties.name));
 export const STATIONS = [
   ...gtfsStations,
+  ...sbahnData.features.filter((f) => f.geometry.type === 'Point'),
   ...metroData.features.filter(
     (f) => f.geometry.type === 'Point' && !gtfsStationNames.has(f.properties.name)
   ),

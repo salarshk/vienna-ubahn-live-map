@@ -2,12 +2,14 @@ import React from 'react';
 import { ChevronLeft, Check } from 'lucide-react';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
+import sbahnData from '../data/sbahn_network.json';
 
-const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHoverLine, trainStats = { live: 0, confirmed: 0 } }) => {
+const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHoverLine, trainStats = { live: 0, confirmed: 0, scheduled: 0 } }) => {
   // Combine line features from bundled metro JSON and GTFS-generated data.
   const allFeatures = [
     ...metroData.features,
     ...(gtfsData && gtfsData.features ? gtfsData.features : []),
+    ...(sbahnData.features || []),
   ];
   const lineFeatures = allFeatures.filter(f => f.geometry && f.geometry.type === 'LineString');
   const seen = new Set();
@@ -16,7 +18,7 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
     const id = f.properties && f.properties.line;
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    lines.push({ properties: { line: id, color: f.properties && f.properties.color ? f.properties.color : '#888', name: f.properties && f.properties.name ? f.properties.name : `Line ${id}` } });
+    lines.push({ properties: { line: id, mode: f.properties?.mode || 'ubahn', color: f.properties && f.properties.color ? f.properties.color : '#888', name: f.properties && f.properties.name ? f.properties.name : `Line ${id}` } });
   }
 
   return (
@@ -37,8 +39,8 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
               V
             </div>
             <div>
-              <h1 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Vienna U-Bahn</h1>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Live train estimates</div>
+              <h1 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Vienna Rail</h1>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>U-Bahn live · S-Bahn timetable</div>
             </div>
           </div>
 
@@ -109,9 +111,9 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
 
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{line.properties.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#4CAF50', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4CAF50' }}></span>
-                        Live departures
+                      <div style={{ fontSize: '0.75rem', color: line.properties.mode === 'sbahn' ? '#00B4D8' : '#4CAF50', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: line.properties.mode === 'sbahn' ? '#00B4D8' : '#4CAF50' }}></span>
+                        {line.properties.mode === 'sbahn' ? 'Scheduled positions' : 'Live departures'}
                       </div>
                     </div>
 
@@ -133,7 +135,7 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
           {/* Live Stats & Footer */}
           <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
             <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-              Live Network
+              Rail Network
             </h2>
             <div style={{ display: 'flex', gap: '8px' }}>
               <div style={{
@@ -152,15 +154,15 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
                 background: 'var(--bg-hover)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFD100', lineHeight: 1 }}>
-                  {trainStats.confirmed}
+                  {trainStats.scheduled}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  Confirmed
+                  Scheduled S-Bahn
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>
-              <span>📍 Wiener Linien U-Bahn</span>
+              <span>📍 {trainStats.confirmed} U-Bahn confirmed · ÖBB S-Bahn</span>
               <span style={{ opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>v{__APP_VERSION__}</span>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { noLabels, labels } from 'protomaps-themes-base';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
+import sbahnData from '../data/sbahn_network.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import lineRenderConfig from '../data/line_render_config.js';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
@@ -98,6 +99,9 @@ const lineById = new Map();
 for (const f of metroData.features.filter(f => f.geometry && f.geometry.type === 'LineString')) {
   if (f.properties && f.properties.line) lineById.set(String(f.properties.line), { ...f });
 }
+for (const f of sbahnData.features.filter(f => f.geometry && f.geometry.type === 'LineString')) {
+  if (f.properties && f.properties.line) lineById.set(String(f.properties.line), { ...f });
+}
 // Then add GTFS lines only if not present or if configured to prefer GTFS for a given line
 for (const f of (gtfsData && gtfsData.features ? gtfsData.features : []).filter(f => f.geometry && f.geometry.type === 'LineString')) {
   const id = f.properties && f.properties.line && String(f.properties.line);
@@ -110,12 +114,16 @@ for (const f of (gtfsData && gtfsData.features ? gtfsData.features : []).filter(
   }
 }
 
-let lineFeatures = Array.from(lineById.values());
+// Draw the regional S-Bahn corridors first so the denser U-Bahn remains
+// legible where the networks cross in the city centre.
+let lineFeatures = Array.from(lineById.values()).sort((a, b) =>
+  (a.properties?.mode === 'sbahn' ? 0 : 1) - (b.properties?.mode === 'sbahn' ? 0 : 1)
+);
 // Ensure each feature has a resolved `color` property (image override > feature.color > default)
 for (const f of lineFeatures) {
   const lid = String(f.properties.line);
   const override = imageLineColors && imageLineColors[lid];
-  f.properties = { ...f.properties, color: override || f.properties.color || '#888888', offset: 0 };
+  f.properties = { ...f.properties, mode: f.properties.mode || 'ubahn', color: override || f.properties.color || '#888888', offset: 0 };
 }
 // Smooth configured lines so their rendered curves match.
 const smoothingApplyTo = (lineRenderConfig && lineRenderConfig.smoothing && Array.isArray(lineRenderConfig.smoothing.applyTo))
@@ -147,6 +155,7 @@ const gtfsStations = (gtfsData && gtfsData.features)
 const gtfsStationNames = new Set(gtfsStations.map(f => f.properties.name));
 const rawStations = [
   ...gtfsStations,
+  ...sbahnData.features.filter(f => f.geometry.type === 'Point'),
   ...metroData.features.filter(
     f => f.geometry.type === 'Point' && !gtfsStationNames.has(f.properties.name)
   ),
@@ -300,7 +309,7 @@ const metroLayers = [
         17, 8.5,
         19, 11.0
       ],
-      'line-opacity': 0.35,
+      'line-opacity': ['case', ['==', ['get', 'mode'], 'sbahn'], 0.22, 0.35],
       'line-offset': [
         'interpolate', ['linear'], ['zoom'],
         6, 0,
@@ -321,6 +330,7 @@ const metroLayers = [
     source: 'metro-lines',
     paint: {
       'line-color': ['get', 'color'],
+      'line-opacity': ['case', ['==', ['get', 'mode'], 'sbahn'], 0.72, 1],
       'line-width': [
         'interpolate', ['linear'], ['zoom'],
         6, 0.75,
@@ -358,7 +368,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
     [tileSourceId]: { type: 'raster', tiles, tileSize: 256, attribution: TILE_ATTRIBUTION, maxzoom: 16 },
-    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn data: Stadt Wien – data.wien.gv.at' },
+    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
   },
   layers: [
     { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
@@ -383,7 +393,7 @@ const buildVectorStyle = (flavour) => ({
       url: `pmtiles://${BASEMAP_ARCHIVE}`,
       attribution: '© OpenStreetMap · Protomaps',
     },
-    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn data: Stadt Wien – data.wien.gv.at' },
+    'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
@@ -635,6 +645,12 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
   // Says plainly whether a marker is a reported train or a headway guess, and
   // how many independent sightings pin it down.
   const describeVehicle = (v) => {
+    if (v.isScheduled) {
+      const eta = v.secondsToTarget <= 0
+        ? 'at platform'
+        : `${Math.round(v.secondsToTarget / 60)} min to`;
+      return `${v.line} → ${v.direction} • ${eta} ${v.targetStation} • scheduled estimate, no live GPS`;
+    }
     if (!v.isLive) {
       return `${v.line} → ${v.direction} • simulated from the timetable, not a reported train`;
     }
@@ -645,15 +661,22 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     return `${v.line} → ${v.direction} • ${eta} ${v.targetStation}${pin}${describePositionDoubt(v)}`;
   };
 
-  const updateTrainCount = () => {
+  const updateTrainCount = (vehicles = null) => {
     if (!trainCountRef.current) return;
     const now = Date.now();
-    const liveVehicles = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    const allVehicles = vehicles || trainPositionEngine.getAllVehicles(now);
+    const liveVehicles = allVehicles.filter((vehicle) => vehicle.isLive);
+    const scheduledVehicles = allVehicles.filter((vehicle) => vehicle.isScheduled);
     if (liveVehicles.length > 0) {
       const pinned = liveVehicles.filter(v => v.sightingCount > 1).length;
-      trainCountRef.current.textContent = pinned > 0
+      const liveLabel = pinned > 0
         ? `${liveVehicles.length} live trains · ${pinned} confirmed at two stations`
         : `${liveVehicles.length} live trains`;
+      trainCountRef.current.textContent = scheduledVehicles.length > 0
+        ? `${liveLabel} · ${scheduledVehicles.length} scheduled S-Bahn`
+        : liveLabel;
+    } else if (scheduledVehicles.length > 0) {
+      trainCountRef.current.textContent = `${scheduledVehicles.length} scheduled S-Bahn trains`;
     } else {
       trainCountRef.current.textContent = 'No live predictions — showing simulated trains';
     }
@@ -789,7 +812,7 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     const animate = () => {
       const now = Date.now();
       const currentVehicles = trainPositionEngine.getAllVehicles(now);
-      updateTrainCount();
+      updateTrainCount(currentVehicles);
       let currentVisible = currentVehicles;
       if (Array.isArray(filterRef.current) && filterRef.current.length > 0) {
         currentVisible = currentVisible.filter(v => filterRef.current.includes(String(v.line)));

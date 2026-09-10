@@ -60,6 +60,7 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
   if (!station) return null;
 
   const focus = getStationFocus(station.properties, now);
+  const scheduledOnly = focus.hasScheduled && !focus.hasRealtime;
   const unheardLabel = focus.secondsUnheard === null
     ? 'never fetched'
     : focus.secondsUnheard < 60
@@ -107,15 +108,17 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
             display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
             padding: '2px 7px', borderRadius: 999, fontSize: '.62rem', fontWeight: 700,
             letterSpacing: '.03em', whiteSpace: 'nowrap',
-            color: focus.isFresh ? '#4CAF50' : '#00B4D8',
-            background: focus.isFresh ? 'rgba(76,175,80,.15)' : 'rgba(0,180,216,.15)',
+            color: scheduledOnly ? '#00B4D8' : focus.isFresh ? '#4CAF50' : '#00B4D8',
+            background: scheduledOnly ? 'rgba(0,180,216,.15)' : focus.isFresh ? 'rgba(76,175,80,.15)' : 'rgba(0,180,216,.15)',
           }}>
-            {focus.isFresh
+            {scheduledOnly
+              ? <><Database size={9} /> SCHEDULE</>
+              : focus.isFresh
               ? <><Radio size={9} className="pulse" /> LIVE</>
               : <><Database size={9} /> MEMORY</>}
           </span>
           <span style={{ fontSize: '.64rem', color: 'var(--text-secondary)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            confirmed {unheardLabel}
+            {scheduledOnly ? 'ÖBB timetable' : `confirmed ${unheardLabel}`}
           </span>
         </div>
 
@@ -208,7 +211,7 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
 
         {focus.arrivals.length === 0 ? (
           <p style={{ padding: 20, textAlign: 'center', fontSize: '.8rem', color: 'var(--text-secondary)' }}>
-            No live trains arriving soon.
+            No trains arriving soon.
           </p>
         ) : focus.laterArrivals.length === 0 ? (
           /* Everything due is already in the headlines. Saying so beats an

@@ -35,17 +35,21 @@ function App() {
 
   // Live train counts for the sidebar stats panel. Recomputed on every
   // arrivalStore notification so the numbers stay in sync with the map.
-  const [trainStats, setTrainStats] = useState({ live: 0, confirmed: 0 });
+  const [trainStats, setTrainStats] = useState({ live: 0, confirmed: 0, scheduled: 0 });
   useEffect(() => {
     const computeStats = () => {
-      const vehicles = trainPositionEngine.getLiveVehiclesFromMemory(Date.now());
+      const vehicles = trainPositionEngine.getAllVehicles(Date.now());
+      const live = vehicles.filter((vehicle) => vehicle.isLive);
       setTrainStats({
-        live: vehicles.length,
-        confirmed: vehicles.filter(v => v.sightingCount > 1).length,
+        live: live.length,
+        confirmed: live.filter(v => v.sightingCount > 1).length,
+        scheduled: vehicles.filter((vehicle) => vehicle.isScheduled).length,
       });
     };
     computeStats();
-    return arrivalStore.subscribe(computeStats);
+    const unsubscribe = arrivalStore.subscribe(computeStats);
+    const timer = setInterval(computeStats, 30000);
+    return () => { unsubscribe(); clearInterval(timer); };
   }, []);
 
 

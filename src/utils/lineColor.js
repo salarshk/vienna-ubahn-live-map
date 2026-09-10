@@ -7,9 +7,16 @@
 // Dashboard board) just want the flat image-sampled color with a grey
 // fallback, which is what this is.
 import lineColors from '../data/line_colors_from_image.json';
+import sbahnData from '../data/sbahn_network.json';
 
 export const FALLBACK_LINE_COLOR = '#8a8a8a';
 
-export const lineColor = (id) => lineColors[String(id)] || FALLBACK_LINE_COLOR;
+const sbahnColors = Object.fromEntries(
+  sbahnData.features
+    .filter((feature) => feature.geometry.type === 'LineString')
+    .map((feature) => [feature.properties.line, feature.properties.color])
+);
+
+export const lineColor = (id) => lineColors[String(id)] || sbahnColors[String(id)] || FALLBACK_LINE_COLOR;
 
 export default lineColor;

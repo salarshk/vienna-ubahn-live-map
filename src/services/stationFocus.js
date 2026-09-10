@@ -10,6 +10,7 @@
 // "forward"; their real compass bearings can differ by more than 100°.
 import arrivalStore from './arrivalStore';
 import trainPositionEngine from './trainPositionEngine';
+import { getScheduledSbahnArrivals } from './sbahnSchedule';
 
 // How many termini a Direction Group names before it gives up and counts.
 const MAX_LABELLED_DESTINATIONS = 3;
@@ -37,7 +38,9 @@ const label = (destinations) => {
  */
 export const getStationFocus = (stationProps, now = Date.now()) => {
   const cached = stationProps ? arrivalStore.getCachedArrivals(stationProps, now) : null;
-  const arrivals = cached ? cached.arrivals : [];
+  const realtimeArrivals = cached ? cached.arrivals : [];
+  const scheduledArrivals = getScheduledSbahnArrivals(stationProps, now);
+  const arrivals = [...realtimeArrivals, ...scheduledArrivals];
 
   // Keyed by line and direction. Several destinations on the same side of one
   // line (for example a short-turn service) still share a concise group.
@@ -109,6 +112,8 @@ export const getStationFocus = (stationProps, now = Date.now()) => {
     fetchedAt: cached ? cached.fetchedAt : null,
     secondsUnheard: cached && cached.fetchedAt ? Math.round((now - cached.fetchedAt) / 1000) : null,
     fetchError: cached ? cached.fetchError : null,
+    hasRealtime: realtimeArrivals.some((arrival) => arrival.isLive),
+    hasScheduled: scheduledArrivals.length > 0,
   };
 };
 

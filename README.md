@@ -1,9 +1,9 @@
-# Vienna U-Bahn Live Map
+# Vienna U-Bahn & S-Bahn Map
 
 **Website:** <https://salarshk.github.io/vienna-ubahn-live-map/>
 
-An interactive map of Vienna's U-Bahn network that shows live departures and
-estimates where trains are between stations.
+An interactive map of Vienna's U-Bahn and S-Bahn networks. It shows live
+U-Bahn departure estimates and scheduled S-Bahn positions.
 
 The Wiener Linien real-time interface publishes departure predictions, not
 vehicle GPS coordinates. This app walks each prediction backwards along its
@@ -12,12 +12,18 @@ therefore position estimates, and the interface fades uncertain estimates.
 When a line has no usable live prediction, hollow dashed dots show timetable
 simulations so they cannot be mistaken for reported trains.
 
+ÖBB's public feed does not provide S-Bahn vehicle GPS. S-Bahn dots are therefore
+interpolated between the station times in the official 2026 GTFS timetable and
+are always drawn hollow and labelled as scheduled estimates.
+
 ## Features
 
 - U1, U2, U3, U4 and U6 on an interactive MapLibre map
+- S1, S2, S3, S4, S7, S40, S45, S50, S60 and S80
 - Live Wiener Linien departure predictions
+- Scheduled ÖBB S-Bahn positions that respect service calendars and exceptions
 - Estimated moving train positions and confidence styling
-- Search across 99 U-Bahn stations
+- Search across U-Bahn and S-Bahn stations
 - Line filters, light/dark themes and nearest-station location
 - Station departure panels with live countdowns
 - Full-screen departure board at `?mode=dashboard`
@@ -56,10 +62,17 @@ That command downloads Wiener Linien's current Open Government Data files and
 regenerates the compact line, station, identifier, color and segment-timing
 files in `src/data/`.
 
+To refresh the S-Bahn routes and timetable from ÖBB's annual GTFS feed:
+
+```bash
+npm run build:sbahn
+```
+
 ## Data sources and accuracy
 
 - Static station sequences, coordinates and identifiers: [Wiener Linien Open Data](https://www.wienerlinien.at/open-data)
 - Live departures: [Wiener Linien real-time monitor API](https://www.wienerlinien.at/ogd_realtime/doku/ogd/wienerlinien-echtzeitdaten-dokumentation.pdf)
+- S-Bahn routes and timetable: [ÖBB GTFS Fahrplan](https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~)
 - Data attribution: Datenquelle Stadt Wien – <https://data.wien.gv.at>
 - Basemap: OpenStreetMap/Esri in a fresh clone
 

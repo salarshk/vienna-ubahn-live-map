@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import metroData from '../data/metro_lines.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import paradasApi from '../data/paradas_api.json';
+import sbahnData from '../data/sbahn_network.json';
 
 // Build the U-Bahn station name -> Wiener Linien DIVA identifier map.
 export const STATION_ID_MAP = {};
@@ -15,10 +16,17 @@ if (Array.isArray(paradasApi)) {
     }
   }
 }
+for (const station of (sbahnData.features || []).filter((feature) => feature.geometry.type === 'Point')) {
+  const { apiId, name } = station.properties || {};
+  if (name && apiId) {
+    STATION_ID_MAP[name] = Number(apiId);
+    STATION_ID_MAP[name.toLowerCase().trim()] = Number(apiId);
+  }
+}
 const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
 const PUBLIC_API_BASE = String(import.meta.env.VITE_VIENNA_API_BASE || '').replace(/\/$/, '');
 const LINE_METADATA = new Map(
-  metroData.features
+  [...metroData.features, ...(sbahnData.features || [])]
     .filter((feature) => feature.geometry.type === 'LineString')
     .map((feature) => [feature.properties.line, feature.properties])
 );
