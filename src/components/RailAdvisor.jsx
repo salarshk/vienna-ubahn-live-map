@@ -5,8 +5,33 @@ import { lineColor } from '../utils/lineColor';
 import {
   advisorIsConfigured, buildRailAdvisorEvidence, requestRailAdvice,
 } from '../services/railAdvisor';
+import { LINES } from '../services/transitModels';
 
 const STATUS_LABEL = { stable: 'Stable', watch: 'Watch closely', disrupted: 'Disrupted' };
+const LINE_STATUS_LABEL = { normal: 'Normal', watch: 'Watch', disrupted: 'Disrupted', unknown: 'Unknown' };
+const PRIORITY_LABEL = { low: 'Low priority', medium: 'Medium priority', high: 'High priority' };
+const DECISION_LABEL = {
+  monitor: 'Monitor',
+  verify_headway: 'Verify headway',
+  prepare_passenger_message: 'Prepare passenger message',
+  review_staffing: 'Review staffing',
+  escalate_human_review: 'Escalate for human review',
+};
+
+const lineDecisionsForDisplay = (decisions = []) => LINES.map((line) => {
+  const decision = decisions.find((item) => item?.line === line);
+  return decision || {
+    line,
+    status: 'unknown',
+    priority: 'low',
+    decision: 'monitor',
+    action: 'Keep this line under routine observation and verify controller telemetry before any intervention.',
+    rationale: 'No line-specific decision was returned for this line.',
+    evidence: [],
+    confidence: 0,
+    limitations: 'Public passenger data cannot confirm train-control or track conditions.',
+  };
+});
 
 const RailAdvisor = ({
   snapshot, disruptions, forecasts, crowding, accessibility,
@@ -58,6 +83,30 @@ const RailAdvisor = ({
         <span>{STATUS_LABEL[advice.networkStatus] || 'Current assessment'}</span>
         <p>{advice.summary}</p>
       </div>
+      {audience === 'operations' && <div className="advisor-line-decisions">
+        <div className="advisor-line-decisions-heading">
+          <div><strong>Line-by-line control-room decisions</strong><span>Human review required</span></div>
+          <p>Decision support from the public feed and model estimates. Confirm with the controller console before acting.</p>
+        </div>
+        <div className="advisor-line-decision-grid">
+          {lineDecisionsForDisplay(advice.lineDecisions).map((lineDecision) => (
+            <article className={`advisor-line-decision ${lineDecision.priority || 'low'}`} key={lineDecision.line}>
+              <div className="advisor-line-decision-heading">
+                <i style={{ background: lineColor(lineDecision.line) }}>{lineDecision.line}</i>
+                <div><strong>{DECISION_LABEL[lineDecision.decision] || 'Monitor'}</strong><span>{Math.round((lineDecision.confidence || 0) * 100)}% confidence</span></div>
+              </div>
+              <div className="advisor-line-decision-meta">
+                <span className={`advisor-line-status ${lineDecision.status || 'unknown'}`}>{LINE_STATUS_LABEL[lineDecision.status] || 'Unknown'}</span>
+                <span>{PRIORITY_LABEL[lineDecision.priority] || 'Low priority'}</span>
+              </div>
+              <p className="advisor-action">{lineDecision.action}</p>
+              <p className="advisor-rationale">{lineDecision.rationale}</p>
+              {lineDecision.evidence?.length > 0 && <ul>{lineDecision.evidence.map((item) => <li key={item}>{item}</li>)}</ul>}
+              {lineDecision.limitations && <small>{lineDecision.limitations}</small>}
+            </article>
+          ))}
+        </div>
+      </div>}
       {(advice.recommendations || []).map((recommendation, index) => (
         <article className="advisor-card" key={`${recommendation.title}-${index}`}>
           <div className="advisor-card-heading"><strong>{recommendation.title}</strong><span>{Math.round(recommendation.confidence * 100)}% confidence</span></div>
@@ -76,4 +125,3 @@ const RailAdvisor = ({
 };
 
 export default RailAdvisor;
-

@@ -32,7 +32,7 @@ describe('advisor worker', () => {
 
   it('uses structured, non-stored Responses API output', async () => {
     const advice = {
-      summary: 'U1 needs attention.', networkStatus: 'watch', recommendations: [{
+      summary: 'U1 needs attention.', networkStatus: 'watch', lineDecisions: [], recommendations: [{
         title: 'Check U1', audience: 'passenger', action: 'Allow extra time.',
         rationale: 'A longer interval is visible.', evidence: ['U1 gap: 12 minutes'],
         affectedLines: ['U1'], confidence: 0.72, limitations: 'Position is inferred.',
@@ -55,9 +55,17 @@ describe('advisor worker', () => {
     expect(sent.text.format.strict).toBe(true);
   });
 
+  it('asks Operations mode for a decision on every U-Bahn line', () => {
+    const request = buildOpenAIRequest({ audience: 'operations', goal: '', evidence: {} }, env);
+    expect(request.instructions).toContain('exactly one line decision for each of U1, U2, U3, U4, and U6');
+    expect(request.instructions).toContain('human-reviewed decision-support recommendations only');
+    expect(request.text.format.schema.required).toContain('lineDecisions');
+    expect(request.text.format.schema.properties.lineDecisions.items.properties.line.enum)
+      .toEqual(['U1', 'U2', 'U3', 'U4', 'U6']);
+  });
+
   it('keeps the model configurable', () => {
     expect(buildOpenAIRequest({ audience: 'operations', goal: '', evidence: {} }, { OPENAI_MODEL: 'another-model' }).model)
       .toBe('another-model');
   });
 });
-

@@ -15,13 +15,21 @@ advisory layer, not a train-control system.
 The request deliberately excludes device location, vehicle identifiers and raw
 API responses. It explicitly tells the model that U-Bahn positions are inferred,
 S-Bahn positions are scheduled, and passenger pressure is not measured occupancy.
+When Operations is selected, the response contains one structured decision for
+each U-Bahn line (U1, U2, U3, U4 and U6), including status, priority, next
+verification step, evidence, confidence and limitations. The interface fills
+any missing line conservatively as “monitor” so the control-room view is never
+silently incomplete.
 
 ## Safety and grounding
 
 The Worker treats map data as untrusted, asks the model to use only supplied
 evidence, and uses a strict JSON schema. Operations advice is limited to
 monitoring, passenger communication, staffing review and human-reviewed
-planning. Signaling, speed, track access and dispatch commands are prohibited.
+planning. Signaling, speed, track access, train-hold, routing and dispatch
+commands are prohibited. The result is decision support for a qualified human
+controller, not an operating instruction or a substitute for the control-room
+console.
 The interface shows concise evidence and rationale, not hidden chain-of-thought.
 
 OpenAI requests use `store: false`. The API key exists only as a Cloudflare
