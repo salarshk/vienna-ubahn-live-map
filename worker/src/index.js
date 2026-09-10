@@ -118,7 +118,8 @@ export const handleRequest = async (request, env, fetchImpl = fetch) => {
       headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(openAIRequest),
     });
-  } catch {
+  } catch (error) {
+    console.error('OpenAI fetch failed', error?.name || 'Error', error?.message || 'unknown');
     return json({ error: 'The AI service could not be reached.' }, 502, origin);
   }
   const responseBody = await openAIResponse.json().catch(() => ({}));
@@ -139,4 +140,7 @@ export const handleRequest = async (request, env, fetchImpl = fetch) => {
   }
 };
 
-export default { fetch: handleRequest };
+// Cloudflare supplies an execution context as the third handler argument. Keep
+// the injected fetch function explicit so production calls use global fetch,
+// while unit tests can still provide a mock.
+export default { fetch: (request, env) => handleRequest(request, env, fetch) };
