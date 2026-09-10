@@ -33,6 +33,10 @@ jobs:
           GITHUB_PAGES: 'true'
           VITE_VIENNA_API_BASE: https://corsproxy.nl/https/www.wienerlinien.at/ogd_realtime
           VITE_ADVISOR_API_URL: ${{ vars.ADVISOR_API_URL }}
+          # Optional, authorized feeds. Leave unset to keep the honest
+          # timetable/inferred-position fallback used by the public site.
+          VITE_OEBB_REALTIME_URL: ${{ vars.OEBB_REALTIME_URL }}
+          VITE_OEBB_POSITION_URL: ${{ vars.OEBB_POSITION_URL }}
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
       - name: Upload website
