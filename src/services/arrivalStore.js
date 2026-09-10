@@ -161,7 +161,7 @@ class ArrivalStore {
   hydrateFromSessionStorage() {
     try {
       if (typeof window === 'undefined' || !window.sessionStorage) return;
-      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v2');
+      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v3');
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const now = Date.now();
@@ -185,7 +185,7 @@ class ArrivalStore {
           obj[k] = v;
         }
       }
-      sessionStorage.setItem('vienna_ubahn_arrival_memory_v2', JSON.stringify(obj));
+      sessionStorage.setItem('vienna_ubahn_arrival_memory_v3', JSON.stringify(obj));
     } catch {
       // Ignore storage errors
     }
