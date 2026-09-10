@@ -418,10 +418,10 @@ const styleFor = (theme) => (OFFLINE_BASEMAP_AVAILABLE
   ));
 
 // The CSS opacity a vehicle marker is drawn at. For a live train that is its
-// Position Confidence; a Simulated Train keeps its own flat value, because
-// hollow and dashed is a different claim about a train, not a fainter one.
+// Position Confidence; scheduled S-Bahn trains stay visually distinct but no
+// longer fade into the basemap, while generic simulations remain subdued.
 const vehicleOpacity = (v) =>
-  (v.isLive ? (v.positionConfidence ?? 1) : 0.55).toFixed(2);
+  (v.isLive ? (v.positionConfidence ?? 1) : v.isScheduled ? 0.9 : 0.55).toFixed(2);
 
 // Says in the reader's words — not the model's — why a marker is drawn faint,
 // covering both causes: how far the walk had to reach, and how long since the
@@ -777,13 +777,14 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
       const isHidden = currentScale < 0.3;
       
       inner.innerHTML = `<span style="pointer-events:none">${v.line}</span>`;
-      // A simulated train is a guess at a headway, not a train anyone reported.
-      // It reads as hollow and unlit so it can never be mistaken for live data.
+      // Scheduled S-Bahn trains retain a dashed outline, but use a light fill,
+      // heavier border and glow so the estimate remains easy to find. Generic
+      // headway simulations stay hollow and subdued.
       inner.style.cssText = `
         width:28px; height:28px; border-radius:50%;
-        background:${v.isLive ? color : 'transparent'};
-        border:2px ${v.isLive ? 'solid rgba(255,255,255,0.9)' : `dashed ${color}`};
-        box-shadow:0 0 0 0 ${color};
+        background:${v.isLive ? color : v.isScheduled ? `${color}38` : 'transparent'};
+        border:${v.isScheduled ? '3px' : '2px'} ${v.isLive ? 'solid rgba(255,255,255,0.9)' : `dashed ${color}`};
+        box-shadow:${v.isScheduled ? `0 0 10px 2px ${color}88` : `0 0 0 0 ${color}`};
         display:flex; align-items:center; justify-content:center;
         color:${v.isLive ? '#fff' : color}; font-size:10px; font-weight:800;
         opacity:${vehicleOpacity(v)};
