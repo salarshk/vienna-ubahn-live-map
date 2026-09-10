@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 714,
+  "observationCount": 1096,
   "labelledJourneyCount": 0,
   "dataDays": 1,
-  "coverageHours": 0.6,
+  "coverageHours": 1.6,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-10T11:46:56.527Z",
+  "lastObservation": "2026-09-10T12:49:58.692Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -38,5 +38,18 @@
   },
   "status": "collecting",
   "message": "Collecting at least 36 hours across 2 days and 150 labelled journeys before publishing a preliminary score.",
-  "leakageControl": "One early observation per journey; later near-departure observation becomes its label."
+  "leakageControl": "One early observation per journey; later near-departure observation becomes its label.",
+  "onlineCalibration": {
+    "status": "collecting",
+    "experimental": true,
+    "scoredJourneyCount": 0,
+    "minimumExamples": 30,
+    "evaluationMethod": "Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.",
+    "model": null,
+    "currentEstimateBaseline": null,
+    "deployment": {
+      "deployed": false,
+      "rule": "Enable online predictions after 30 scored journeys only when their MAE beats the unadjusted live estimate."
+    }
+  }
 }
