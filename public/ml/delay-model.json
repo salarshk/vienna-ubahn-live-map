@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "status": "collecting",
+  "target": "Final Wiener Linien reported delay, in minutes, near departure",
+  "observationCount": 0,
+  "labelledJourneyCount": 0,
+  "dataDays": 0,
+  "firstObservation": null,
+  "lastObservation": null,
+  "trainedAt": null,
+  "requirements": {
+    "minimumDays": 7,
+    "minimumExamples": 500,
+    "minimumTestExamples": 100
+  }
+}

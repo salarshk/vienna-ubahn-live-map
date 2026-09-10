@@ -31,7 +31,13 @@ are always drawn hollow and labelled as scheduled estimates.
 - S-Bahn timetable validity warnings and automatic monthly refresh checks
 - Station departure panels with live countdowns
 - Full-screen departure board at `?mode=dashboard`
+- Automated U-Bahn delay-data collection with chronological holdout evaluation
+- Public MAE, RMSE, R², within-one-minute accuracy and 3+ minute delay metrics
 - Shared React codebase for the web and a Capacitor iOS shell
+
+The delay model does not publish a score until it has at least seven days of
+observations and a sufficiently large untouched test period. Its methodology is
+documented in [`docs/ml-delay-model.md`](docs/ml-delay-model.md).
 
 ## Run locally
 

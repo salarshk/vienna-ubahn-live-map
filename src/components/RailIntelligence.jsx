@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Accessibility, Activity, AlertTriangle, Bot, Clock3, History, Radar, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
@@ -9,6 +9,8 @@ import {
   LINES,
 } from '../services/transitModels';
 import OnboardPilot from './OnboardPilot';
+import arrivalStore from '../services/arrivalStore';
+import delayModelStore, { predictFinalDelay } from '../services/delayModel';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -22,6 +24,7 @@ const RailIntelligence = ({
 }) => {
   const [tab, setTab] = useState('forecast');
   const [explainLineId, setExplainLineId] = useState('U1');
+  const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
   const now = snapshot.generatedAt || 0;
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
@@ -33,6 +36,27 @@ const RailIntelligence = ({
     line: explainLineId, issues, alerts: disruptions,
     reliability: snapshot.reliability, crowding,
   });
+  const delayMetrics = delaySnapshot.metrics;
+  const delayRequirements = delayMetrics?.requirements || {};
+  const collectionProgress = Math.min(100, Math.round(100 * Math.min(
+    (delayMetrics?.dataDays || 0) / (delayRequirements.minimumDays || 7),
+    (delayMetrics?.labelledJourneyCount || 0) / (delayRequirements.minimumExamples || 500),
+  )));
+  const delayPredictions = delaySnapshot.status === 'ready'
+    ? LINES.map((line) => {
+      const predictions = arrivalStore.getNetworkArrivals(now)
+        .filter((arrival) => arrival.isLive && arrival.line === line && arrival.seconds >= 240 && arrival.seconds <= 900)
+        .map((arrival) => predictFinalDelay(delaySnapshot.model, arrival, now))
+        .filter(Number.isFinite);
+      return predictions.length ? { line, minutes: Math.max(...predictions) } : null;
+    }).filter(Boolean)
+    : [];
+
+  useEffect(() => {
+    const unsubscribe = delayModelStore.subscribe(setDelaySnapshot);
+    delayModelStore.load();
+    return unsubscribe;
+  }, []);
 
   return (
     <aside className="glass-panel intelligence-panel" aria-label="Rail intelligence">
@@ -66,6 +90,47 @@ const RailIntelligence = ({
               </div>
             ))}</div>
           )}
+        </section>
+
+        <section className="intelligence-section delay-model-card">
+          <div className="intelligence-section-title">
+            <Activity size={14} /><strong>U-Bahn delay model</strong>
+            <em className={delaySnapshot.status === 'ready' ? 'model-ready' : ''}>
+              {delaySnapshot.status === 'ready' ? 'Validated' : delaySnapshot.status === 'error' ? 'Unavailable' : 'Collecting'}
+            </em>
+          </div>
+          {delaySnapshot.status === 'ready' ? <>
+            <div className="delay-metric-grid">
+              <div><span>MAE</span><strong>{delayMetrics.model.maeMinutes} min</strong></div>
+              <div><span>RMSE</span><strong>{delayMetrics.model.rmseMinutes} min</strong></div>
+              <div><span>Within ±1 min</span><strong>{delayMetrics.model.withinOneMinutePercent}%</strong></div>
+              <div><span>Delay accuracy</span><strong>{delayMetrics.model.delayedThreeMinutes.accuracyPercent}%</strong></div>
+              <div><span>Delay F1</span><strong>{delayMetrics.model.delayedThreeMinutes.f1}</strong></div>
+              <div><span>Test journeys</span><strong>{delayMetrics.model.sampleCount}</strong></div>
+            </div>
+            {delayMetrics.deployment?.deployed === false && (
+              <div className="model-holdback">Model held back: its test MAE did not beat the live-estimate baseline.</div>
+            )}
+            {delayPredictions.length > 0 && <div className="delay-line-predictions">
+              {delayPredictions.map((prediction) => (
+                <span key={prediction.line}><i style={{ background: lineColor(prediction.line) }}>{prediction.line}</i>
+                  {prediction.minutes < 0.5 ? 'on time' : `+${prediction.minutes.toFixed(1)} min`}
+                </span>
+              ))}
+            </div>}
+            <p className="intelligence-note">Scored on the newest 20% of complete calendar days, kept outside training. “Delay accuracy” classifies delays of 3+ minutes.</p>
+          </> : delaySnapshot.status === 'error' ? (
+            <div className="model-collection-copy">The published model report could not be loaded.</div>
+          ) : <>
+            <div className="model-progress"><i style={{ width: `${collectionProgress}%` }} /></div>
+            <div className="model-collection-stats">
+              <strong>{delayMetrics?.observationCount || 0}</strong><span>observations</span>
+              <strong>{delayMetrics?.labelledJourneyCount || 0}</strong><span>labelled journeys</span>
+              <strong>{delayMetrics?.dataDays || 0}/{delayRequirements.minimumDays || 7}</strong><span>days</span>
+            </div>
+            <p className="intelligence-note">No accuracy is shown yet. A score is published only after at least {delayRequirements.minimumDays || 7} days and {delayRequirements.minimumExamples || 500} journeys, using later journeys as an untouched test set.</p>
+          </>}
+          <p className="model-label-caveat">Target: Wiener Linien’s final reported <code>timeReal − timePlanned</code>, not independent GPS ground truth.</p>
         </section>
 
         <section className="intelligence-section">

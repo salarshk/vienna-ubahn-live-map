@@ -42,3 +42,8 @@ src/data/line3_timetable.json
 # Offline basemap — refetchable input, not committed data (npm run fetch:basemap)
 public/basemap/
 .cache/
+
+# Restored between scheduled ML collection runs as a GitHub Actions artifact.
+# The compact trained model and its public metrics are committed separately.
+data/ml/observations/
+data/ml/observations.jsonl

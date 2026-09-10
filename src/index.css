@@ -481,6 +481,24 @@ button:active {
 .crowding-grid .medium i { background: #ffb74d; }
 .crowding-grid .high i { background: #ff6b6b; }
 
+.intelligence-section-title em.model-ready { color: #4caf50; background: rgba(76, 175, 80, .13); }
+.model-progress { overflow: hidden; height: 6px; margin: 2px 0 9px; border-radius: 999px; background: var(--bg-hover-active); }
+.model-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4caf50, #81c784); transition: width .3s ease; }
+.model-collection-stats { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 3px 7px; padding: 8px 10px; border-radius: 8px; background: var(--bg-hover); }
+.model-collection-stats strong { color: #4caf50; font-size: .72rem; text-align: right; font-variant-numeric: tabular-nums; }
+.model-collection-stats span, .model-collection-copy { color: var(--text-secondary); font-size: .63rem; }
+.model-holdback { margin-top: 8px; padding: 7px 8px; border-radius: 7px; background: rgba(255, 183, 77, .1); color: #ffb74d; font-size: .6rem; line-height: 1.35; }
+.delay-metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.delay-metric-grid > div { min-width: 0; padding: 7px 5px; border-radius: 7px; background: var(--bg-hover); text-align: center; }
+.delay-metric-grid span, .delay-metric-grid strong { display: block; }
+.delay-metric-grid span { min-height: 2.2em; color: var(--text-secondary); font-size: .54rem; line-height: 1.1; }
+.delay-metric-grid strong { margin-top: 3px; font-size: .68rem; font-variant-numeric: tabular-nums; }
+.delay-line-predictions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; margin-top: 8px; }
+.delay-line-predictions span { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 7px; background: var(--bg-hover); font-size: .61rem; font-weight: 800; }
+.delay-line-predictions i { min-width: 25px; padding: 2px 4px; border-radius: 4px; color: #fff; font-size: .55rem; font-style: normal; text-align: center; }
+.model-label-caveat { margin-top: 7px; color: var(--text-secondary); font-size: .56rem; line-height: 1.4; }
+.model-label-caveat code { color: inherit; font-size: inherit; }
+
 .atlas-toggle { width: 100%; min-height: 34px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-hover); color: var(--text-secondary); font-size: .65rem; font-weight: 800; }
 .atlas-toggle.active { color: #4caf50; border-color: rgba(76, 175, 80, .55); }
 .reliability-atlas { display: flex; flex-direction: column; gap: 6px; }

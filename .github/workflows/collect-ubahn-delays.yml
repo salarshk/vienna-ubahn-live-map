@@ -1,0 +1,92 @@
+name: Collect and validate U-Bahn delay model
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect-ubahn-delays.yml'
+      - 'scripts/ml/**'
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: ubahn-delay-collection
+  cancel-in-progress: false
+
+jobs:
+  collect-and-train:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Find previous dataset
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id="$(gh run list --workflow collect-ubahn-delays.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Restore previous observations
+        if: steps.previous.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ubahn-delay-data
+          path: data/ml
+          run-id: ${{ steps.previous.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Collect one Wiener Linien snapshot
+        run: node scripts/ml/collect_ubahn_delays.mjs
+
+      - name: Train with a chronological holdout when ready
+        env:
+          DELAY_MODEL_PATH: data/ml/candidate-model.json
+          DELAY_METRICS_PATH: data/ml/candidate-metrics.json
+        run: node scripts/ml/train_delay_model.mjs
+
+      - name: Publish progress or today's validated model
+        id: publish
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          today="$(date -u +%F)"
+          previous_day="$(cat data/ml/last-published-day.txt 2>/dev/null || true)"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$today" != "$previous_day" ]; then
+            mkdir -p public/ml
+            cp data/ml/candidate-model.json public/ml/delay-model.json
+            cp data/ml/candidate-metrics.json public/ml/delay-metrics.json
+            echo "$today" > data/ml/last-published-day.txt
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save observations for the next run
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubahn-delay-data
+          path: data/ml
+          retention-days: 90
+          compression-level: 9
+
+      - name: Commit public model report
+        if: steps.publish.outputs.changed == 'true'
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add public/ml/delay-model.json public/ml/delay-metrics.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Update U-Bahn delay model report"
+          git push

@@ -161,6 +161,7 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
             : targetTimestamp,
           initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
           isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
+          trafficJam: Boolean(vehicle.trafficjam ?? line.trafficjam),
           vehicleId: vehicle.id || vehicle.vehicleId || undefined,
           barrierFree: vehicle.barrierFree ?? line.barrierFree,
         };
@@ -443,6 +444,11 @@ class ArrivalStore {
       fetchedAt: entry.fetchedAt,
       fetchError: entry.fetchError || null,
     };
+  }
+
+  /** Current live arrival predictions across every synchronised reference station. */
+  getNetworkArrivals(now = Date.now()) {
+    return [...this.memory.values()].flatMap((entry) => this.projectArrivals(entry, now));
   }
 
   /**
