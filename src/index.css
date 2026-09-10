@@ -442,6 +442,15 @@ button:active {
 .replay-slider { width: 100%; margin: 9px 0 2px; accent-color: #4caf50; }
 .replay-slider:disabled { opacity: .45; }
 .replay-scale { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: .6rem; }
+.official-replay-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--text-secondary); font-size: .59rem; }
+.official-replay-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 8px; }
+.official-replay-metrics > div { min-width: 0; padding: 7px 5px; border-radius: 7px; background: var(--bg-hover); text-align: center; }
+.official-replay-metrics span, .official-replay-metrics strong { display: block; }
+.official-replay-metrics span { min-height: 2.2em; color: var(--text-secondary); font-size: .53rem; line-height: 1.1; }
+.official-replay-metrics strong { margin-top: 3px; font-size: .68rem; font-variant-numeric: tabular-nums; }
+.official-replay-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.official-replay-lines span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 5px; background: var(--bg-hover); color: var(--text-secondary); font-size: .58rem; font-variant-numeric: tabular-nums; }
+.official-replay-lines b { font-size: .61rem; }
 .replay-active-banner { position: absolute; z-index: 28; top: 84px; left: 50%; transform: translateX(-50%); padding: 7px 12px; color: #ffb74d; font-size: .68rem; font-weight: 800; white-space: nowrap; }
 .intelligence-note { margin-top: 7px; color: var(--text-secondary); font-size: .61rem; line-height: 1.4; }
 .intelligence-ok { display: flex; align-items: center; gap: 7px; padding: 9px 10px; border-radius: 8px; background: rgba(76, 175, 80, .1); color: #4caf50; font-size: .7rem; font-weight: 700; }
@@ -558,6 +567,12 @@ button:active {
 .delay-line-predictions i { min-width: 25px; padding: 2px 4px; border-radius: 4px; color: #fff; font-size: .55rem; font-style: normal; text-align: center; }
 .model-label-caveat { margin-top: 7px; color: var(--text-secondary); font-size: .56rem; line-height: 1.4; }
 .model-label-caveat code { color: inherit; font-size: inherit; }
+
+.data-provenance-legend { position: absolute; z-index: 12; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 9px; color: var(--text-secondary); background: var(--bg-panel-solid); box-shadow: 0 4px 16px rgba(0,0,0,.22); font-size: .58rem; font-weight: 700; pointer-events: none; }
+.data-provenance-legend span { display: flex; align-items: center; gap: 6px; }
+.data-provenance-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.data-provenance-legend .official { background: #4caf50; box-shadow: 0 0 0 2px rgba(76,175,80,.2); }
+.data-provenance-legend .scheduled { border: 2px dashed #00b4d8; background: rgba(0,180,216,.2); }
 
 .atlas-toggle { width: 100%; min-height: 34px; margin-bottom: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-hover); color: var(--text-secondary); font-size: .65rem; font-weight: 800; }
 .atlas-toggle.active { color: #4caf50; border-color: rgba(76, 175, 80, .55); }

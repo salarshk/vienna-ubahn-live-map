@@ -51,7 +51,7 @@ const VehiclePanel = ({ vehicle, onClose }) => {
   const source = current.isReplay
     ? { label: 'REPLAY', icon: Clock3, color: '#ffb74d', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
     : current.isLive
-    ? { label: 'LIVE ESTIMATE', icon: Radio, color: '#4CAF50', detail: 'Inferred from Wiener Linien departure predictions — not GPS.' }
+    ? { label: 'OFFICIAL TIMING · INFERRED POSITION', icon: Radio, color: '#4CAF50', detail: 'Timing is from Wiener Linien timeReal/timePlanned; the map position is inferred, not GPS.' }
     : current.isScheduled
       ? { label: 'SCHEDULED', icon: Database, color: '#00B4D8', detail: 'Interpolated from the ÖBB timetable — not live GPS.' }
       : { label: 'SIMULATED', icon: Database, color: '#ffb74d', detail: 'Fallback movement shown because no usable live prediction is available.' };
@@ -95,6 +95,12 @@ const VehiclePanel = ({ vehicle, onClose }) => {
           <div>
             <span>Probable range</span>
             <strong>±{Math.max(0, current.positionUncertaintyMetres || 0)} m on track</strong>
+          </div>
+        )}
+        {current.isLive && Number.isFinite(Number(current.officialDelaySeconds)) && (
+          <div>
+            <span>Official reported delay</span>
+            <strong>{(Number(current.officialDelaySeconds) / 60).toFixed(1)} min</strong>
           </div>
         )}
       </div>

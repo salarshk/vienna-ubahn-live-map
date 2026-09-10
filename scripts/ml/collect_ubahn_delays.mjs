@@ -117,7 +117,7 @@ const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((
       const direction = String(vehicle.direction || line.direction || '').toUpperCase();
       const incidentContext = incidentFeaturesAt(incidents, lineId, observedAt);
       const row = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         observedAt,
         stationId,
         stationName,
@@ -127,6 +127,8 @@ const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((
         plannedTime: new Date(plannedMs).toISOString(),
         realTime: new Date(realMs).toISOString(),
         reportedDelaySeconds: Math.round((realMs - plannedMs) / 1000),
+        officialDelaySeconds: Math.round((realMs - plannedMs) / 1000),
+        delaySource: 'wiener-linien-timeReal-minus-timePlanned',
         secondsToPlanned: Math.round((plannedMs - observedAt) / 1000),
         secondsToReal: Math.round((realMs - observedAt) / 1000),
         countdownMinutes: Number.isFinite(Number(timing.countdown)) ? Number(timing.countdown) : null,

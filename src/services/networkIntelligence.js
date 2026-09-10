@@ -39,6 +39,10 @@ const compactVehicle = (vehicle) => ({
   distanceAlongTrack: vehicle.distanceAlongTrack,
   isForward: vehicle.isForward,
   isLive: vehicle.isLive,
+  positionSource: vehicle.positionSource,
+  timingSource: vehicle.timingSource,
+  officialDelaySeconds: vehicle.officialDelaySeconds,
+  officialObservedAt: vehicle.officialObservedAt,
   isScheduled: vehicle.isScheduled,
   isSimulated: vehicle.isSimulated,
   status: vehicle.status,
@@ -241,7 +245,7 @@ class NetworkIntelligenceStore {
   }
 
   getReplaySnapshot(minutesAgo = 0, now = Date.now()) {
-    if (minutesAgo <= 0 || this.snapshots.length === 0) return null;
+    if (minutesAgo <= 0 || minutesAgo * 60 * 1000 > REPLAY_WINDOW_MS || this.snapshots.length === 0) return null;
     const wanted = now - minutesAgo * 60 * 1000;
     return this.snapshots.reduce((best, candidate) => (
       !best || Math.abs(candidate.at - wanted) < Math.abs(best.at - wanted) ? candidate : best

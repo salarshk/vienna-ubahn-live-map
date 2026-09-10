@@ -610,7 +610,15 @@ class TrainPositionEngine {
             lineId, station, destinationStation
           ) * 1000
           : identityTimestamp;
-        const sighting = { station, secondsRemaining, fetchedAt };
+        const sighting = {
+          station,
+          secondsRemaining,
+          fetchedAt,
+          officialDelaySeconds: Number.isFinite(Number(arrival.reportedDelaySeconds))
+            ? Number(arrival.reportedDelaySeconds)
+            : null,
+          timingSource: arrival.timingSource || (arrival.isLive ? 'official-wiener-linien-realtime' : 'timetable'),
+        };
         if (arrival.vehicleId) {
           const key = `${lineId}-${arrival.vehicleId}`;
           if (!byVehicle.has(key)) {
@@ -723,6 +731,10 @@ class TrainPositionEngine {
       // in it — so it goes straight to the floor rather than through the walk's
       // own scale.
       const { isDeadReckoned } = walked;
+      const officialDelay = sightings
+        .map((sighting) => Number(sighting.officialDelaySeconds))
+        .find(Number.isFinite);
+      const officialSighting = sightings.find((sighting) => Number.isFinite(Number(sighting.officialDelaySeconds)));
 
       vehicles.push({
         id: `live-${train.key}`,
@@ -734,6 +746,10 @@ class TrainPositionEngine {
         distanceAlongTrack: walked.trackDist,
         isForward,
         isLive: true,
+        positionSource: 'inferred-from-official-departure',
+        timingSource: officialSighting?.timingSource || 'official-wiener-linien-realtime',
+        officialDelaySeconds: Number.isFinite(officialDelay) ? officialDelay : null,
+        officialObservedAt: officialSighting?.fetchedAt || null,
         status: walked.status,
         sightingCount: sightings.length,
         positionUncertaintyMetres: Math.round(uncertaintyMetres),

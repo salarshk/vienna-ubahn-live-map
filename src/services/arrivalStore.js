@@ -148,6 +148,9 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
         const lineName = lineMetadata ? lineMetadata.name : lineId;
         const defaultColor = lineMetadata ? lineMetadata.color : '#8a8a8a';
         const lineColor = imageLineColors?.[lineId] || defaultColor;
+        const reportedDelaySeconds = Number.isFinite(realTimestamp) && Number.isFinite(plannedTimestamp)
+          ? Math.round((realTimestamp - plannedTimestamp) / 1000)
+          : null;
 
         return {
           line: lineId,
@@ -159,6 +162,15 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
           plannedTargetTimestamp: Number.isFinite(plannedTimestamp)
             ? plannedTimestamp
             : targetTimestamp,
+          // This is the operator's published timeReal - timePlanned value.
+          // The train position derived from it remains an inference.
+          reportedDelaySeconds,
+          delaySource: reportedDelaySeconds === null
+            ? null
+            : 'wiener-linien-timeReal-minus-timePlanned',
+          timingSource: Number.isFinite(realTimestamp)
+            ? 'official-wiener-linien-realtime'
+            : 'wiener-linien-timetable',
           initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
           isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
           trafficJam: Boolean(vehicle.trafficjam ?? line.trafficjam),

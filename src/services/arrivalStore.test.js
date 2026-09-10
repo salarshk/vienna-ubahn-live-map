@@ -37,6 +37,7 @@ describe('batched live synchronization', () => {
               departures: {
                 departure: [{
                   departureTime: {
+                    timePlanned: '2026-09-09T18:09:00.000+0200',
                     timeReal: '2026-09-09T18:10:00.000+0200',
                     countdown: 2,
                   },
@@ -63,5 +64,8 @@ describe('batched live synchronization', () => {
     expect(arrival.isLive).toBe(true);
     expect(arrival.directionCode).toBe('H');
     expect(arrival.plannedTargetTimestamp).toBeTypeOf('number');
+    expect(arrival.reportedDelaySeconds).toBeTypeOf('number');
+    expect(arrival.delaySource).toBe('wiener-linien-timeReal-minus-timePlanned');
+    expect(arrival.timingSource).toBe('official-wiener-linien-realtime');
   });
 });

@@ -31,6 +31,10 @@ const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 
 const clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
 const round = (value, digits = 2) => Number(value.toFixed(digits));
+const officialDelaySeconds = (row) => {
+  const value = Number(row?.officialDelaySeconds ?? row?.reportedDelaySeconds);
+  return Number.isFinite(value) ? value : null;
+};
 
 const readRows = async () => {
   try {
@@ -63,20 +67,25 @@ const makeExamples = (rows) => {
   const examples = [];
   for (const eventRows of byEvent.values()) {
     eventRows.sort((a, b) => a.observedAt - b.observedAt);
-    const finalCandidates = eventRows.filter((row) => row.secondsToReal >= -120 && row.secondsToReal <= 150);
+    const finalCandidates = eventRows.filter((row) => row.secondsToReal >= -120 && row.secondsToReal <= 150
+      && officialDelaySeconds(row) !== null);
     if (!finalCandidates.length) continue;
     const finalRow = finalCandidates.reduce((best, row) => (
       Math.abs(row.secondsToReal) < Math.abs(best.secondsToReal) ? row : best
     ));
-    const earlyCandidates = eventRows.filter((row) => row.secondsToReal >= 240 && row.secondsToReal <= 900);
+    const earlyCandidates = eventRows.filter((row) => row.secondsToReal >= 240 && row.secondsToReal <= 900
+      && officialDelaySeconds(row) !== null);
     if (!earlyCandidates.length) continue;
     const featureRow = earlyCandidates.reduce((best, row) => (
       Math.abs(row.secondsToReal - 480) < Math.abs(best.secondsToReal - 480) ? row : best
     ));
     examples.push({
       ...featureRow,
-      targetDelayMinutes: clamp(finalRow.reportedDelaySeconds / 60, -2, 30),
-      currentDelayMinutes: clamp(featureRow.reportedDelaySeconds / 60, -2, 30),
+      targetDelayMinutes: clamp(officialDelaySeconds(finalRow) / 60, -2, 30),
+      currentDelayMinutes: clamp(officialDelaySeconds(featureRow) / 60, -2, 30),
+      targetLabelSource: finalRow.delaySource || 'wiener-linien-timeReal-minus-timePlanned',
+      officialLabel: finalRow.delaySource === 'wiener-linien-timeReal-minus-timePlanned'
+        || Number.isFinite(Number(finalRow.officialDelaySeconds)),
       plannedTimestamp: Date.parse(featureRow.plannedTime),
       featureObservedAt: featureRow.observedAt,
       labelObservedAt: finalRow.observedAt,
@@ -272,6 +281,12 @@ const common = {
     sourceExportDate: incidentArchive?.sourceExportDate || null,
     features: ['active incident count', 'highest incident priority', 'delay-related incident flag'],
   },
+  labelQuality: {
+    officialDelayField: 'officialDelaySeconds',
+    source: 'Wiener Linien timeReal minus timePlanned near departure',
+    officialLabelledJourneys: examples.filter((example) => example.officialLabel).length,
+    fallbackLabelledJourneys: examples.filter((example) => !example.officialLabel).length,
+  },
 };
 
 const onlineReady = onlineReplay.status === 'ready';
@@ -359,7 +374,7 @@ if (validationStage === 'collecting') {
       rule: 'Publish live predictions only when test MAE beats carrying forward the early operator estimate.',
     },
     delayClassificationThresholdMinutes: DELAY_THRESHOLD_MINUTES,
-    labelCaveat: 'The target is Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.',
+    labelCaveat: 'The target is the official Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.',
     promotion: validationStage === 'validated'
       ? 'Validated automatically after meeting the seven-day safeguards.'
       : 'Preliminary result; it will be replaced automatically after meeting the seven-day safeguards.',

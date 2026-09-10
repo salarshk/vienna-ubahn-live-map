@@ -17,6 +17,10 @@ positions and the browser's short history.
 8. Evidence timelines for delay causes.
 9. A transparent what-if propagation simulator.
 10. Feed-quality confidence with stale-station counts and timetable freshness.
+11. A map legend and train detail label separating official Wiener Linien
+    timing from the position inferred along the track.
+12. A local ten-minute official-delay archive and historical replay, distinct
+    from the shorter inferred-position replay.
 
 The estimates intentionally remain advisory. Public Wiener Linien data does
 not expose signalling state, track occupation, passenger counts or GPS ground

@@ -969,7 +969,12 @@ const MapView = ({
       const currentScale = zoomScaleRef.current;
       const isHidden = currentScale < 0.3;
       
-      inner.innerHTML = `<span style="pointer-events:none">${v.line}</span>`;
+      const provenanceBadge = v.isLive
+        ? '<span title="Official Wiener Linien timing; position inferred" aria-hidden="true" style="position:absolute;right:-4px;top:-4px;width:11px;height:11px;border-radius:50%;background:#4caf50;color:#07140a;border:1px solid rgba(255,255,255,.9);font:900 8px/10px system-ui;text-align:center">i</span>'
+        : v.isScheduled
+          ? '<span title="Scheduled timetable estimate" aria-hidden="true" style="position:absolute;right:-4px;top:-4px;width:11px;height:11px;border-radius:50%;background:#00b4d8;color:#05202a;border:1px dashed rgba(255,255,255,.9);font:900 7px/10px system-ui;text-align:center">s</span>'
+          : '';
+      inner.innerHTML = `<span style="pointer-events:none">${v.line}</span>${provenanceBadge}`;
       // Scheduled S-Bahn trains retain a dashed outline, but use a light fill,
       // heavier border and glow so the estimate remains easy to find. Generic
       // headway simulations stay hollow and subdued.
@@ -1454,11 +1459,17 @@ const MapView = ({
   }, [userLocation]);
 
   return (
-    <div
-      ref={containerRef}
-      className="map-container"
-      style={{ width: '100%', height: '100%' }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="map-container"
+        style={{ width: '100%', height: '100%' }}
+      />
+      <div className="data-provenance-legend" aria-label="Data provenance">
+        <span><i className="official" /> Official timing · inferred position</span>
+        <span><i className="scheduled" /> Scheduled timetable estimate</span>
+      </div>
+    </>
   );
 };
 

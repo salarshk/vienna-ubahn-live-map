@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, Bot, Clock3, History, Radar, Sparkles, X } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, History, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
   analyseAccessibility,
@@ -16,6 +16,7 @@ import delayModelStore, {
 import RailAdvisor from './RailAdvisor';
 import AdvancedSignals from './AdvancedSignals';
 import trainPositionEngine from '../services/trainPositionEngine';
+import { summariseOfficialSnapshot } from '../services/officialSnapshotStore';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -25,7 +26,7 @@ const ageLabel = (timestamp) => {
 
 const RailIntelligence = ({
   snapshot, disruptions = [], replayOffset, replaySnapshot, onReplayChange,
-  atlasVisible, onToggleAtlas, onClose,
+  atlasVisible, onToggleAtlas, onClose, officialSnapshotState, officialReplaySnapshot,
 }) => {
   const [tab, setTab] = useState('forecast');
   const [explainLineId, setExplainLineId] = useState('U1');
@@ -33,6 +34,9 @@ const RailIntelligence = ({
   const now = snapshot.generatedAt || 0;
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
+  const officialOldestMinutes = Math.max(0, Number(officialSnapshotState?.oldestMinutes) || 0);
+  const replayMaxMinutes = Math.max(oldestMinutes, officialOldestMinutes);
+  const officialSummary = officialReplaySnapshot ? summariseOfficialSnapshot(officialReplaySnapshot) : null;
   const issues = snapshot.issues || [];
   const forecasts = forecastDelayPropagation(issues, disruptions);
   const crowding = estimateCrowdingRisk(issues, new Date(now));
@@ -175,6 +179,9 @@ const RailIntelligence = ({
             </div>
             <p className="intelligence-note">No accuracy is shown yet. A preliminary score starts after at least {preliminaryRequirements.minimumDays} days, {preliminaryRequirements.minimumCoverageHours || 36} hours of coverage and {preliminaryRequirements.minimumExamples} journeys. It is automatically promoted after {delayRequirements.validated?.minimumDays || 7} days.</p>
           </>}
+          {delayMetrics?.labelQuality && (
+            <p className="model-label-caveat">Training labels: {delayMetrics.labelQuality.officialLabelledJourneys.toLocaleString('en-GB')} official Wiener Linien delay values{delayMetrics.labelQuality.fallbackLabelledJourneys ? ` · ${delayMetrics.labelQuality.fallbackLabelledJourneys} legacy fallback labels` : ''}.</p>
+          )}
           {delayMetrics?.incidentContext?.archiveImported && (
             <p className="intelligence-note">Incident context includes {delayMetrics.incidentContext.archivedUbahnEpisodes.toLocaleString('en-GB')} official historical U-Bahn episodes plus current service messages.</p>
           )}
@@ -216,15 +223,39 @@ const RailIntelligence = ({
         <section className="intelligence-section">
           <div className="intelligence-section-title"><Clock3 size={14} /><strong>Network replay</strong></div>
           <div className="replay-time-row">
-            <span>{replaySnapshot ? `Viewing ${ageLabel(replaySnapshot.at)}` : 'LIVE'}</span>
+            <span>{replayOffset > 0
+              ? `Viewing ${ageLabel(replaySnapshot?.at || officialReplaySnapshot?.at)}`
+              : 'LIVE'}</span>
             {replayOffset > 0 && <button onClick={() => onReplayChange(0)}>Return to live</button>}
           </div>
-          <input className="replay-slider" type="range" min="0" max={Math.max(1, oldestMinutes)} step="1"
-            value={Math.min(replayOffset, Math.max(1, oldestMinutes))}
+          <input className="replay-slider" type="range" min="0" max={Math.max(1, replayMaxMinutes)} step="1"
+            value={Math.min(replayOffset, Math.max(1, replayMaxMinutes))}
             onChange={(event) => onReplayChange(Number(event.target.value))}
-            disabled={oldestMinutes < 1} aria-label="Minutes to replay" />
-          <div className="replay-scale"><span>Live</span><span>{oldestMinutes ? `${oldestMinutes} min ago` : 'Collecting history…'}</span></div>
-          <p className="intelligence-note">This browser retains up to one hour of estimated positions on this device.</p>
+            disabled={replayMaxMinutes < 1} aria-label="Minutes to replay" />
+          <div className="replay-scale"><span>Live</span><span>{replayMaxMinutes ? `${replayMaxMinutes} min ago` : 'Collecting history…'}</span></div>
+          {replayOffset > oldestMinutes && <p className="intelligence-note">This point is beyond the one-hour map-position archive; the official delay replay below remains available.</p>}
+          <p className="intelligence-note">Map positions retain one hour of inferred movement. Compact official Wiener Linien delay snapshots are archived every ten minutes for up to 48 hours on this device.</p>
+        </section>
+
+        <section className="intelligence-section official-replay-section">
+          <div className="intelligence-section-title"><Database size={14} /><strong>Official delay replay</strong><em>Wiener Linien</em></div>
+          {officialSummary ? <>
+            <div className="official-replay-meta">
+              <span>{officialSummary.at ? ageLabel(officialSummary.at) : '—'}</span>
+              <span>{officialSummary.stations} stations · {officialSummary.observations} departures</span>
+            </div>
+            <div className="official-replay-metrics">
+              <div><span>Mean reported delay</span><strong>{officialSummary.meanDelaySeconds === null ? '—' : `${(officialSummary.meanDelaySeconds / 60).toFixed(1)} min`}</strong></div>
+              <div><span>At least 3 min late</span><strong>{officialSummary.delayedThreeMinutes}</strong></div>
+              <div><span>Labelled observations</span><strong>{officialSummary.labelledObservations}</strong></div>
+            </div>
+            <div className="official-replay-lines">
+              {officialSummary.lines.filter((line) => line.observations > 0).map((line) => (
+                <span key={line.line}><b style={{ color: lineColor(line.line) }}>{line.line}</b>{line.meanDelaySeconds === null ? '—' : `${(line.meanDelaySeconds / 60).toFixed(1)}m`}</span>
+              ))}
+            </div>
+            <p className="intelligence-note">These are operator-reported timeReal − timePlanned values, not GPS measurements. The map location remains inferred from those departures.</p>
+          </> : <div className="model-collection-copy">Waiting for the first official ten-minute snapshot.</div>}
         </section>
 
         <section className="intelligence-section reliability-section">

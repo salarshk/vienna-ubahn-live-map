@@ -13,6 +13,10 @@ minutes of their current real-time estimate. Each observation contains:
 - active incident count, highest incident priority and whether an active
   incident is delay-related.
 
+The collector also stores `officialDelaySeconds` and its source label. These
+are calculated directly from Wiener Linien `timeReal - timePlanned`; legacy
+rows without the new field remain readable as fallback-labelled observations.
+
 The raw 30-day rolling dataset is stored as a GitHub Actions artifact. It is
 not bundled into the public website or committed to the repository. The source
 is the [Wiener Linien Open Data real-time feed](https://www.wienerlinien.at/web/guest/open-data),
@@ -42,6 +46,12 @@ not used for fitting, feature scaling or model selection.
 
 This label is the operator's final reported deviation, not independent GPS
 ground truth. The distinction is displayed next to the metrics in the app.
+
+The browser keeps a separate compact archive of official departure snapshots
+every ten minutes for up to 48 hours. The History view can replay those delay
+statistics independently of the one-hour inferred-position replay. This archive
+is local to the browser; the full training rows remain in the scheduled
+workflow artifact.
 
 ## Fast online calibration
 

@@ -13,6 +13,7 @@ import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
+import officialSnapshotStore from './services/officialSnapshotStore';
 import { lineColor } from './utils/lineColor';
 import { Activity, Sun, Moon, X, LayoutDashboard, Menu } from 'lucide-react';
 import './index.css';
@@ -38,6 +39,9 @@ function App() {
   const [replayOffset, setReplayOffset] = useState(0);
   const [intelligenceSnapshot, setIntelligenceSnapshot] = useState(
     networkIntelligenceStore.getSnapshot()
+  );
+  const [officialSnapshotState, setOfficialSnapshotState] = useState(
+    officialSnapshotStore.getSnapshot()
   );
   const [flyTarget, setFlyTarget] = useState(null);
   const [activeLineFilter, setActiveLineFilter] = useState([]);
@@ -81,6 +85,26 @@ function App() {
       unsubscribeIntelligence();
       unsubscribeArrivals();
       clearInterval(timer);
+    };
+  }, []);
+
+  // Keep a compact, browser-local audit trail of the operator's official
+  // departure predictions. The timer is intentionally more frequent than the
+  // ten-minute archive cadence so a background-tab wake-up or a visibility
+  // change can capture the next eligible sample without a second API poll.
+  useEffect(() => {
+    const record = () => {
+      officialSnapshotStore.record();
+      setOfficialSnapshotState(officialSnapshotStore.getSnapshot());
+    };
+    const unsubscribe = officialSnapshotStore.subscribe(setOfficialSnapshotState);
+    record();
+    const timer = setInterval(record, 30000);
+    document.addEventListener('visibilitychange', record);
+    return () => {
+      unsubscribe();
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', record);
     };
   }, []);
 
@@ -216,6 +240,9 @@ function App() {
   const replaySnapshot = replayOffset > 0
     ? networkIntelligenceStore.getReplaySnapshot(replayOffset)
     : null;
+  const officialReplaySnapshot = replayOffset > 0
+    ? officialSnapshotStore.getAtOffset(replayOffset)
+    : officialSnapshotStore.getAtOffset(0);
 
   const openIntelligence = () => {
     setSelectedStation(null);
@@ -409,6 +436,8 @@ function App() {
           disruptions={disruptionSnapshot.alerts}
           replayOffset={replayOffset}
           replaySnapshot={replaySnapshot}
+          officialSnapshotState={officialSnapshotState}
+          officialReplaySnapshot={officialReplaySnapshot}
           onReplayChange={setReplayOffset}
           atlasVisible={mapVisibility.reliabilityAtlas}
           onToggleAtlas={() => setMapVisibility((previous) => ({
