@@ -254,6 +254,7 @@ const snappedCoordinates = (station) => {
   return snapped ? snapped.geometry.coordinates : station.geometry.coordinates;
 };
 const lineGeoJSON    = { type: 'FeatureCollection', features: lineFeatures };
+const emptyFeatureCollection = { type: 'FeatureCollection', features: [] };
 
 // Build a color lookup from line id → color from actual GeoJSON data,
 // allowing overrides from the sampled image colors file.
@@ -357,6 +358,30 @@ const metroLayers = [
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   },
   {
+    id: 'position-confidence-range',
+    type: 'line',
+    source: 'position-confidence',
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 5, 13, 9, 17, 15],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'confidence'], 0.35, 0.24, 1, 0.08],
+      'line-blur': 2,
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+  },
+  {
+    id: 'position-confidence-centre',
+    type: 'line',
+    source: 'position-confidence',
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.2, 13, 2, 17, 3],
+      'line-opacity': 0.72,
+      'line-dasharray': [1.2, 1.6],
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+  },
+  {
     id: 'service-alert-line',
     type: 'line',
     source: 'metro-lines',
@@ -388,6 +413,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
   sources: {
     [tileSourceId]: { type: 'raster', tiles, tileSize: 256, attribution: TILE_ATTRIBUTION, maxzoom: 16 },
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
+    'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
   },
   layers: [
     { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
@@ -413,6 +439,7 @@ const buildVectorStyle = (flavour) => ({
       attribution: '© OpenStreetMap · Protomaps',
     },
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
+    'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
@@ -603,6 +630,7 @@ const MapView = ({
   disruptions = [],
   onSelectDisruption,
   onSelectVehicle,
+  replaySnapshot = null,
 }) => {
   const containerRef    = useRef(null);
   const mapRef          = useRef(null);
@@ -618,6 +646,7 @@ const MapView = ({
   const filterRef       = useRef(activeLineFilter);
   const hoverRef        = useRef(null);
   const visibilityRef   = useRef(mapVisibility);
+  const replayRef       = useRef(replaySnapshot);
   const disruptionsRef  = useRef(disruptions);
   const selectStRef     = useRef(onSelectStation);
   const selectVehicleRef= useRef(onSelectVehicle);
@@ -631,6 +660,7 @@ const MapView = ({
   // something the viewer can currently see.
   const drawnStationsRef = useRef([]);
   const vehInnerElemsRef= useRef([]); // refs to vehicle inner elements for direct scale updates
+  const lastRangeUpdateRef = useRef(0);
 
   useEffect(() => { themeRef.current = theme; }, [theme]);
   useEffect(() => { filterRef.current = activeLineFilter; }, [activeLineFilter]);
@@ -639,6 +669,7 @@ const MapView = ({
   useEffect(() => { selectAlertRef.current = onSelectDisruption; }, [onSelectDisruption]);
   useEffect(() => { hoverRef.current = hoverLine; }, [hoverLine]);
   useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
+  useEffect(() => { replayRef.current = replaySnapshot; }, [replaySnapshot]);
   useEffect(() => { disruptionsRef.current = disruptions; }, [disruptions]);
 
   const stopAnimation = () => {
@@ -697,6 +728,9 @@ const MapView = ({
   // Says plainly whether a marker is a reported train or a headway guess, and
   // how many independent sightings pin it down.
   const describeVehicle = (v) => {
+    if (v.isReplay) {
+      return `${v.line} → ${v.direction} • replayed estimate from ${new Date(v.replayedAt).toLocaleTimeString()}`;
+    }
     if (v.isScheduled) {
       const eta = v.secondsToTarget <= 0
         ? 'at platform'
@@ -867,7 +901,14 @@ const MapView = ({
     clearVehicleMarkers();
 
     const activeFilter = filterRef.current;
-    const initialVehicles = trainPositionEngine.getAllVehicles(Date.now());
+    const displayedVehicles = (now) => replayRef.current
+      ? replayRef.current.vehicles.map((vehicle) => ({
+        ...vehicle,
+        isReplay: true,
+        replayedAt: replayRef.current.at,
+      }))
+      : trainPositionEngine.getAllVehicles(now);
+    const initialVehicles = displayedVehicles(Date.now());
     const vehicleIsVisible = (vehicle) => vehicle.isScheduled
       ? visibilityRef.current?.scheduledTrains !== false
       : visibilityRef.current?.liveTrains !== false;
@@ -933,14 +974,37 @@ const MapView = ({
 
     visible.forEach(createVehicleMarker);
 
+    const updatePositionRanges = (vehicles, now, force = false) => {
+      if (!force && now - lastRangeUpdateRef.current < 1000) return;
+      lastRangeUpdateRef.current = now;
+      const source = map.getSource('position-confidence');
+      if (!source || typeof source.setData !== 'function') return;
+      const enabled = visibilityRef.current?.confidenceRanges !== false;
+      const features = enabled ? vehicles
+        .filter((vehicle) => vehicle.isLive && vehicle.positionRangeCoordinates?.length > 1)
+        .map((vehicle) => ({
+          type: 'Feature',
+          properties: {
+            id: vehicle.id,
+            line: vehicle.line,
+            color: lineColorMap[vehicle.line] || '#ffffff',
+            confidence: vehicle.positionConfidence ?? 0.5,
+          },
+          geometry: { type: 'LineString', coordinates: vehicle.positionRangeCoordinates },
+        })) : [];
+      source.setData({ type: 'FeatureCollection', features });
+    };
+    updatePositionRanges(visible, Date.now(), true);
+
     const animate = () => {
       const now = Date.now();
-      const currentVehicles = trainPositionEngine.getAllVehicles(now);
+      const currentVehicles = displayedVehicles(now);
       updateTrainCount(currentVehicles);
       let currentVisible = currentVehicles.filter(vehicleIsVisible);
       if (Array.isArray(filterRef.current) && filterRef.current.length > 0) {
         currentVisible = currentVisible.filter(v => filterRef.current.includes(String(v.line)));
       }
+      updatePositionRanges(currentVisible, now);
       const visibleIds = new Set(currentVisible.map(v => v.id));
 
       markerMapRef.current.forEach(({ marker }, id) => {

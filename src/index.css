@@ -399,6 +399,80 @@ button:active {
 .vehicle-upcoming > div span { display: inline-flex; align-items: center; gap: 2px; font-size: .75rem; font-weight: 700; }
 .vehicle-panel-note { display: flex; align-items: flex-start; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border-color); color: var(--text-secondary); font-size: .67rem; line-height: 1.4; }
 
+.vehicle-connections { padding: 11px 14px; border-top: 1px solid var(--border-color); }
+.vehicle-connections-title { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.vehicle-connection-station { display: block; margin: 6px 0 4px; font-size: .73rem; }
+.vehicle-connection { display: grid; grid-template-columns: 27px 1fr auto; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid var(--border-color); }
+.vehicle-connection-line { min-width: 27px; height: 23px; padding: 0 4px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: .64rem; font-weight: 900; }
+.vehicle-connection > div { min-width: 0; }
+.vehicle-connection > div strong, .vehicle-connection > div span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vehicle-connection > div strong { font-size: .71rem; }
+.vehicle-connection > div span, .vehicle-connections p, .vehicle-connections small { color: var(--text-secondary); font-size: .64rem; }
+.vehicle-connections p { margin: 8px 0; line-height: 1.4; }
+.connection-probability { font-size: .8rem; font-variant-numeric: tabular-nums; }
+.connection-probability.comfortable { color: #4caf50; }
+.connection-probability.tight { color: #ffb74d; }
+.connection-probability.unlikely { color: #ff6b6b; }
+
+/* ── Network intelligence, replay and reliability ─────────────────────── */
+
+.top-action-active { box-shadow: inset 0 0 0 1px rgba(76, 175, 80, .6); }
+
+.intelligence-panel {
+  position: absolute;
+  z-index: 32;
+  top: 84px;
+  right: 16px;
+  width: min(390px, 36vw);
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  animation: slideUp 380ms cubic-bezier(.16, 1, .3, 1);
+}
+
+.intelligence-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--border-color); }
+.intelligence-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.intelligence-title strong, .intelligence-title span { display: block; }
+.intelligence-title strong { font-size: .88rem; }
+.intelligence-title span { color: var(--text-secondary); font-size: .63rem; }
+.intelligence-section { padding: 12px 14px; border-bottom: 1px solid var(--border-color); }
+.intelligence-section:last-child { border-bottom: 0; }
+.intelligence-section-title { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: .73rem; }
+.replay-time-row { display: flex; align-items: center; justify-content: space-between; color: #4caf50; font-size: .72rem; font-weight: 800; }
+.replay-time-row button { color: #4caf50; font-size: .67rem; text-decoration: underline; }
+.replay-slider { width: 100%; margin: 9px 0 2px; accent-color: #4caf50; }
+.replay-slider:disabled { opacity: .45; }
+.replay-scale { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: .6rem; }
+.intelligence-note { margin-top: 7px; color: var(--text-secondary); font-size: .61rem; line-height: 1.4; }
+.intelligence-ok { display: flex; align-items: center; gap: 7px; padding: 9px 10px; border-radius: 8px; background: rgba(76, 175, 80, .1); color: #4caf50; font-size: .7rem; font-weight: 700; }
+.intelligence-ok i { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; }
+.intelligence-issues { display: flex; flex-direction: column; gap: 6px; }
+.intelligence-issue { display: grid; grid-template-columns: 29px 1fr; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; background: rgba(255, 183, 77, .1); }
+.intelligence-issue.gap { background: rgba(255, 107, 107, .1); }
+.intelligence-line { min-width: 29px; height: 25px; padding: 0 4px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .65rem; font-weight: 900; }
+.intelligence-issue > div { min-width: 0; }
+.intelligence-issue strong, .intelligence-issue span { display: block; }
+.intelligence-issue strong { font-size: .7rem; }
+.intelligence-issue > div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: .62rem; }
+.reliability-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.reliability-grid > div { min-width: 0; padding: 7px 3px; border-radius: 7px; background: var(--bg-hover); text-align: center; }
+.reliability-grid span, .reliability-grid strong { display: block; }
+.reliability-grid span { font-size: .63rem; font-weight: 900; }
+.reliability-grid strong { margin-top: 2px; overflow: hidden; font-size: .66rem; }
+
+@media (max-width: 819px) {
+  .intelligence-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 62vh;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .vehicle-panel { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 62vh; overflow-y: auto; border-radius: 18px 18px 0 0; }
+}
+
 /* ── Service disruption overlay and drawer ─────────────────────────────── */
 
 .map-service-alert-marker {

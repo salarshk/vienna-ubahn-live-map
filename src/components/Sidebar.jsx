@@ -12,7 +12,7 @@ const Sidebar = ({
   onSelectLine,
   onHoverLine,
   trainStats = { live: 0, confirmed: 0, scheduled: 0 },
-  mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true },
+  mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true, confidenceRanges: true },
   onToggleVisibility,
 }) => {
   // Combine line features from bundled metro JSON and GTFS-generated data.
@@ -36,6 +36,7 @@ const Sidebar = ({
     ['sbahnLines', 'S-Bahn lines'],
     ['liveTrains', 'U-Bahn trains'],
     ['scheduledTrains', 'Scheduled S-Bahn'],
+    ['confidenceRanges', 'Position ranges'],
   ];
 
   return (

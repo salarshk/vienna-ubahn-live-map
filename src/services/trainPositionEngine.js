@@ -343,6 +343,25 @@ class TrainPositionEngine {
     return { coordinates: [lng, lat], bearing };
   }
 
+  /**
+   * The section of track on which a vehicle can plausibly lie. Endpoints are
+   * interpolated precisely and intermediate geometry vertices preserve bends,
+   * so the uncertainty is drawn along the railway rather than as a misleading
+   * circular GPS radius.
+   */
+  getTrackRangeCoordinates(lineId, centreDistance, uncertaintyMetres) {
+    const track = this.getLineTrack(lineId);
+    if (!track || !Number.isFinite(centreDistance) || !Number.isFinite(uncertaintyMetres)) return [];
+    const start = Math.max(0, centreDistance - uncertaintyMetres);
+    const end = Math.min(track.totalLength, centreDistance + uncertaintyMetres);
+    const coordinates = [this.getCoordsAndBearingAtDistance(lineId, start).coordinates];
+    track.cumDists.forEach((distance, index) => {
+      if (distance > start && distance < end) coordinates.push(track.coords[index]);
+    });
+    coordinates.push(this.getCoordsAndBearingAtDistance(lineId, end).coordinates);
+    return coordinates;
+  }
+
   findStation(lineId, stationName) {
     const stations = this.getLineStations(lineId);
     const target = normalise(stationName);
@@ -865,7 +884,18 @@ class TrainPositionEngine {
     return allVehicles.map((vehicle) => {
       const smoothed = this.smoothVehicle(vehicle, now);
       if (smoothed.isScheduled || !Number.isFinite(smoothed.distanceAlongTrack)) return smoothed;
-      return { ...smoothed, ...this.getTripContext(smoothed.line, smoothed.distanceAlongTrack, smoothed.isForward) };
+      const positionRangeCoordinates = smoothed.isLive
+        ? this.getTrackRangeCoordinates(
+          smoothed.line,
+          smoothed.distanceAlongTrack,
+          smoothed.positionUncertaintyMetres || 0
+        )
+        : undefined;
+      return {
+        ...smoothed,
+        positionRangeCoordinates,
+        ...this.getTripContext(smoothed.line, smoothed.distanceAlongTrack, smoothed.isForward),
+      };
     });
   }
 }

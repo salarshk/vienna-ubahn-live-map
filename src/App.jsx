@@ -7,12 +7,14 @@ import VehiclePanel from './components/VehiclePanel';
 import ServiceAlerts from './components/ServiceAlerts';
 import DashboardBoard from './components/DashboardBoard';
 import LocateButton from './components/LocateButton';
+import RailIntelligence from './components/RailIntelligence';
 import { locate } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
+import networkIntelligenceStore from './services/networkIntelligence';
 import { lineColor } from './utils/lineColor';
-import { Sun, Moon, X, LayoutDashboard, Menu } from 'lucide-react';
+import { Activity, Sun, Moon, X, LayoutDashboard, Menu } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -32,6 +34,11 @@ function App() {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [replayOffset, setReplayOffset] = useState(0);
+  const [intelligenceSnapshot, setIntelligenceSnapshot] = useState(
+    networkIntelligenceStore.getSnapshot()
+  );
   const [flyTarget, setFlyTarget] = useState(null);
   const [activeLineFilter, setActiveLineFilter] = useState([]);
   const [hoverLine, setHoverLine] = useState(null);
@@ -43,6 +50,7 @@ function App() {
     sbahnLines: true,
     liveTrains: true,
     scheduledTrains: true,
+    confidenceRanges: true,
   });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
 
@@ -59,6 +67,19 @@ function App() {
       unsubscribe();
       clearInterval(timer);
       document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const record = () => networkIntelligenceStore.record();
+    const unsubscribeIntelligence = networkIntelligenceStore.subscribe(setIntelligenceSnapshot);
+    const unsubscribeArrivals = arrivalStore.subscribe(record);
+    record();
+    const timer = setInterval(record, 30000);
+    return () => {
+      unsubscribeIntelligence();
+      unsubscribeArrivals();
+      clearInterval(timer);
     };
   }, []);
 
@@ -93,6 +114,7 @@ function App() {
     setSelectedVehicle(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
+    setIntelligenceOpen(false);
     setSelectedStation(station);
   };
 
@@ -100,6 +122,7 @@ function App() {
     setSelectedStation(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
+    setIntelligenceOpen(false);
     setSelectedVehicle(vehicle);
   };
 
@@ -187,6 +210,18 @@ function App() {
     setMode(next);
   };
 
+  const replaySnapshot = replayOffset > 0
+    ? networkIntelligenceStore.getReplaySnapshot(replayOffset)
+    : null;
+
+  const openIntelligence = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setIntelligenceOpen((open) => !open);
+  };
+
   // Back and forward have to land on the mode the URL names, or a bookmarked
   // dashboard stops being a reliable place to return to.
   useEffect(() => {
@@ -218,6 +253,7 @@ function App() {
         disruptions={disruptionSnapshot.alerts}
         onSelectDisruption={handleSelectAlert}
         onSelectVehicle={handleSelectVehicle}
+        replaySnapshot={replaySnapshot}
       />
 
       {/* Collapsible Sidebar */}
@@ -266,6 +302,19 @@ function App() {
             title="Dashboard mode — a departure board for an ambient display"
           >
             <LayoutDashboard size={18} />
+          </button>
+          <button
+            onClick={openIntelligence}
+            className={intelligenceOpen ? 'top-action-active' : ''}
+            style={{
+              padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+            title="Rail intelligence, replay and reliability"
+            aria-label="Open rail intelligence"
+            aria-pressed={intelligenceOpen}
+          >
+            <Activity size={18} color={intelligenceOpen ? '#4CAF50' : undefined} />
           </button>
           <button
             onClick={toggleTheme}
@@ -336,6 +385,16 @@ function App() {
 
       {selectedVehicle && (
         <VehiclePanel key={selectedVehicle.id} vehicle={selectedVehicle} onClose={() => setSelectedVehicle(null)} />
+      )}
+
+      {intelligenceOpen && (
+        <RailIntelligence
+          snapshot={intelligenceSnapshot}
+          replayOffset={replayOffset}
+          replaySnapshot={replaySnapshot}
+          onReplayChange={setReplayOffset}
+          onClose={() => setIntelligenceOpen(false)}
+        />
       )}
 
       <ServiceAlerts
