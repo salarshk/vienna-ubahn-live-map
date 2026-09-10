@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 1096,
-  "labelledJourneyCount": 0,
+  "observationCount": 1484,
+  "labelledJourneyCount": 31,
   "dataDays": 1,
-  "coverageHours": 1.6,
+  "coverageHours": 1.7,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-10T12:49:58.692Z",
+  "lastObservation": "2026-09-10T12:52:47.236Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -40,13 +40,51 @@
   "message": "Collecting at least 36 hours across 2 days and 150 labelled journeys before publishing a preliminary score.",
   "leakageControl": "One early observation per journey; later near-departure observation becomes its label.",
   "onlineCalibration": {
-    "status": "collecting",
+    "status": "ready",
     "experimental": true,
-    "scoredJourneyCount": 0,
+    "scoredJourneyCount": 31,
     "minimumExamples": 30,
     "evaluationMethod": "Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.",
-    "model": null,
-    "currentEstimateBaseline": null,
+    "model": {
+      "sampleCount": 31,
+      "maeMinutes": 0.25,
+      "rmseMinutes": 0.37,
+      "rSquared": 0.761,
+      "withinOneMinutePercent": 100,
+      "withinTwoMinutesPercent": 100,
+      "delayedThreeMinutes": {
+        "accuracyPercent": 100,
+        "precision": 0,
+        "recall": 0,
+        "f1": 0,
+        "confusionMatrix": {
+          "truePositive": 0,
+          "trueNegative": 31,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      }
+    },
+    "currentEstimateBaseline": {
+      "sampleCount": 31,
+      "maeMinutes": 0.25,
+      "rmseMinutes": 0.37,
+      "rSquared": 0.761,
+      "withinOneMinutePercent": 100,
+      "withinTwoMinutesPercent": 100,
+      "delayedThreeMinutes": {
+        "accuracyPercent": 100,
+        "precision": 0,
+        "recall": 0,
+        "f1": 0,
+        "confusionMatrix": {
+          "truePositive": 0,
+          "trueNegative": 31,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      }
+    },
     "deployment": {
       "deployed": false,
       "rule": "Enable online predictions after 30 scored journeys only when their MAE beats the unadjusted live estimate."

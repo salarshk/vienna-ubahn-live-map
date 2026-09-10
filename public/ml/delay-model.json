@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 1096,
-  "labelledJourneyCount": 0,
+  "observationCount": 1484,
+  "labelledJourneyCount": 31,
   "dataDays": 1,
-  "coverageHours": 1.6,
+  "coverageHours": 1.7,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-10T12:49:58.692Z",
+  "lastObservation": "2026-09-10T12:52:47.236Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,10 +39,10 @@
   "status": "collecting",
   "trainedAt": null,
   "onlineCalibration": {
-    "status": "collecting",
+    "status": "ready",
     "algorithm": "prequential-hierarchical-calibration",
     "experimental": true,
-    "scoredJourneyCount": 0,
+    "scoredJourneyCount": 31,
     "minimumExamples": 30,
     "deployed": false,
     "predictionRangeMinutes": [
@@ -51,12 +51,49 @@
     ],
     "state": {
       "global": {
-        "count": 0,
-        "sum": 0,
-        "sumSquares": 0
+        "count": 31,
+        "sum": -2.366666666666667,
+        "sumSquares": 4.19111111111111
       },
-      "lines": {},
-      "contexts": {}
+      "lines": {
+        "U2": {
+          "count": 7,
+          "sum": -1.7666666666666668,
+          "sumSquares": 1.6672222222222224
+        },
+        "U4": {
+          "count": 6,
+          "sum": -1.5333333333333332,
+          "sumSquares": 0.8072222222222223
+        },
+        "U6": {
+          "count": 7,
+          "sum": 0.7166666666666666,
+          "sumSquares": 0.2569444444444444
+        },
+        "U1": {
+          "count": 7,
+          "sum": 0.7166666666666666,
+          "sumSquares": 0.8941666666666664
+        },
+        "U3": {
+          "count": 4,
+          "sum": -0.4999999999999999,
+          "sumSquares": 0.5655555555555555
+        }
+      },
+      "contexts": {
+        "incident": {
+          "count": 20,
+          "sum": -2.583333333333334,
+          "sumSquares": 2.731388888888889
+        },
+        "normal": {
+          "count": 11,
+          "sum": 0.21666666666666656,
+          "sumSquares": 1.459722222222222
+        }
+      }
     }
   }
 }
