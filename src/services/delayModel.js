@@ -1,5 +1,6 @@
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const BASE_URL = import.meta.env.BASE_URL || '/';
+const REPORT_BASE = String(import.meta.env.VITE_DELAY_MODEL_BASE || `${BASE_URL}ml`).replace(/\/$/, '');
 
 const clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
 
@@ -62,8 +63,8 @@ class DelayModelStore {
   async load() {
     if (this.inFlight) return this.inFlight;
     this.inFlight = Promise.all([
-      fetch(`${BASE_URL}ml/delay-model.json`, { cache: 'no-store' }),
-      fetch(`${BASE_URL}ml/delay-metrics.json`, { cache: 'no-store' }),
+      fetch(`${REPORT_BASE}/delay-model.json`, { cache: 'no-store' }),
+      fetch(`${REPORT_BASE}/delay-metrics.json`, { cache: 'no-store' }),
     ]).then(async ([modelResponse, metricsResponse]) => {
       if (!modelResponse.ok || !metricsResponse.ok) throw new Error('Model report is unavailable');
       const [model, metrics] = await Promise.all([modelResponse.json(), metricsResponse.json()]);
