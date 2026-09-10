@@ -76,6 +76,13 @@ const MAX_STATION_OFFSET_METRES = 250;
 // or below this ceiling rather than teleporting a marker.
 const MAX_RENDER_SPEED_METRES_PER_SECOND = 25;
 
+// The API has no vehicle or trip id. Timetabled segment sums and the feed's
+// planned platform times can differ by a few seconds per stop, so the same
+// train observed at distant reference stations does not always land in the
+// exact same minute bucket. Ninety seconds joins that accumulated timetable
+// error while remaining well below half the normal 3:45 U-Bahn headway.
+const SYNTHETIC_TRIP_MATCH_WINDOW_MS = 90000;
+
 // ─── How much to trust a placed train ────────────────────────────────────────
 //
 // A live marker should look as confident as its position actually is. Two
@@ -444,15 +451,17 @@ class TrainPositionEngine {
     while (true) {
       const departureIndex = arrivalIndex + stepBack;
       if (departureIndex < 0 || departureIndex >= stations.length) {
-        // The prediction reaches further back than this line's geometry goes,
-        // which happens on branches the polyline does not cover. Hold at the
-        // terminus rather than inventing track.
+        // The prediction reaches further back than the origin of this trip.
+        // Keep the public estimator bounded for direct callers, but flag it:
+        // the later departure is not a train running on the line yet and must
+        // not become another marker piled onto the terminus.
         return {
           trackDist: stations[arrivalIndex].trackDist,
           status: 'At Terminus',
           nextStation: stations[targetIndex],
           segmentsWalked,
           isDeadReckoned: false,
+          isPreDeparture: true,
         };
       }
 
@@ -519,6 +528,7 @@ class TrainPositionEngine {
    */
   collectVehicleSightings(now) {
     const byVehicle = new Map();
+    const syntheticByService = new Map();
 
     for (const [, entry] of arrivalStore.memory.entries()) {
       if (!entry || !Array.isArray(entry.arrivals)) continue;
@@ -552,21 +562,69 @@ class TrainPositionEngine {
             lineId, station, destinationStation
           ) * 1000
           : identityTimestamp;
-        const key = arrival.vehicleId
-          ? `${lineId}-${arrival.vehicleId}`
-          : `${lineId}-${arrival.directionCode || 'unknown'}-${arrival.destination}-${Math.round(destinationTimestamp / 60000)}`;
-
-        if (!byVehicle.has(key)) {
-          byVehicle.set(key, {
-            key,
-            lineId,
-            vehicleId: arrival.vehicleId || null,
-            destination: arrival.destination,
-            directionCode: arrival.directionCode || null,
-            sightings: [],
-          });
+        const sighting = { station, secondsRemaining, fetchedAt };
+        if (arrival.vehicleId) {
+          const key = `${lineId}-${arrival.vehicleId}`;
+          if (!byVehicle.has(key)) {
+            byVehicle.set(key, {
+              key,
+              lineId,
+              vehicleId: arrival.vehicleId,
+              destination: arrival.destination,
+              directionCode: arrival.directionCode || null,
+              sightings: [],
+            });
+          }
+          byVehicle.get(key).sightings.push(sighting);
+          continue;
         }
-        byVehicle.get(key).sightings.push({ station, secondsRemaining, fetchedAt });
+
+        const serviceKey = `${lineId}|${arrival.directionCode || 'unknown'}|${arrival.destination}`;
+        if (!syntheticByService.has(serviceKey)) syntheticByService.set(serviceKey, []);
+        syntheticByService.get(serviceKey).push({
+          lineId,
+          destination: arrival.destination,
+          directionCode: arrival.directionCode || null,
+          destinationTimestamp,
+          sighting,
+        });
+      }
+    }
+
+    // Cluster keyless sightings by their projected planned time at the
+    // destination. This is the closest stable trip identity the feed exposes.
+    for (const [serviceKey, candidates] of syntheticByService) {
+      candidates.sort((a, b) => a.destinationTimestamp - b.destinationTimestamp);
+      const clusters = [];
+
+      for (const candidate of candidates) {
+        let cluster = clusters.find((item) =>
+          Math.abs(candidate.destinationTimestamp - item.centreTimestamp)
+            <= SYNTHETIC_TRIP_MATCH_WINDOW_MS
+        );
+        if (!cluster) {
+          cluster = { centreTimestamp: candidate.destinationTimestamp, candidates: [] };
+          clusters.push(cluster);
+        }
+        cluster.candidates.push(candidate);
+        const orderedTimes = cluster.candidates
+          .map((item) => item.destinationTimestamp)
+          .sort((a, b) => a - b);
+        cluster.centreTimestamp = orderedTimes[Math.floor(orderedTimes.length / 2)];
+      }
+
+      for (const cluster of clusters) {
+        const first = cluster.candidates[0];
+        const tripSlot = Math.round(cluster.centreTimestamp / 15000);
+        const key = `${serviceKey}|${tripSlot}`;
+        byVehicle.set(key, {
+          key,
+          lineId: first.lineId,
+          vehicleId: null,
+          destination: first.destination,
+          directionCode: first.directionCode,
+          sightings: cluster.candidates.map((candidate) => candidate.sighting),
+        });
       }
     }
 
@@ -602,7 +660,7 @@ class TrainPositionEngine {
       const walked = this.walkFromStation(
         train.lineId, anchor.station, anchor.secondsRemaining, isForward
       );
-      if (!walked) continue;
+      if (!walked || walked.isPreDeparture) continue;
 
       const { coordinates, bearing } = this.getCoordsAndBearingAtDistance(
         train.lineId, walked.trackDist, isForward

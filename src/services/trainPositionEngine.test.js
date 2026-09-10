@@ -71,6 +71,22 @@ describe('Vienna network data', () => {
     expect(trainPositionEngine.offTrackStations).toEqual([]);
   });
 
+  it('keeps the whole network within four stops of a tracking reference', () => {
+    for (const line of LINES) {
+      const stations = trainPositionEngine.getLineStations(line);
+      const sourceIndexes = stations
+        .map((station, index) => POSITION_SOURCE_IDS.has(Number(station.apiId)) ? index : -1)
+        .filter((index) => index >= 0);
+      expect(sourceIndexes[0], `${line} first reference`).toBeLessThanOrEqual(1);
+      expect(stations.length - 1 - sourceIndexes.at(-1), `${line} last reference`)
+        .toBeLessThanOrEqual(1);
+      for (let index = 1; index < sourceIndexes.length; index += 1) {
+        expect(sourceIndexes[index] - sourceIndexes[index - 1], `${line} reference gap`)
+          .toBeLessThanOrEqual(4);
+      }
+    }
+  });
+
   it('places every station close to the line it serves', () => {
     for (const line of LINES) {
       for (const station of trainPositionEngine.getLineStations(line)) {
@@ -225,10 +241,41 @@ describe('live vehicle reconstruction', () => {
     expect(vehicles[0].sightingCount).toBe(2);
   });
 
+  it('fuses keyless sightings despite small timetable differences', () => {
+    const now = Date.now();
+    const karlsplatz = stationByName('U1', 'Karlsplatz');
+    const stephansplatz = stationByName('U1', 'Stephansplatz');
+    const gap = trainPositionEngine.getSegmentSeconds('U1', karlsplatz, stephansplatz);
+    sighting({ key: 'a', stationName: 'Karlsplatz', secondsFromNow: 60, now });
+    sighting({
+      key: 'b', stationName: 'Stephansplatz', secondsFromNow: 60 + gap + 45,
+      plannedSecondsFromNow: 60 + gap + 45, now,
+    });
+    const vehicles = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    expect(vehicles).toHaveLength(1);
+    expect(vehicles[0].sightingCount).toBe(2);
+  });
+
+  it('keeps consecutive keyless trains separate', () => {
+    const now = Date.now();
+    sighting({ key: 'a', stationName: 'Karlsplatz', secondsFromNow: 60, now });
+    sighting({ key: 'b', stationName: 'Karlsplatz', secondsFromNow: 285, now });
+    expect(trainPositionEngine.getLiveVehiclesFromMemory(now)).toHaveLength(2);
+  });
+
   it('drops predictions too stale or too far ahead to position honestly', () => {
     const now = Date.now();
     sighting({ key: 'a', stationName: 'Karlsplatz', vehicleId: 'old', secondsFromNow: -120, now });
     sighting({ key: 'b', stationName: 'Stephansplatz', vehicleId: 'future', secondsFromNow: 2000, now });
+    expect(trainPositionEngine.getLiveVehiclesFromMemory(now)).toEqual([]);
+  });
+
+  it('does not draw a future departure before its train has entered the line', () => {
+    const now = Date.now();
+    sighting({
+      key: 'a', stationName: 'Neulaa', destination: 'Leopoldau',
+      directionCode: 'H', vehicleId: 'not-started', secondsFromNow: 900, now,
+    });
     expect(trainPositionEngine.getLiveVehiclesFromMemory(now)).toEqual([]);
   });
 

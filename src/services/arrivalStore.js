@@ -30,16 +30,53 @@ export const STRATEGIC_HUBS = [
   { id: 60201468, name: 'Westbahnhof', lines: ['U3', 'U6'] },
 ];
 
-// A geographically spread set of interchanges keeps the position walk short
-// without placing an unreasonable request load on the public endpoint.
+// Distributed reference stations keep every part of every line inside the
+// position engine's accurate 18-minute prediction window. They are deliberately
+// fixed: opening an arbitrary station panel must never re-anchor map markers.
+// The 32 DIVA ids still fit in one monitor request (about 1 MB in practice), so
+// a network sweep remains one request every two minutes rather than 99 calls.
 export const MAJOR_STATIONS = [
-  { id: 60201320, name: 'Stephansplatz' },
-  { id: 60201182, name: 'Schottenring' },
-  { id: 60201468, name: 'Westbahnhof' },
+  // U1, south to north
+  { id: 60201481, name: 'Neulaa' },
+  { id: 60201095, name: 'Reumannplatz' },
   { id: 60200657, name: 'Karlsplatz' },
   { id: 60201040, name: 'Praterstern' },
-  { id: 60200820, name: 'Längenfeldgasse' },
+  { id: 60200031, name: 'Alte Donau' },
+  { id: 60201860, name: 'Rennbahnweg' },
+  { id: 60201859, name: 'Großfeldsiedlung' },
+
+  // U2, east to centre (shared U1 stations above are not repeated)
+  { id: 60200910, name: 'Aspern Nord' },
+  { id: 60200299, name: 'Aspernstraße' },
+  { id: 60201299, name: 'Stadlau' },
+  { id: 60201894, name: 'Stadion' },
+  { id: 60201182, name: 'Schottenring' },
+  { id: 60201430, name: 'Volkstheater' },
+
+  // U3, west to east
+  { id: 60201317, name: 'Kendlerstraße' },
+  { id: 60201468, name: 'Westbahnhof' },
+  { id: 60201320, name: 'Stephansplatz' },
   { id: 60200743, name: 'Mitte-Landstraße' },
+  { id: 60201199, name: 'Schlachthausgasse' },
+  { id: 60200425, name: 'Enkplatz' },
+
+  // U4, west to north
+  { id: 60200956, name: 'Ober St. Veit' },
+  { id: 60200520, name: 'Hietzing' },
+  { id: 60200820, name: 'Längenfeldgasse' },
+  { id: 60201198, name: 'Schwedenplatz' },
+  { id: 60200357, name: 'Friedensbrücke' },
+  { id: 60201062, name: 'Spittelau' },
+
+  // U6, south to north (shared U3/U4 stations are not repeated)
+  { id: 60201007, name: 'Perfektastraße' },
+  { id: 60201499, name: 'Alterlaa' },
+  { id: 60201015, name: 'Bhf. Meidling' },
+  { id: 60200615, name: 'Josefstädter Straße' },
+  { id: 60201510, name: 'Währinger Straße-Volksoper' },
+  { id: 60201705, name: 'Handelskai' },
+  { id: 60201668, name: 'Neue Donau' },
 ];
 
 // Only these synchronized reference stations may anchor map positions. A
@@ -170,7 +207,7 @@ class ArrivalStore {
   hydrateFromSessionStorage() {
     try {
       if (typeof window === 'undefined' || !window.sessionStorage) return;
-      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v4');
+      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v5');
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const now = Date.now();
@@ -194,7 +231,7 @@ class ArrivalStore {
           obj[k] = v;
         }
       }
-      sessionStorage.setItem('vienna_ubahn_arrival_memory_v4', JSON.stringify(obj));
+      sessionStorage.setItem('vienna_ubahn_arrival_memory_v5', JSON.stringify(obj));
     } catch {
       // Ignore storage errors
     }
