@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, GitBranch, MapPin, Radio, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, GitBranch, MapPin, ShieldCheck, Users } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import { getSbahnFreshness } from '../services/dataFreshness';
 import {
@@ -11,8 +11,6 @@ import { LINES } from '../services/transitModels';
 import { addReport, getReports, REPORT_CATEGORIES, subscribe as subscribeReports, summariseReports } from '../services/communityReports';
 import { estimateNetworkOccupancy } from '../services/occupancyEstimation';
 import { classifyDelayCauses } from '../services/delayCause';
-import getSbahnRealtimeSnapshot from '../services/sbahnRealtime';
-import getExactPositionSnapshot from '../services/exactPositionFeed';
 
 const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, accessibility, reliability, vehicles, entries, modelHealth }) => {
   const [scenarioLine, setScenarioLine] = useState('U1');
@@ -21,8 +19,6 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
   const [reports, setReports] = useState(() => getReports(now));
   const [reportForm, setReportForm] = useState({ line: 'U1', station: '', category: 'crowding', severity: 'medium', note: '' });
   const [reportSaved, setReportSaved] = useState(false);
-  const [sbahnRealtime, setSbahnRealtime] = useState({ status: 'unavailable', records: [] });
-  const [exactPositions, setExactPositions] = useState({ status: 'unavailable', positions: [] });
   const eta = useMemo(() => buildEtaUncertainty(vehicles), [vehicles]);
   const transfers = useMemo(() => buildTransferHealth(vehicles, now), [vehicles, now]);
   const recovery = useMemo(() => buildRecoveryForecast({ issues, forecasts, reliability }), [issues, forecasts, reliability]);
@@ -39,17 +35,6 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
   const quality = useMemo(() => buildDataQuality({ now, entries, vehicles, sbahnFreshness: getSbahnFreshness(now) }), [now, entries, vehicles]);
 
   useEffect(() => subscribeReports(setReports), []);
-  useEffect(() => {
-    let cancelled = false;
-    const refresh = async () => {
-      const [sbahn, exact] = await Promise.all([getSbahnRealtimeSnapshot(), getExactPositionSnapshot()]);
-      if (!cancelled) { setSbahnRealtime(sbahn); setExactPositions(exact); }
-    };
-    refresh();
-    const timer = setInterval(refresh, 60000);
-    return () => { cancelled = true; clearInterval(timer); };
-  }, []);
-
   const submitReport = (event) => {
     event.preventDefault();
     addReport(reportForm, now);
@@ -88,19 +73,6 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
       </form>
       {reportSummary.recent.length ? <div className="community-report-list">{reportSummary.recent.slice(0, 4).map((report) => <div key={report.id}><b>{report.line || 'Network'}</b><span>{REPORT_CATEGORIES.find((item) => item.id === report.category)?.label || report.category}{report.station ? ` · ${report.station}` : ''}</span><small>{report.severity}</small></div>)}</div> : <p className="advanced-empty">No passenger reports on this device yet.</p>}
       <small className="advanced-caveat">Reports are anonymous and stored only in this browser. They are advisory, not verified incident reports.</small>
-    </div>
-
-    <div className="advanced-card">
-      <div className="advanced-card-title"><strong><Radio size={14} /> S-Bahn live status</strong><span>{sbahnRealtime.status === 'live' ? 'authorized feed' : 'timetable fallback'}</span></div>
-      {sbahnRealtime.status === 'live' ? <div className="feed-status live"><strong>{sbahnRealtime.records.length}</strong><span>live S-Bahn records · fetched {new Date(sbahnRealtime.fetchedAt).toLocaleTimeString()}</span></div> : <div className="feed-status"><AlertTriangle size={14} /><span>{sbahnRealtime.reason || 'No authorized ÖBB real-time feed configured.'}</span></div>}
-      {sbahnRealtime.records.filter((record) => record.cancelled || Number(record.delaySeconds) > 120).slice(0, 4).map((record) => <div className="advanced-impact" key={record.tripId || `${record.line}-${record.destination}`}><AlertTriangle size={13} /><div><strong>{record.line} · {record.cancelled ? 'cancelled' : `+${Math.round(record.delaySeconds / 60)} min`}</strong><span>{record.destination || 'S-Bahn service'}</span></div></div>)}
-      <small className="advanced-caveat">When no authorized feed is configured, S-Bahn markers and arrivals remain schedule-based estimates; no delay is invented.</small>
-    </div>
-
-    <div className="advanced-card">
-      <div className="advanced-card-title"><strong><MapPin size={14} /> Exact train positioning</strong><span>{exactPositions.status === 'live' ? 'authorized feed' : 'not connected'}</span></div>
-      {exactPositions.status === 'live' ? <div className="feed-status live"><strong>{exactPositions.positions.length}</strong><span>exact positions available</span></div> : <div className="feed-status"><ShieldAlert size={14} /><span>{exactPositions.reason || 'The public feed does not expose per-train GPS.'}</span></div>}
-      <small className="advanced-caveat">The map continues to label U-Bahn movement as inferred from official departures. Exact coordinates are used only when an authorized position feed is configured.</small>
     </div>
 
     <div className="advanced-card">

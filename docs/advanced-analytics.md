@@ -30,9 +30,6 @@ positions and the browser's short history.
     candidate is stale, invalid, too inaccurate or worse than the baseline.
 17. A line-by-line Operations view showing attention status, occupancy proxy,
     reliability, reports, causes and a human-review action cue.
-18. S-Bahn live-status and exact-position adapters. Configure
-    `VITE_OEBB_REALTIME_URL` and `VITE_OEBB_POSITION_URL` only for an authorized
-    feed; otherwise the UI stays on the published timetable/inferred position.
 
 The estimates intentionally remain advisory. Public Wiener Linien data does
 not expose signalling state, track occupation, passenger counts or GPS ground
