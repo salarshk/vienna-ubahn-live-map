@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Accessibility, Activity, AlertTriangle, Bot, Clock3, History, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
@@ -14,6 +14,8 @@ import delayModelStore, {
   incidentContextForLine, predictFinalDelay, predictOnlineDelay,
 } from '../services/delayModel';
 import RailAdvisor from './RailAdvisor';
+import AdvancedSignals from './AdvancedSignals';
+import trainPositionEngine from '../services/trainPositionEngine';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -62,6 +64,8 @@ const RailIntelligence = ({
       return predictions.length ? { line, minutes: Math.max(...predictions) } : null;
     }).filter(Boolean)
     : [];
+  const vehicles = useMemo(() => trainPositionEngine.getAllVehicles(now), [now]);
+  const entries = [...arrivalStore.memory.values()];
 
   useEffect(() => {
     const unsubscribe = delayModelStore.subscribe(setDelaySnapshot);
@@ -81,7 +85,7 @@ const RailIntelligence = ({
 
       <nav className="intelligence-tabs" aria-label="Rail intelligence views">
         {[
-          ['forecast', Radar, 'Forecast'], ['history', History, 'History'],
+          ['forecast', Radar, 'Forecast'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
           ['advisor', Sparkles, 'Advisor'],
         ].map(([id, Icon, label]) => (
@@ -201,6 +205,12 @@ const RailIntelligence = ({
           <p className="intelligence-note">A transparent time-and-service-gap risk model. Passenger-count data is not publicly available.</p>
         </section>
       </>}
+
+      {tab === 'signals' && <AdvancedSignals
+        now={now} issues={issues} forecasts={forecasts} disruptions={disruptions}
+        crowding={crowding} accessibility={accessibility} reliability={snapshot.reliability || []}
+        vehicles={vehicles} entries={entries}
+      />}
 
       {tab === 'history' && <>
         <section className="intelligence-section">
