@@ -54,8 +54,9 @@ and uses [Structured Outputs](https://developers.openai.com/api/docs/guides/stru
    a configuration error until step 2 is completed. This keeps the first
    deployment from requiring an API key in a file or shell history.
 
-4. In the GitHub repository, create the Actions variable `ADVISOR_API_URL` with
-   the deployed URL ending in `/advice`, then run the Pages workflow again.
+4. The deployed Worker URL is the production default in the website. You can
+   override it with the GitHub Actions variable `ADVISOR_API_URL` if you later
+   move the Worker to another hostname, then run the Pages workflow again.
 
 For local development, create an ignored `worker/.dev.vars` containing the
 secret and run `npx wrangler dev --config worker/wrangler.jsonc`. Cloudflare's

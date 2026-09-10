@@ -1,4 +1,6 @@
-const ADVISOR_API_URL = String(import.meta.env.VITE_ADVISOR_API_URL || '').trim();
+const DEFAULT_ADVISOR_API_URL = 'https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev/advice';
+const ADVISOR_API_URL = String(import.meta.env.VITE_ADVISOR_API_URL
+  || (import.meta.env.PROD ? DEFAULT_ADVISOR_API_URL : '')).trim();
 
 const cleanText = (value, maximum = 180) => String(value || '')
   .replace(/\s+/g, ' ')
@@ -130,4 +132,3 @@ export const requestRailAdvice = async ({ audience, goal, evidence }) => {
     clearTimeout(timeout);
   }
 };
-
