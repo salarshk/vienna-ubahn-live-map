@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "status": "collecting",
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 0,
+  "observationCount": 351,
   "labelledJourneyCount": 0,
-  "dataDays": 0,
-  "firstObservation": null,
-  "lastObservation": null,
+  "dataDays": 1,
+  "firstObservation": "2026-09-10T11:11:27.406Z",
+  "lastObservation": "2026-09-10T11:11:27.406Z",
   "requirements": {
     "minimumDays": 7,
     "minimumExamples": 500,
     "minimumTestExamples": 100
   },
+  "status": "collecting",
   "message": "Collecting at least 7 days and 500 labelled journeys before publishing a score.",
   "leakageControl": "One early observation per journey; later near-departure observation becomes its label."
 }
