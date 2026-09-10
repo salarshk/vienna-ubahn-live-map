@@ -60,6 +60,22 @@ export const predictFinalDelay = (model, arrival, now = Date.now()) => {
   return clamp(value, minimum, maximum);
 };
 
+const onlineMeanWithPrior = (stat, prior) => stat?.count ? Number(stat.sum) / (Number(stat.count) + prior) : 0;
+
+export const predictOnlineDelay = (model, arrival) => {
+  const online = model?.onlineCalibration;
+  if (online?.status !== 'ready' || online.deployed === false || !online.state) return null;
+  const currentDelay = (Number(arrival?.targetTimestamp) - Number(arrival?.plannedTargetTimestamp)) / 60000;
+  if (!Number.isFinite(currentDelay)) return null;
+  const context = arrival.delayRelatedIncident || Number(arrival.activeIncidentCount) > 0
+    ? 'incident' : arrival.trafficJam ? 'traffic' : 'normal';
+  const correction = onlineMeanWithPrior(online.state.global, 24)
+    + onlineMeanWithPrior(online.state.lines?.[arrival.line], 12)
+    + onlineMeanWithPrior(online.state.contexts?.[context], 10);
+  const [minimum, maximum] = online.predictionRangeMinutes || [-2, 30];
+  return clamp(currentDelay + correction, minimum, maximum);
+};
+
 class DelayModelStore {
   constructor() {
     this.snapshot = { status: 'loading', model: null, metrics: null, error: null };

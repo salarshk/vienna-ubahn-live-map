@@ -33,6 +33,7 @@ are always drawn hollow and labelled as scheduled estimates.
 - Full-screen departure board at `?mode=dashboard`
 - Automated U-Bahn delay-data collection with chronological holdout evaluation
 - Official historical incident import and live disruption context as model features
+- Fast prequential calibration that can report leakage-free experimental metrics after 30 completed journeys
 - Public MAE, RMSE, R², within-one-minute accuracy and 3+ minute delay metrics
 - Shared React codebase for the web and a Capacitor iOS shell
 

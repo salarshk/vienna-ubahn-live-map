@@ -10,7 +10,9 @@ import {
 } from '../services/transitModels';
 import OnboardPilot from './OnboardPilot';
 import arrivalStore from '../services/arrivalStore';
-import delayModelStore, { incidentContextForLine, predictFinalDelay } from '../services/delayModel';
+import delayModelStore, {
+  incidentContextForLine, predictFinalDelay, predictOnlineDelay,
+} from '../services/delayModel';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -37,18 +39,24 @@ const RailIntelligence = ({
     reliability: snapshot.reliability, crowding,
   });
   const delayMetrics = delaySnapshot.metrics;
+  const onlineMetrics = delayMetrics?.onlineCalibration;
+  const onlineModel = delaySnapshot.model?.onlineCalibration;
   const delayRequirements = delayMetrics?.requirements || {};
   const preliminaryRequirements = delayRequirements.preliminary || { minimumDays: 2, minimumExamples: 150 };
   const collectionProgress = Math.min(100, Math.round(100 * Math.min(
     (delayMetrics?.dataDays || 0) / preliminaryRequirements.minimumDays,
     (delayMetrics?.labelledJourneyCount || 0) / preliminaryRequirements.minimumExamples,
   )));
-  const delayPredictions = delaySnapshot.status === 'ready'
+  const delayPredictions = delaySnapshot.status === 'ready' || onlineModel?.status === 'ready'
     ? LINES.map((line) => {
       const incidentContext = incidentContextForLine(disruptions, line, now);
       const predictions = arrivalStore.getNetworkArrivals(now)
         .filter((arrival) => arrival.isLive && arrival.line === line && arrival.seconds >= 240 && arrival.seconds <= 900)
-        .map((arrival) => predictFinalDelay(delaySnapshot.model, { ...arrival, ...incidentContext }, now))
+        .map((arrival) => {
+          const enriched = { ...arrival, ...incidentContext };
+          return predictFinalDelay(delaySnapshot.model, enriched, now)
+            ?? predictOnlineDelay(delaySnapshot.model, enriched);
+        })
         .filter(Number.isFinite);
       return predictions.length ? { line, minutes: Math.max(...predictions) } : null;
     }).filter(Boolean)
@@ -92,6 +100,33 @@ const RailIntelligence = ({
               </div>
             ))}</div>
           )}
+        </section>
+
+        <section className="intelligence-section delay-model-card">
+          <div className="intelligence-section-title">
+            <Activity size={14} /><strong>Fast online calibration</strong>
+            <em className={onlineMetrics?.status === 'ready' ? 'model-ready' : ''}>
+              {onlineMetrics?.status === 'ready' ? 'Early experimental' : 'Learning'}
+            </em>
+          </div>
+          {onlineMetrics?.status === 'ready' ? <>
+            <div className="delay-metric-grid">
+              <div><span>Prequential MAE</span><strong>{onlineMetrics.model.maeMinutes} min</strong></div>
+              <div><span>RMSE</span><strong>{onlineMetrics.model.rmseMinutes} min</strong></div>
+              <div><span>Within ±1 min</span><strong>{onlineMetrics.model.withinOneMinutePercent}%</strong></div>
+              <div><span>Scored journeys</span><strong>{onlineMetrics.scoredJourneyCount}</strong></div>
+            </div>
+            {onlineMetrics.deployment?.deployed === false && (
+              <div className="model-holdback">Online adjustment held back: it has not beaten the unadjusted live estimate.</div>
+            )}
+            <p className="intelligence-note">Every journey was predicted before its final value arrived, scored afterward, and only then used to improve later predictions. The seven-day model below remains separate.</p>
+          </> : <>
+            <div className="model-progress"><i style={{ width: `${Math.min(100, Math.round(100 * (onlineMetrics?.scoredJourneyCount || 0) / (onlineMetrics?.minimumExamples || 30)))}%` }} /></div>
+            <div className="model-collection-stats">
+              <strong>{onlineMetrics?.scoredJourneyCount || 0}/{onlineMetrics?.minimumExamples || 30}</strong><span>completed journeys</span>
+            </div>
+            <p className="intelligence-note">This can publish leakage-free early metrics within hours. No score is shown until at least {onlineMetrics?.minimumExamples || 30} journeys have been predicted and completed.</p>
+          </>}
         </section>
 
         <section className="intelligence-section delay-model-card">

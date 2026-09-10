@@ -55,14 +55,16 @@ jobs:
           DELAY_METRICS_PATH: data/ml/candidate-metrics.json
         run: node scripts/ml/train_delay_model.mjs
 
-      - name: Publish progress or today's validated model
+      - name: Publish daily progress or a new online-model stage
         id: publish
         env:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           today="$(date -u +%F)"
           previous_day="$(cat data/ml/last-published-day.txt 2>/dev/null || true)"
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$today" != "$previous_day" ]; then
+          candidate_online_status="$(node -p "require('./data/ml/candidate-model.json').onlineCalibration?.status || 'missing'")"
+          published_online_status="$(node -p "require('./public/ml/delay-model.json').onlineCalibration?.status || 'missing'")"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$today" != "$previous_day" ] || [ "$candidate_online_status" != "$published_online_status" ]; then
             mkdir -p public/ml
             cp data/ml/candidate-model.json public/ml/delay-model.json
             cp data/ml/candidate-metrics.json public/ml/delay-metrics.json

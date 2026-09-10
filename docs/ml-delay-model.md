@@ -43,6 +43,23 @@ not used for fitting, feature scaling or model selection.
 This label is the operator's final reported deviation, not independent GPS
 ground truth. The distinction is displayed next to the metrics in the app.
 
+## Fast online calibration
+
+The online calibrator runs alongside rather than replacing the ridge model. It
+starts from Wiener Linien's early delay estimate and learns small, shrunk
+residual corrections for the network, line and current incident context.
+
+Evaluation is prequential. Each journey is predicted while its final value is
+still unavailable. Once that value arrives, the frozen prediction is scored;
+only afterward may its error update the calibrator for later predictions.
+Overlapping journeys are handled by their actual feature and label observation
+times, so a future label cannot leak into an earlier prediction.
+
+Early experimental metrics appear after 30 completed journeys. The adjustment
+is used on the live map only if its prequential MAE beats the unadjusted
+Wiener Linien estimate. This quick score is not called validated and does not
+change the separate two-day/seven-day ridge-model promotion policy.
+
 ## Model and metrics
 
 The first model is ridge regression over the early reported delay, prediction

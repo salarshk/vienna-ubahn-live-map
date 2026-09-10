@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { featureVector, incidentContextForLine, predictFinalDelay } from './delayModel';
+import {
+  featureVector, incidentContextForLine, predictFinalDelay, predictOnlineDelay,
+} from './delayModel';
 
 const arrival = {
   line: 'U1', directionCode: 'H', trafficJam: false,
@@ -41,5 +43,19 @@ describe('delay model runtime', () => {
     }], 'U1', now)).toEqual({
       activeIncidentCount: 1, incidentPriority: 2, delayRelatedIncident: true,
     });
+  });
+
+  it('applies a ready online calibration without replacing the batch model', () => {
+    const model = {
+      onlineCalibration: {
+        status: 'ready', deployed: true, predictionRangeMinutes: [-2, 30],
+        state: {
+          global: { count: 24, sum: 24 },
+          lines: { U1: { count: 12, sum: 12 } },
+          contexts: { incident: { count: 10, sum: 10 } },
+        },
+      },
+    };
+    expect(predictOnlineDelay(model, arrival)).toBe(3.5);
   });
 });

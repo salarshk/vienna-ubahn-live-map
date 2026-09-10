@@ -3,6 +3,7 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { incidentFeaturesAt } from './incident_features.mjs';
+import { replayOnlineCalibration } from './online_calibrator.mjs';
 import { trainingStageFor } from './training_policy.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -25,6 +26,7 @@ const REQUIREMENTS = {
   },
 };
 const DELAY_THRESHOLD_MINUTES = 3;
+const ONLINE_MIN_EXAMPLES = Number(process.env.DELAY_ONLINE_MIN_EXAMPLES || 30);
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 
 const clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
@@ -76,10 +78,13 @@ const makeExamples = (rows) => {
       targetDelayMinutes: clamp(finalRow.reportedDelaySeconds / 60, -2, 30),
       currentDelayMinutes: clamp(featureRow.reportedDelaySeconds / 60, -2, 30),
       plannedTimestamp: Date.parse(featureRow.plannedTime),
+      featureObservedAt: featureRow.observedAt,
+      labelObservedAt: finalRow.observedAt,
     });
   }
-  return examples.filter((example) => Number.isFinite(example.plannedTimestamp))
-    .sort((a, b) => a.plannedTimestamp - b.plannedTimestamp);
+  return examples.filter((example) => Number.isFinite(example.plannedTimestamp)
+      && Number.isFinite(example.featureObservedAt) && Number.isFinite(example.labelObservedAt))
+    .sort((a, b) => a.plannedTimestamp - b.plannedTimestamp || a.eventKey.localeCompare(b.eventKey));
 };
 
 const featureNames = [
@@ -220,6 +225,7 @@ const rows = rawRows.map((row) => {
   };
 });
 const examples = makeExamples(rows);
+const onlineReplay = replayOnlineCalibration(examples, { minimumExamples: ONLINE_MIN_EXAMPLES });
 const uniqueDates = [...new Set(rows.map((row) => new Date(row.observedAt).toISOString().slice(0, 10)))].sort();
 const firstObservationMs = rows.reduce((earliest, row) => Math.min(earliest, row.observedAt), Infinity);
 const lastObservationMs = rows.reduce((latest, row) => Math.max(latest, row.observedAt), -Infinity);
@@ -268,15 +274,44 @@ const common = {
   },
 };
 
+const onlineReady = onlineReplay.status === 'ready';
+const onlineModelMetrics = onlineReady ? metricsFor(onlineReplay.actual, onlineReplay.predictions) : null;
+const onlineBaselineMetrics = onlineReady ? metricsFor(onlineReplay.actual, onlineReplay.baseline) : null;
+const onlineDeployed = onlineReady && onlineModelMetrics.maeMinutes < onlineBaselineMetrics.maeMinutes;
+const onlineCalibrationModel = {
+  status: onlineReplay.status,
+  algorithm: 'prequential-hierarchical-calibration',
+  experimental: true,
+  scoredJourneyCount: onlineReplay.scoredJourneyCount,
+  minimumExamples: ONLINE_MIN_EXAMPLES,
+  deployed: onlineDeployed,
+  predictionRangeMinutes: [-2, 30],
+  state: onlineReplay.state,
+};
+const onlineCalibrationMetrics = {
+  status: onlineReplay.status,
+  experimental: true,
+  scoredJourneyCount: onlineReplay.scoredJourneyCount,
+  minimumExamples: ONLINE_MIN_EXAMPLES,
+  evaluationMethod: 'Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.',
+  model: onlineModelMetrics,
+  currentEstimateBaseline: onlineBaselineMetrics,
+  deployment: {
+    deployed: onlineDeployed,
+    rule: `Enable online predictions after ${ONLINE_MIN_EXAMPLES} scored journeys only when their MAE beats the unadjusted live estimate.`,
+  },
+};
+
 let model;
 let metrics;
 if (validationStage === 'collecting') {
-  model = { ...common, status: 'collecting', trainedAt: null };
+  model = { ...common, status: 'collecting', trainedAt: null, onlineCalibration: onlineCalibrationModel };
   metrics = {
     ...common,
     status: 'collecting',
     message: `Collecting at least ${REQUIREMENTS.preliminary.minimumCoverageHours} hours across ${REQUIREMENTS.preliminary.minimumDays} days and ${REQUIREMENTS.preliminary.minimumExamples} labelled journeys before publishing a preliminary score.`,
     leakageControl: 'One early observation per journey; later near-departure observation becomes its label.',
+    onlineCalibration: onlineCalibrationMetrics,
   };
 } else {
   const training = candidateTraining;
@@ -303,6 +338,7 @@ if (validationStage === 'collecting') {
     scaling: scaling.map(({ mean, scale }) => ({ mean: round(mean, 8), scale: round(scale, 8) })),
     weights: weights.map((weight) => round(weight, 8)),
     predictionRangeMinutes: [-2, 30],
+    onlineCalibration: onlineCalibrationModel,
   };
   metrics = {
     ...common,
@@ -327,6 +363,7 @@ if (validationStage === 'collecting') {
     promotion: validationStage === 'validated'
       ? 'Validated automatically after meeting the seven-day safeguards.'
       : 'Preliminary result; it will be replaced automatically after meeting the seven-day safeguards.',
+    onlineCalibration: onlineCalibrationMetrics,
   };
 }
 
