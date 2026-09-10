@@ -152,10 +152,7 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
                   display: 'flex', alignItems: 'center', gap: 7,
                 }}
               >
-                {/* The line badge names which train the countdown belongs to
-                    — a direction can merge more than one Line (two Lines
-                    leaving an interchange the same way), so "next" is only
-                    ever one specific train, not the direction as a whole. */}
+                {/* Each row is one line in one operational direction. */}
                 {next && (
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',

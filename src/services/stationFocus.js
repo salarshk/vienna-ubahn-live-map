@@ -1,15 +1,13 @@
 // Station Focus
 //
 // Everything the UI needs about one Station at one instant: the flat arrivals
-// table the panel draws, the at-most-two Direction Groups the expanded Station
+// table the panel draws, the per-line Direction Groups the expanded Station
 // marker draws, and the arrivals those Groups have not already headlined.
 //
-// Direction is the engine's answer, not a string match on the headsign.
-// `resolveDirection` says whether a train is travelling towards increasing
-// track distance, and that is the same axis for every Line through a Station,
-// so trains on different Lines heading the same way land in the same group. A
-// terminus yields one group rather than two — the "if applicable" in "both
-// directions if applicable".
+// Direction is the engine's answer, using Wiener Linien's H/R value whenever
+// available. Groups are line-relative: two lines crossing at an interchange
+// must never be merged just because both imported geometries call one side
+// "forward"; their real compass bearings can differ by more than 100°.
 import arrivalStore from './arrivalStore';
 import trainPositionEngine from './trainPositionEngine';
 
@@ -41,8 +39,8 @@ export const getStationFocus = (stationProps, now = Date.now()) => {
   const cached = stationProps ? arrivalStore.getCachedArrivals(stationProps, now) : null;
   const arrivals = cached ? cached.arrivals : [];
 
-  // Keyed by direction so several Lines heading the same way merge, which is
-  // the whole point: one group per service would become a table, not a glance.
+  // Keyed by line and direction. Several destinations on the same side of one
+  // line (for example a short-turn service) still share a concise group.
   const groups = new Map();
 
   for (const arrival of arrivals) {
@@ -53,9 +51,14 @@ export const getStationFocus = (stationProps, now = Date.now()) => {
     // cannot be drawn on a side of the marker.
     if (!onLine) continue;
 
-    const isForward = trainPositionEngine.resolveDirection(lineId, arrival.destination, onLine);
-    const key = isForward ? 'forward' : 'backward';
-    if (!groups.has(key)) groups.set(key, { key, destinations: [], arrivals: [], bearings: [] });
+    const isForward = trainPositionEngine.resolveDirection(
+      lineId, arrival.destination, onLine, arrival.directionCode
+    );
+    const direction = isForward ? 'forward' : 'backward';
+    const key = `${lineId}:${direction}`;
+    if (!groups.has(key)) {
+      groups.set(key, { key, lineId, direction, destinations: [], arrivals: [], bearings: [] });
+    }
 
     const group = groups.get(key);
     group.arrivals.push(arrival);
@@ -71,14 +74,16 @@ export const getStationFocus = (stationProps, now = Date.now()) => {
     }
   }
 
-  // 'forward' before 'backward' always, so a display left running does not
-  // swap its two halves every time a train arrives.
-  const directions = ['forward', 'backward']
-    .filter((key) => groups.has(key))
-    .map((key) => {
-      const group = groups.get(key);
+  // Stable line order, then H-side before R-side, prevents rows swapping as
+  // individual predictions arrive and expire.
+  const directions = [...groups.values()]
+    .sort((a, b) => a.lineId.localeCompare(b.lineId) ||
+      (a.direction === b.direction ? 0 : a.direction === 'forward' ? -1 : 1))
+    .map((group) => {
       return {
-        key,
+        key: group.key,
+        line: group.lineId,
+        direction: group.direction,
         destinations: group.destinations,
         label: label(group.destinations),
         bearing: meanBearing(group.bearings),

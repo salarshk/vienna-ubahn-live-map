@@ -32,6 +32,7 @@ describe('batched live synchronization', () => {
             lines: [{
               name: 'U1',
               towards: 'Leopoldau',
+              direction: 'H',
               realtimeSupported: true,
               departures: {
                 departure: [{
@@ -39,7 +40,7 @@ describe('batched live synchronization', () => {
                     timeReal: '2026-09-09T18:10:00.000+0200',
                     countdown: 2,
                   },
-                  vehicle: { name: 'U1', towards: 'Leopoldau' },
+                  vehicle: { name: 'U1', towards: 'Leopoldau', direction: 'H' },
                 }],
               },
             }],
@@ -59,5 +60,6 @@ describe('batched live synchronization', () => {
     expect(requestedUrl).toContain('diva=60201182');
     expect(updated).toBe(1);
     expect(arrivalStore.memory.get('60201320').arrivals[0].isLive).toBe(true);
+    expect(arrivalStore.memory.get('60201320').arrivals[0].directionCode).toBe('H');
   });
 });

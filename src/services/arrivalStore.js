@@ -89,6 +89,10 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
             : fetchTime + (Number.isFinite(countdown) ? countdown * 60000 : 0);
         const vehicle = departure.vehicle || {};
         const destination = vehicle.towards || line.towards || 'Unknown destination';
+        const rawDirectionCode = String(vehicle.direction || line.direction || '').toUpperCase();
+        const directionCode = rawDirectionCode === 'H' || rawDirectionCode === 'R'
+          ? rawDirectionCode
+          : null;
         const lineMetadata = LINE_METADATA.get(lineId);
         const lineName = lineMetadata ? lineMetadata.name : lineId;
         const defaultColor = lineMetadata ? lineMetadata.color : '#8a8a8a';
@@ -99,6 +103,7 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
           lineName,
           lineColor,
           destination,
+          directionCode,
           targetTimestamp,
           initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
           isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
@@ -112,7 +117,7 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
   // A DIVA query can return the same platform through more than one monitor
   // object. Collapse repeats without merging real trains.
   return [...new Map(arrivals.map((arrival) => [
-    `${arrival.line}|${arrival.destination}|${Math.round(arrival.targetTimestamp / 30000)}`,
+    `${arrival.line}|${arrival.directionCode || 'unknown'}|${arrival.destination}|${Math.round(arrival.targetTimestamp / 30000)}`,
     arrival,
   ])).values()];
 };

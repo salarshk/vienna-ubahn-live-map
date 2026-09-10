@@ -19,6 +19,7 @@ const sighting = ({
   stationName,
   line = 'U1',
   destination = 'Leopoldau',
+  directionCode,
   vehicleId,
   secondsFromNow,
   now,
@@ -31,6 +32,7 @@ const sighting = ({
     arrivals: [{
       line,
       destination,
+      directionCode,
       vehicleId,
       targetTimestamp: now + secondsFromNow * 1000,
       isLive: true,
@@ -73,6 +75,18 @@ describe('Vienna network data', () => {
 });
 
 describe('walking Vienna arrival predictions', () => {
+  it.each([
+    ['U1', 'Stephansplatz'],
+    ['U2', 'Praterstern'],
+    ['U3', 'Stephansplatz'],
+    ['U4', 'Karlsplatz'],
+    ['U6', 'Westbahnhof'],
+  ])('uses Wiener Linien H/R direction on %s', (line, stationName) => {
+    const station = stationByName(line, stationName);
+    expect(trainPositionEngine.resolveDirection(line, 'Unknown', station, 'H')).toBe(true);
+    expect(trainPositionEngine.resolveDirection(line, 'Unknown', station, 'R')).toBe(false);
+  });
+
   it('places a train at the reported platform when the countdown is spent', () => {
     const position = trainPositionEngine
       .estimatePositionFromArrival('U1', 'Leopoldau', 'Stephansplatz', 0);
@@ -134,6 +148,16 @@ describe('live vehicle reconstruction', () => {
     const vehicles = trainPositionEngine.getLiveVehiclesFromMemory(now);
     expect(vehicles).toHaveLength(1);
     expect(vehicles[0].sightingCount).toBe(2);
+  });
+
+  it('uses the API direction even when a headsign would imply the opposite side', () => {
+    const now = Date.now();
+    sighting({
+      key: 'a', stationName: 'Stephansplatz', destination: 'Leopoldau',
+      directionCode: 'R', vehicleId: 'direction-test', secondsFromNow: 120, now,
+    });
+    const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    expect(vehicle.isForward).toBe(false);
   });
 
   it('fuses keyless Wiener Linien sightings by their projected terminus time', () => {

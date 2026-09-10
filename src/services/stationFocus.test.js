@@ -13,6 +13,7 @@ const remember = (station, arrivals, now, fetchedAt = now) => {
     arrivals: arrivals.map((arrival) => ({
       line: arrival.line,
       destination: arrival.destination,
+      directionCode: arrival.directionCode ?? null,
       vehicleId: arrival.vehicleId ?? null,
       lineColor: '#888',
       lineName: arrival.line,
@@ -64,6 +65,22 @@ describe('Vienna station focus', () => {
       expect(direction.bearing).toBeGreaterThanOrEqual(0);
       expect(direction.bearing).toBeLessThan(360);
     }
+  });
+
+  it('keeps crossing lines in separate direction groups at an interchange', () => {
+    const now = Date.now();
+    remember(STEPHANSPLATZ, [
+      { line: 'U1', destination: 'Leopoldau', directionCode: 'H', inSeconds: 120 },
+      { line: 'U1', destination: 'Oberlaa', directionCode: 'R', inSeconds: 240 },
+      { line: 'U3', destination: 'Simmering', directionCode: 'H', inSeconds: 180 },
+      { line: 'U3', destination: 'Ottakring', directionCode: 'R', inSeconds: 300 },
+    ], now);
+
+    const directions = getStationFocus(STEPHANSPLATZ, now).directions;
+    expect(directions.map((direction) => direction.key))
+      .toEqual(['U1:forward', 'U1:backward', 'U3:forward', 'U3:backward']);
+    expect(new Set(directions.map((direction) => direction.line)))
+      .toEqual(new Set(['U1', 'U3']));
   });
 
   it('sorts arrivals and each direction by countdown', () => {

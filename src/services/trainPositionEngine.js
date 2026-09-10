@@ -138,6 +138,18 @@ export const confidenceFromUncertainty = (uncertaintyMetres) => {
 
 const normalise = (value) => (value || '').toLowerCase().trim();
 
+// Wiener Linien reports each departure's operational direction as H or R.
+// H is line-relative rather than a compass heading, so anchor it to the known
+// H-side terminus for each current U-Bahn line instead of assuming that every
+// imported geometry will always have the same orientation.
+const H_DIRECTION_TERMINUS = {
+  U1: 'Leopoldau',
+  U2: 'Karlsplatz',
+  U3: 'Simmering',
+  U4: 'Heiligenstadt',
+  U6: 'Floridsdorf',
+};
+
 class TrainPositionEngine {
   constructor() {
     this.lineTracks = new Map();
@@ -324,9 +336,17 @@ class TrainPositionEngine {
    * answer directly; the terminus checks are only there for the handful of
    * headsigns that name a station on a branch this polyline does not cover.
    */
-  resolveDirection(lineId, destination, target) {
+  resolveDirection(lineId, destination, target, directionCode = null) {
     const stations = this.getLineStations(lineId);
     if (stations.length < 2 || !target) return true;
+
+    const code = String(directionCode || '').toUpperCase();
+    if (code === 'H' || code === 'R') {
+      const hTerminus = this.findStation(lineId, H_DIRECTION_TERMINUS[lineId]);
+      const midpoint = (stations[0].trackDist + stations[stations.length - 1].trackDist) / 2;
+      const hIsForward = hTerminus ? hTerminus.trackDist > midpoint : true;
+      return code === 'H' ? hIsForward : !hIsForward;
+    }
 
     const destination_ = this.findStation(lineId, destination);
     if (destination_ && destination_.trackDist !== target.trackDist) {
@@ -458,14 +478,16 @@ class TrainPositionEngine {
   /**
    * Position a train from one arrival prediction.
    */
-  estimatePositionFromArrival(lineId, destination, targetStationName, secondsToTarget) {
+  estimatePositionFromArrival(
+    lineId, destination, targetStationName, secondsToTarget, directionCode = null
+  ) {
     const stations = this.getLineStations(lineId);
     if (!this.getLineTrack(lineId) || stations.length === 0) return null;
 
     const target = this.findStation(lineId, targetStationName);
     if (!target) return null;
 
-    const isForward = this.resolveDirection(lineId, destination, target);
+    const isForward = this.resolveDirection(lineId, destination, target, directionCode);
     const walked = this.walkFromStation(lineId, target, secondsToTarget, isForward);
     if (!walked) return null;
 
@@ -521,7 +543,7 @@ class TrainPositionEngine {
           : arrival.targetTimestamp;
         const key = arrival.vehicleId
           ? `${lineId}-${arrival.vehicleId}`
-          : `${lineId}-${arrival.destination}-${Math.round(destinationTimestamp / 60000)}`;
+          : `${lineId}-${arrival.directionCode || 'unknown'}-${arrival.destination}-${Math.round(destinationTimestamp / 60000)}`;
 
         if (!byVehicle.has(key)) {
           byVehicle.set(key, {
@@ -529,6 +551,7 @@ class TrainPositionEngine {
             lineId,
             vehicleId: arrival.vehicleId || null,
             destination: arrival.destination,
+            directionCode: arrival.directionCode || null,
             sightings: [],
           });
         }
@@ -551,17 +574,18 @@ class TrainPositionEngine {
       );
       const anchor = sightings[0];
 
-      // Two sightings settle the direction outright: the station the train
-      // reaches later is the one it is heading towards. That beats matching the
-      // headsign against station names.
-      let isForward;
-      const other = sightings.find(s => s.station.trackDist !== anchor.station.trackDist);
-      if (other) {
-        const laterStation = other.secondsRemaining > anchor.secondsRemaining ? other : anchor;
-        const earlierStation = laterStation === other ? anchor : other;
-        isForward = laterStation.station.trackDist > earlierStation.station.trackDist;
-      } else {
-        isForward = this.resolveDirection(train.lineId, train.destination, anchor.station);
+      // The feed's H/R value is authoritative. Older cached entries without it
+      // retain the two-sighting inference as a backwards-compatible fallback.
+      let isForward = this.resolveDirection(
+        train.lineId, train.destination, anchor.station, train.directionCode
+      );
+      if (!train.directionCode) {
+        const other = sightings.find(s => s.station.trackDist !== anchor.station.trackDist);
+        if (other) {
+          const laterStation = other.secondsRemaining > anchor.secondsRemaining ? other : anchor;
+          const earlierStation = laterStation === other ? anchor : other;
+          isForward = laterStation.station.trackDist > earlierStation.station.trackDist;
+        }
       }
 
       const walked = this.walkFromStation(
