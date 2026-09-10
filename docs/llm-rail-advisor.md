@@ -50,6 +50,10 @@ and uses [Structured Outputs](https://developers.openai.com/api/docs/guides/stru
    npx wrangler deploy --config worker/wrangler.jsonc
    ```
 
+   The Worker can be created before the secret is present, but it will return
+   a configuration error until step 2 is completed. This keeps the first
+   deployment from requiring an API key in a file or shell history.
+
 4. In the GitHub repository, create the Actions variable `ADVISOR_API_URL` with
    the deployed URL ending in `/advice`, then run the Pages workflow again.
 
@@ -62,4 +66,3 @@ The default model is `gpt-5.4-mini`, selected for lower latency and cost while
 retaining reasoning and Structured Outputs. It can be changed using the
 `OPENAI_MODEL` Worker variable. Each analysis is explicitly button-triggered to
 control spending.
-
