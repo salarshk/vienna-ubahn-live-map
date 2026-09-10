@@ -1,17 +1,42 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 351,
+  "observationCount": 714,
   "labelledJourneyCount": 0,
   "dataDays": 1,
+  "coverageHours": 0.6,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-10T11:11:27.406Z",
+  "lastObservation": "2026-09-10T11:46:56.527Z",
   "requirements": {
     "minimumDays": 7,
+    "minimumCoverageHours": 144,
     "minimumExamples": 500,
-    "minimumTestExamples": 100
+    "minimumTestExamples": 100,
+    "preliminary": {
+      "minimumDays": 2,
+      "minimumCoverageHours": 36,
+      "minimumExamples": 150,
+      "minimumTestExamples": 30
+    },
+    "validated": {
+      "minimumDays": 7,
+      "minimumCoverageHours": 144,
+      "minimumExamples": 500,
+      "minimumTestExamples": 100
+    }
+  },
+  "incidentContext": {
+    "source": "https://www.mobilitaetsdaten.gv.at/daten/daten-zu-versp%C3%A4tungen-und-ausf%C3%A4llen-im-linienverkehr",
+    "archiveImported": true,
+    "archivedUbahnEpisodes": 3086,
+    "sourceExportDate": "2026-02-18T12:44:32.286638+01:00",
+    "features": [
+      "active incident count",
+      "highest incident priority",
+      "delay-related incident flag"
+    ]
   },
   "status": "collecting",
-  "message": "Collecting at least 7 days and 500 labelled journeys before publishing a score.",
+  "message": "Collecting at least 36 hours across 2 days and 150 labelled journeys before publishing a preliminary score.",
   "leakageControl": "One early observation per journey; later near-departure observation becomes its label."
 }
