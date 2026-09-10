@@ -1,6 +1,6 @@
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const BASE_URL = import.meta.env.BASE_URL || '/';
-const REPORT_BASE = String(import.meta.env.VITE_DELAY_MODEL_BASE || `${BASE_URL}ml`).replace(/\/$/, '');
+const REPORT_BASE = `${BASE_URL}ml`.replace(/\/$/, '');
 
 const clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
 

@@ -4,23 +4,19 @@ on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/collect-ubahn-delays.yml'
-      - 'scripts/ml/**'
-
-permissions:
-  actions: read
-  contents: write
 
 concurrency:
   group: ubahn-delay-collection
   cancel-in-progress: false
 
 jobs:
-  collect-and-train:
+  collect_and_train:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    outputs:
+      publish_changed: ${{ steps.publish.outputs.changed }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -90,3 +86,41 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update U-Bahn delay model report"
           git push
+
+  deploy_report:
+    needs: collect_and_train
+    if: needs.collect_and_train.outputs.publish_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the report commit
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build website with the new report
+        run: npx vite build
+        env:
+          GITHUB_PAGES: 'true'
+          VITE_VIENNA_API_BASE: https://corsproxy.nl/https/www.wienerlinien.at/ogd_realtime
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4

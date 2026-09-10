@@ -32,7 +32,6 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
           VITE_VIENNA_API_BASE: https://corsproxy.nl/https/www.wienerlinien.at/ogd_realtime
-          VITE_DELAY_MODEL_BASE: https://raw.githubusercontent.com/salarshk/vienna-ubahn-live-map/main/public/ml
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload website
