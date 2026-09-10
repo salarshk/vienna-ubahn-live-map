@@ -35,6 +35,7 @@ are always drawn hollow and labelled as scheduled estimates.
 - Official historical incident import and live disruption context as model features
 - Fast prequential calibration that can report leakage-free experimental metrics after 30 completed journeys
 - Public MAE, RMSE, R², within-one-minute accuracy and 3+ minute delay metrics
+- Button-triggered AI advisor with evidence-backed passenger and operations suggestions
 - Shared React codebase for the web and a Capacitor iOS shell
 
 The delay model can publish a clearly marked preliminary score after at least
@@ -42,6 +43,10 @@ The delay model can publish a clearly marked preliminary score after at least
 period. It is automatically promoted to validated status only after the
 seven-day safeguards are met. Its methodology is documented in
 [`docs/ml-delay-model.md`](docs/ml-delay-model.md).
+
+The AI advisor uses a separate secure Cloudflare Worker so the OpenAI key never
+enters the public website. Its evidence contract, safeguards and deployment are
+documented in [`docs/llm-rail-advisor.md`](docs/llm-rail-advisor.md).
 
 ## Run locally
 

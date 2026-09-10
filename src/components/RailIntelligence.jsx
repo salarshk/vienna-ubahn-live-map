@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, Bot, Clock3, History, Radar, X } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, Bot, Clock3, History, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
   analyseAccessibility,
@@ -13,6 +13,7 @@ import arrivalStore from '../services/arrivalStore';
 import delayModelStore, {
   incidentContextForLine, predictFinalDelay, predictOnlineDelay,
 } from '../services/delayModel';
+import RailAdvisor from './RailAdvisor';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -82,6 +83,7 @@ const RailIntelligence = ({
         {[
           ['forecast', Radar, 'Forecast'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
+          ['advisor', Sparkles, 'Advisor'],
         ].map(([id, Icon, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)} aria-pressed={tab === id}>
             <Icon size={14} />{label}
@@ -258,6 +260,12 @@ const RailIntelligence = ({
         </section>
         <section className="intelligence-section"><OnboardPilot /></section>
       </>}
+
+      {tab === 'advisor' && <RailAdvisor
+        snapshot={snapshot} disruptions={disruptions} forecasts={forecasts}
+        crowding={crowding} accessibility={accessibility} delayMetrics={delayMetrics}
+        delayPredictions={delayPredictions} now={now}
+      />}
     </aside>
   );
 };

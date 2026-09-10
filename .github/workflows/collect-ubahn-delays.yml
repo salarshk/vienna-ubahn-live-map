@@ -120,6 +120,7 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
           VITE_VIENNA_API_BASE: https://corsproxy.nl/https/www.wienerlinien.at/ogd_realtime
+          VITE_ADVISOR_API_URL: ${{ vars.ADVISOR_API_URL }}
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
       - name: Upload website

@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+worker/.dev.vars
+worker/.wrangler/
 
 # GTFS feeds. Refetch with `npm run fetch:gtfs` rather than committing them:
 # each export is ~7 MB, they are superseded every few weeks, and the data the
