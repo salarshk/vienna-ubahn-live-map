@@ -6,11 +6,13 @@ import {
 
 describe('advanced network intelligence', () => {
   it('turns position uncertainty into an ETA range', () => {
-    const result = buildEtaUncertainty([{
+    const vehicle = {
       id: 'u1-test', line: 'U1', isLive: true, secondsToTarget: 240,
       positionUncertaintyMetres: 300, positionConfidence: 74, destination: 'Leopoldau', targetStation: 'Praterstern',
-    }]);
+    };
+    const result = buildEtaUncertainty([vehicle]);
     expect(result[0]).toMatchObject({ line: 'U1', eta: 4, low: 0, high: 8, confidence: 74 });
+    expect(buildEtaUncertainty([{ ...vehicle, positionConfidence: 0.45 }])[0].confidence).toBe(45);
   });
 
   it('estimates recovery only when there is an observed signal', () => {

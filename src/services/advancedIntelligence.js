@@ -3,6 +3,11 @@ import { LINES } from './transitModels';
 
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const round = (value, digits = 0) => Number(Number(value).toFixed(digits));
+const confidencePercent = (value, fallback) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return number <= 1 ? number * 100 : number;
+};
 
 export const buildEtaUncertainty = (vehicles = []) => vehicles
   .filter((vehicle) => vehicle?.isLive && String(vehicle.line).startsWith('U') && Number.isFinite(vehicle.secondsToTarget))
@@ -18,7 +23,7 @@ export const buildEtaUncertainty = (vehicles = []) => vehicles
       eta,
       low: Math.max(0, eta - timeUncertainty),
       high: eta + timeUncertainty,
-      confidence: clamp(Number(vehicle.positionConfidence) || Math.round(100 - uncertainty / 12), 10, 98),
+      confidence: clamp(confidencePercent(vehicle.positionConfidence, Math.round(100 - uncertainty / 12)), 10, 98),
     };
   })
   .sort((a, b) => b.high - a.high)
@@ -99,7 +104,7 @@ export const buildDirectionSignals = (vehicles = []) => vehicles
   .filter((vehicle) => vehicle?.isLive && String(vehicle.line).startsWith('U'))
   .map((vehicle) => ({
     line: vehicle.line, destination: vehicle.destination,
-    confidence: clamp(Number(vehicle.positionConfidence) || 0, 0, 100),
+    confidence: clamp(confidencePercent(vehicle.positionConfidence, 0), 0, 100),
     direction: vehicle.isForward === false ? 'reverse track' : 'forward track',
     station: vehicle.targetStation,
   }))
