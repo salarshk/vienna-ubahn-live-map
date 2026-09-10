@@ -14,8 +14,10 @@ const projectRoot = path.resolve(__dirname, '..');
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vienna-sbahn-'));
 const downloadedZip = path.join(tempDir, 'oebb-gtfs.zip');
 const zipPath = process.env.OEBB_GTFS_ZIP || downloadedZip;
-const GTFS_URL = 'https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip';
+const GTFS_URL_TEMPLATE = 'https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_YEAR.zip';
 const WIENER_STOPS_URL = 'https://www.wienerlinien.at/ogd_realtime/doku/ogd/wienerlinien-ogd-haltestellen.csv';
+let selectedFeedYear = null;
+let archivePrefix = null;
 
 const S_LINES = new Set(['S1', 'S2', 'S3', 'S4', 'S7', 'S40', 'S45', 'S50', 'S60', 'S80']);
 const COLORS = {
@@ -67,10 +69,43 @@ const parseCsv = (text, separator = ',') => {
   });
 };
 
+const discoverArchivePrefix = () => {
+  if (archivePrefix !== null) return archivePrefix;
+  const files = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' }).split(/\r?\n/);
+  const routesPath = files.find((filename) => filename.endsWith('/routes.txt')) || files.find((filename) => filename === 'routes.txt');
+  if (!routesPath) throw new Error('The downloaded archive does not contain routes.txt');
+  archivePrefix = routesPath.slice(0, -'routes.txt'.length);
+  const year = routesPath.match(/GTFS_Fahrplan_(\d{4})/);
+  if (year) selectedFeedYear = Number(year[1]);
+  return archivePrefix;
+};
+
 const readZip = (filename) => execFileSync(
-  'unzip', ['-p', zipPath, `GTFS_Fahrplan_2026/${filename}`],
+  'unzip', ['-p', zipPath, `${discoverArchivePrefix()}${filename}`],
   { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
 );
+
+const downloadLatestAnnualFeed = () => {
+  const currentYear = new Date().getUTCFullYear();
+  const candidates = process.env.OEBB_GTFS_URL
+    ? [{ year: null, url: process.env.OEBB_GTFS_URL }]
+    : [currentYear + 1, currentYear].map((year) => ({
+      year,
+      url: GTFS_URL_TEMPLATE.replace('YEAR', String(year)),
+    }));
+
+  for (const candidate of candidates) {
+    try {
+      console.log(`Trying ${candidate.url}`);
+      execFileSync('curl', ['-sSL', '--fail', '--max-time', '240', '-o', zipPath, candidate.url], { stdio: 'inherit' });
+      selectedFeedYear = candidate.year;
+      return;
+    } catch {
+      console.warn(`Feed unavailable: ${candidate.url}`);
+    }
+  }
+  throw new Error('No current ÖBB annual GTFS feed could be downloaded');
+};
 
 const seconds = (value) => {
   const [hours, minutes, secs] = String(value || '').split(':').map(Number);
@@ -103,10 +138,10 @@ const haversine = (a, b) => {
 
 try {
   if (!process.env.OEBB_GTFS_ZIP) {
-    console.log(`Downloading ${GTFS_URL}`);
-    execFileSync('curl', ['-sSL', '--fail', '--max-time', '240', '-o', zipPath, GTFS_URL], { stdio: 'inherit' });
+    downloadLatestAnnualFeed();
   }
   if (!fs.existsSync(zipPath)) throw new Error(`GTFS zip not found: ${zipPath}`);
+  discoverArchivePrefix();
 
   const routes = parseCsv(readZip('routes.txt'));
   const selectedRoutes = new Map(routes
@@ -248,7 +283,7 @@ try {
   const output = {
     type: 'FeatureCollection',
     generatedAt: new Date().toISOString(),
-    source: 'ÖBB GTFS Fahrplan 2026 (CC BY 4.0)',
+    source: `ÖBB GTFS Fahrplan${selectedFeedYear ? ` ${selectedFeedYear}` : ''} (CC BY 4.0)`,
     features: [...lineFeatures, ...stationFeatures],
     schedule: {
       timezone: 'Europe/Vienna',

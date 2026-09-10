@@ -23,8 +23,12 @@ are always drawn hollow and labelled as scheduled estimates.
 - Live Wiener Linien departure predictions
 - Scheduled ÖBB S-Bahn positions that respect service calendars and exceptions
 - Estimated moving train positions and confidence styling
+- Clickable train details with direction, adjacent stations and source confidence
+- Live Wiener Linien service disruptions highlighted by line and station
 - Search across U-Bahn and S-Bahn stations
+- Independent U-Bahn/S-Bahn line and train layers, with a marker legend
 - Line filters, light/dark themes and nearest-station location
+- S-Bahn timetable validity warnings and automatic monthly refresh checks
 - Station departure panels with live countdowns
 - Full-screen departure board at `?mode=dashboard`
 - Shared React codebase for the web and a Capacitor iOS shell
@@ -67,6 +71,11 @@ To refresh the S-Bahn routes and timetable from ÖBB's annual GTFS feed:
 ```bash
 npm run build:sbahn
 ```
+
+The scheduled `refresh-sbahn.yml` workflow checks for a newer annual feed on
+the first day of each month, verifies it, and commits the generated timetable
+only when the source data changed. If the bundled calendar has expired, the app
+withdraws S-Bahn movements rather than presenting stale scheduled positions.
 
 ## Data sources and accuracy
 

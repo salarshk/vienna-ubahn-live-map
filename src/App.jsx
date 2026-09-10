@@ -3,11 +3,14 @@ import MapView from './components/MapView';
 import Sidebar from './components/Sidebar';
 import SearchBar from './components/SearchBar';
 import StationPanel from './components/StationPanel';
+import VehiclePanel from './components/VehiclePanel';
+import ServiceAlerts from './components/ServiceAlerts';
 import DashboardBoard from './components/DashboardBoard';
 import LocateButton from './components/LocateButton';
 import { locate } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
+import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import { lineColor } from './utils/lineColor';
 import { Sun, Moon, X, LayoutDashboard, Menu } from 'lucide-react';
 import './index.css';
@@ -26,12 +29,38 @@ function App() {
   const [mode, setMode] = useState(readMode);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStation, setSelectedStation] = useState(null);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [flyTarget, setFlyTarget] = useState(null);
   const [activeLineFilter, setActiveLineFilter] = useState([]);
   const [hoverLine, setHoverLine] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [locateState, setLocateState] = useState('idle');
   const [locateNotice, setLocateNotice] = useState(null);
+  const [mapVisibility, setMapVisibility] = useState({
+    ubahnLines: true,
+    sbahnLines: true,
+    liveTrains: true,
+    scheduledTrains: true,
+  });
+  const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
+
+  useEffect(() => {
+    const unsubscribe = disruptionStore.subscribe(setDisruptionSnapshot);
+    disruptionStore.refresh();
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      disruptionStore.refresh();
+    };
+    const timer = setInterval(refresh, DISRUPTION_REFRESH_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      unsubscribe();
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   // Live train counts for the sidebar stats panel. Recomputed on every
   // arrivalStore notification so the numbers stay in sync with the map.
@@ -61,7 +90,26 @@ function App() {
 
   // Station click — just opens the detail card, does NOT move the map
   const handleSelectStation = (station) => {
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
     setSelectedStation(station);
+  };
+
+  const handleSelectVehicle = (vehicle) => {
+    setSelectedStation(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setSelectedVehicle(vehicle);
+  };
+
+  const handleSelectAlert = (alert) => {
+    if (alert) {
+      setSelectedStation(null);
+      setSelectedVehicle(null);
+      setAlertsOpen(true);
+    }
+    setSelectedAlert(alert);
   };
 
   // "Center Station on Map" button — explicitly flies to station
@@ -166,6 +214,10 @@ function App() {
         activeLineFilter={activeLineFilter}
         hoverLine={hoverLine}
         userLocation={userLocation}
+        mapVisibility={mapVisibility}
+        disruptions={disruptionSnapshot.alerts}
+        onSelectDisruption={handleSelectAlert}
+        onSelectVehicle={handleSelectVehicle}
       />
 
       {/* Collapsible Sidebar */}
@@ -176,6 +228,8 @@ function App() {
         onSelectLine={handleSelectLine}
         onHoverLine={(lineId) => setHoverLine(lineId)}
         trainStats={trainStats}
+        mapVisibility={mapVisibility}
+        onToggleVisibility={(key) => setMapVisibility((previous) => ({ ...previous, [key]: !previous[key] }))}
       />
 
       {/* Top Navigation Bar: Sidebar Toggle Button + Search Bar & Quick Actions */}
@@ -264,7 +318,7 @@ function App() {
 
       <LocateButton
         state={locateState}
-        lifted={Boolean(selectedStation)}
+        lifted={Boolean(selectedStation || selectedVehicle)}
         showingLocation={Boolean(userLocation)}
         onLocate={handleLocate}
         onHide={handleHideLocation}
@@ -279,6 +333,24 @@ function App() {
           onCenter={() => handleCenterStation(selectedStation)}
         />
       )}
+
+      {selectedVehicle && (
+        <VehiclePanel key={selectedVehicle.id} vehicle={selectedVehicle} onClose={() => setSelectedVehicle(null)} />
+      )}
+
+      <ServiceAlerts
+        snapshot={disruptionSnapshot}
+        selectedAlert={selectedAlert}
+        onSelectAlert={handleSelectAlert}
+        onRefresh={() => disruptionStore.refresh()}
+        sidebarOpen={isSidebarOpen}
+        isOpen={alertsOpen}
+        onOpenChange={setAlertsOpen}
+        onOpen={() => {
+          setSelectedStation(null);
+          setSelectedVehicle(null);
+        }}
+      />
     </div>
   );
 }

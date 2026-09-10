@@ -293,6 +293,14 @@ describe('live vehicle reconstruction', () => {
 });
 
 describe('uncertainty and simulation', () => {
+  it('provides previous and upcoming stations for train details', () => {
+    const stephansplatz = stationByName('U1', 'Stephansplatz');
+    const context = trainPositionEngine.getTripContext('U1', stephansplatz.trackDist + 25, true);
+    expect(context.previousStation).toBe('Stephansplatz');
+    expect(context.upcomingStations.length).toBeGreaterThan(0);
+    expect(context.upcomingStations).not.toContain('Stephansplatz');
+  });
+
   it('keeps confidence within the visible design range', () => {
     expect(confidenceFromUncertainty(0)).toBe(1);
     expect(confidenceFromUncertainty(100000)).toBe(MIN_WALKED_CONFIDENCE);

@@ -260,6 +260,27 @@ class TrainPositionEngine {
     return this.lineStations.get(String(lineId)) || [];
   }
 
+  /** Stations immediately behind and ahead of a rendered vehicle. */
+  getTripContext(lineId, trackDistance, isForward = true) {
+    const stations = this.getLineStations(lineId);
+    if (!stations.length || !Number.isFinite(trackDistance)) {
+      return { previousStation: null, upcomingStations: [] };
+    }
+
+    const ordered = isForward ? stations : [...stations].reverse();
+    const passed = ordered.filter((station) => isForward
+      ? station.trackDist <= trackDistance + 5
+      : station.trackDist >= trackDistance - 5);
+    const upcoming = ordered.filter((station) => isForward
+      ? station.trackDist > trackDistance + 5
+      : station.trackDist < trackDistance - 5);
+
+    return {
+      previousStation: passed.at(-1)?.name || null,
+      upcomingStations: upcoming.slice(0, 3).map((station) => station.name),
+    };
+  }
+
   /**
    * Seconds between arriving at one station and arriving at the next, taken
    * from the timetable where it exists. Includes the dwell at the origin.
@@ -841,7 +862,11 @@ class TrainPositionEngine {
       if (!alive.has(id)) this.renderState.delete(id);
     }
 
-    return allVehicles.map(v => this.smoothVehicle(v, now));
+    return allVehicles.map((vehicle) => {
+      const smoothed = this.smoothVehicle(vehicle, now);
+      if (smoothed.isScheduled || !Number.isFinite(smoothed.distanceAlongTrack)) return smoothed;
+      return { ...smoothed, ...this.getTripContext(smoothed.line, smoothed.distanceAlongTrack, smoothed.isForward) };
+    });
   }
 }
 

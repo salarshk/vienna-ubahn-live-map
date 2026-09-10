@@ -356,6 +356,25 @@ const metroLayers = [
     },
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   },
+  {
+    id: 'service-alert-line',
+    type: 'line',
+    source: 'metro-lines',
+    filter: ['==', ['get', 'line'], '__no_active_alert__'],
+    paint: {
+      'line-color': '#ff3b30',
+      'line-opacity': 0.95,
+      'line-width': [
+        'interpolate', ['linear'], ['zoom'],
+        6, 2.4,
+        10, 4.2,
+        14, 7.5,
+        18, 12
+      ],
+      'line-dasharray': [1.2, 1.2],
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+  },
 ];
 
 // Raster fallback, used only when the offline archive is missing. Esri's Gray
@@ -493,6 +512,13 @@ const stationBorderColor = (st) => {
   return lines.length > 0 ? (lineColorMap[lines[0]] || '#aaaaaa') : '#aaaaaa';
 };
 
+const normaliseStationName = (value) => String(value || '')
+  .toLocaleLowerCase('de-AT')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
 // ─── Component ────────────────────────────────────────────────────────────────
 // The zoom a focused Station eases to. Close enough that the expanded node has
 // room beside its neighbours, not so close that the rest of the Line leaves the
@@ -565,10 +591,23 @@ const panelAwarePadding = (map) => {
       };
 };
 
-const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLineFilter, hoverLine, userLocation }) => {
+const MapView = ({
+  theme,
+  selectedStation,
+  flyTarget,
+  onSelectStation,
+  activeLineFilter,
+  hoverLine,
+  userLocation,
+  mapVisibility,
+  disruptions = [],
+  onSelectDisruption,
+  onSelectVehicle,
+}) => {
   const containerRef    = useRef(null);
   const mapRef          = useRef(null);
   const stMarkersRef    = useRef([]);
+  const alertMarkersRef = useRef([]);
   const animFrameRef    = useRef(null);
   // native JS Map of vehicle id → { marker, inner }. The inner element is kept
   // alongside its marker because the animation loop restyles it every frame,
@@ -578,7 +617,11 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
   const themeRef        = useRef(theme);
   const filterRef       = useRef(activeLineFilter);
   const hoverRef        = useRef(null);
+  const visibilityRef   = useRef(mapVisibility);
+  const disruptionsRef  = useRef(disruptions);
   const selectStRef     = useRef(onSelectStation);
+  const selectVehicleRef= useRef(onSelectVehicle);
+  const selectAlertRef  = useRef(onSelectDisruption);
   const trainCountRef   = useRef(null);
   const focusMarkerRef  = useRef(null); // the expanded node for the Station in focus
   const zoomScaleRef    = useRef(1); // mutable scale factor updated on every zoom event
@@ -592,7 +635,11 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
   useEffect(() => { themeRef.current = theme; }, [theme]);
   useEffect(() => { filterRef.current = activeLineFilter; }, [activeLineFilter]);
   useEffect(() => { selectStRef.current = onSelectStation; }, [onSelectStation]);
+  useEffect(() => { selectVehicleRef.current = onSelectVehicle; }, [onSelectVehicle]);
+  useEffect(() => { selectAlertRef.current = onSelectDisruption; }, [onSelectDisruption]);
   useEffect(() => { hoverRef.current = hoverLine; }, [hoverLine]);
+  useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
+  useEffect(() => { disruptionsRef.current = disruptions; }, [disruptions]);
 
   const stopAnimation = () => {
     if (animFrameRef.current) {
@@ -611,6 +658,11 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     stMarkersRef.current.forEach(m => m.remove());
     stMarkersRef.current = [];
     stInnerElemsRef.current = [];
+  };
+
+  const clearAlertMarkers = () => {
+    alertMarkersRef.current.forEach((marker) => marker.remove());
+    alertMarkersRef.current = [];
   };
 
   // Apply zoom-based scale directly to all known marker DOM elements
@@ -690,16 +742,21 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     const isDark = themeRef.current === 'dark';
     const activeFilter = filterRef.current;
     const hovered = hoverRef.current;
+    const visibility = visibilityRef.current || {};
     const seenStops = new Set();
     const scale = zoomScaleRef.current;
 
     const filteredStations = stationFeatures.filter((st) => {
+      const lines = (st.properties.lines || []).map(String);
+      const networkVisible = lines.some((line) =>
+        (line.startsWith('S') && visibility.sbahnLines !== false) ||
+        (!line.startsWith('S') && visibility.ubahnLines !== false)
+      );
+      if (!networkVisible) return false;
       if (hovered) {
-        const lines = st.properties.lines || [];
         return lines.includes(hovered);
       }
       if (Array.isArray(activeFilter) && activeFilter.length > 0) {
-        const lines = st.properties.lines || [];
         return lines.some(l => activeFilter.includes(String(l)));
       }
       return true;
@@ -754,6 +811,56 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     });
   };
 
+  const initAlertMarkers = (map) => {
+    clearAlertMarkers();
+    const visible = visibilityRef.current || {};
+    if (visible.ubahnLines === false) return;
+
+    const stationByName = new Map(stationFeatures.map((station) => [
+      normaliseStationName(station.properties.name), station,
+    ]));
+    const placed = new Set();
+
+    disruptionsRef.current.forEach((alert) => {
+      const wanted = normaliseStationName(alert.station);
+      if (!wanted) return;
+      let station = stationByName.get(wanted);
+      if (!station) {
+        station = stationFeatures.find((candidate) => {
+          const name = normaliseStationName(candidate.properties.name);
+          return wanted.length >= 5 && (name.includes(wanted) || wanted.includes(name));
+        });
+      }
+      if (!station) return;
+
+      const key = `${station.properties.name}|${alert.id}`;
+      if (placed.has(key)) return;
+      placed.add(key);
+
+      const element = document.createElement('div');
+      element.className = 'map-service-alert-marker';
+      element.setAttribute('role', 'button');
+      element.tabIndex = 0;
+      element.setAttribute('aria-label', `Service alert at ${station.properties.name}: ${alert.title}`);
+      element.title = `${alert.title}${alert.status ? ` • ${alert.status}` : ''}`;
+      element.textContent = '!';
+      element.onclick = (event) => {
+        event.stopPropagation();
+        selectAlertRef.current?.(alert);
+      };
+      element.onkeydown = (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        element.onclick(event);
+      };
+
+      const marker = new Marker({ element, anchor: 'center', offset: [8, -8] })
+        .setLngLat(snappedCoordinates(station))
+        .addTo(map);
+      alertMarkersRef.current.push(marker);
+    });
+  };
+
   // ── Initialize vehicle animation loop ──────────────────────────────────────
   const initVehicleLoop = (map) => {
     stopAnimation();
@@ -761,8 +868,10 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
 
     const activeFilter = filterRef.current;
     const initialVehicles = trainPositionEngine.getAllVehicles(Date.now());
-    // Show only live vehicles (hide timetable/simulated vehicles)
-    let visible = initialVehicles;
+    const vehicleIsVisible = (vehicle) => vehicle.isScheduled
+      ? visibilityRef.current?.scheduledTrains !== false
+      : visibilityRef.current?.liveTrains !== false;
+    let visible = initialVehicles.filter(vehicleIsVisible);
     if (Array.isArray(activeFilter) && activeFilter.length > 0) {
       visible = visible.filter(v => activeFilter.includes(String(v.line)));
     }
@@ -770,7 +879,9 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     const createVehicleMarker = (v) => {
       const color = lineColorMap[v.line] || '#ffffff';
       const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'width:28px; height:28px; cursor:default; z-index:1000; overflow:visible;';
+      wrapper.style.cssText = 'width:28px; height:28px; cursor:pointer; z-index:1000; overflow:visible;';
+      wrapper.setAttribute('role', 'button');
+      wrapper.tabIndex = 0;
 
       const inner = document.createElement('div');
       const currentScale = zoomScaleRef.current;
@@ -800,12 +911,24 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
       vehInnerElemsRef.current.push(inner);
 
       wrapper.title = describeVehicle(v);
+      wrapper.setAttribute('aria-label', describeVehicle(v));
+      const select = (event) => {
+        event.stopPropagation();
+        const latest = markerMapRef.current.get(v.id)?.vehicle || v;
+        selectVehicleRef.current?.(latest);
+      };
+      wrapper.onclick = select;
+      wrapper.onkeydown = (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        select(event);
+      };
 
       const marker = new Marker({ element: wrapper, anchor: 'center' })
         .setLngLat(v.coordinates)
         .addTo(map);
 
-      markerMapRef.current.set(v.id, { marker, inner });
+      markerMapRef.current.set(v.id, { marker, inner, vehicle: v });
     };
 
     visible.forEach(createVehicleMarker);
@@ -814,7 +937,7 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
       const now = Date.now();
       const currentVehicles = trainPositionEngine.getAllVehicles(now);
       updateTrainCount(currentVehicles);
-      let currentVisible = currentVehicles;
+      let currentVisible = currentVehicles.filter(vehicleIsVisible);
       if (Array.isArray(filterRef.current) && filterRef.current.length > 0) {
         currentVisible = currentVisible.filter(v => filterRef.current.includes(String(v.line)));
       }
@@ -832,6 +955,8 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
         if (existing) {
           existing.marker.setLngLat(v.coordinates);
           existing.marker.getElement().title = describeVehicle(v);
+          existing.marker.getElement().setAttribute('aria-label', describeVehicle(v));
+          existing.vehicle = v;
           // Confidence moves while the train does — the countdown runs down,
           // syncs land or fail to — so the marker has to follow it rather than
           // keep the opacity it was created with.
@@ -850,19 +975,32 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
   const applyLineFilter = (map, filter) => {
     const apply = () => {
       if (map.getLayer('metro-fill') && map.getLayer('metro-casing')) {
-        let expr = null;
-        if (Array.isArray(filter) && filter.length > 0) {
-          expr = ['any', ...filter.map(f => ['==', ['get', 'line'], f])];
-        } else if (filter && typeof filter === 'string') {
-          expr = ['==', ['get', 'line'], filter];
-        }
+        const visibility = visibilityRef.current || {};
+        const requestedLines = Array.isArray(filter) && filter.length > 0
+          ? new Set(filter.map(String))
+          : typeof filter === 'string' ? new Set([filter]) : null;
+        const visible = lineFeatures
+          .filter((feature) => feature.properties.mode === 'sbahn'
+            ? visibility.sbahnLines !== false
+            : visibility.ubahnLines !== false)
+          .map((feature) => String(feature.properties.line))
+          .filter((line) => !requestedLines || requestedLines.has(line));
+        const expr = visible.length > 0
+          ? ['any', ...visible.map((line) => ['==', ['get', 'line'], line])]
+          : ['==', ['get', 'line'], '__hidden__'];
         map.setFilter('metro-fill', expr);
         map.setFilter('metro-casing', expr);
 
+        if (map.getLayer('service-alert-line')) {
+          const affected = new Set(disruptionsRef.current.flatMap((alert) => alert.lines || []));
+          const alertedVisible = visible.filter((line) => affected.has(line));
+          map.setFilter('service-alert-line', alertedVisible.length > 0
+            ? ['any', ...alertedVisible.map((line) => ['==', ['get', 'line'], line])]
+            : ['==', ['get', 'line'], '__no_active_alert__']);
+        }
+
         // Compute side-by-side offsets when multiple lines are visible.
         // If no filter, reset offsets to 0.
-        const allLines = lineFeatures.map(l => String(l.properties.line));
-        const visible = Array.isArray(filter) && filter.length > 0 ? filter.map(String) : allLines;
         const spacing = (lineRenderConfig && Number.isFinite(lineRenderConfig.offsetSpacing)) ? lineRenderConfig.offsetSpacing : 6; // pixels
         const offsets = {};
         // Group visible lines by an approximate geometry key so identical/shared
@@ -965,6 +1103,7 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
       // live map's markers and re-attach them to the removed one.
       if (mapRef.current !== map) return;
       initStationMarkers(map);
+      initAlertMarkers(map);
       initVehicleLoop(map);
       applyLineFilter(map, filterRef.current);
       arrivalStore.syncNetwork();
@@ -986,6 +1125,7 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
       stopAnimation();
       clearVehicleMarkers();
       clearStationMarkers();
+      clearAlertMarkers();
       trainCount.remove();
       trainCountRef.current = null;
       map.remove();
@@ -1037,6 +1177,24 @@ const MapView = ({ theme, selectedStation, flyTarget, onSelectStation, activeLin
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLineFilter]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    applyLineFilter(map, filterRef.current);
+    initStationMarkers(map);
+    initAlertMarkers(map);
+    initVehicleLoop(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapVisibility]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    applyLineFilter(map, filterRef.current);
+    initAlertMarkers(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disruptions]);
 
   useEffect(() => {
     const map = mapRef.current;

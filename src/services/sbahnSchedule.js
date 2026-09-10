@@ -3,6 +3,7 @@
 // markers interpolate between scheduled station calls and are labelled as
 // timetable estimates everywhere they appear.
 import sbahnData from '../data/sbahn_network.json';
+import { isSbahnScheduleUsable } from './dataFreshness';
 
 const TIMEZONE = sbahnData.schedule.timezone || 'Europe/Vienna';
 const stations = new Map(
@@ -99,6 +100,9 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
     if (!station) continue;
 
     if (serviceSeconds <= call[1] || index === calls.length - 1) {
+      const upcomingStations = calls.slice(index + 1, index + 4)
+        .map((nextCall) => stations.get(nextCall[2])?.properties.name)
+        .filter(Boolean);
       return {
         id: `scheduled-${tripId}-${serviceDate}`,
         line,
@@ -112,7 +116,9 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
         isScheduled: true,
         isSimulated: false,
         status: 'At Platform',
+        previousStation: index > 0 ? stations.get(calls[index - 1][2])?.properties.name : null,
         targetStation: station.properties.name,
+        upcomingStations,
         secondsToTarget: Math.max(0, call[0] - serviceSeconds),
       };
     }
@@ -125,6 +131,9 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
     const progress = Math.max(0, Math.min(1, (serviceSeconds - call[1]) / duration));
     const from = station.geometry.coordinates;
     const to = nextStation.geometry.coordinates;
+    const upcomingStations = calls.slice(index + 1, index + 4)
+      .map((futureCall) => stations.get(futureCall[2])?.properties.name)
+      .filter(Boolean);
     return {
       id: `scheduled-${tripId}-${serviceDate}`,
       line,
@@ -136,7 +145,9 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
       isScheduled: true,
       isSimulated: false,
       status: nextCall[0] - serviceSeconds <= 60 ? 'Approaching' : 'En Route',
+      previousStation: station.properties.name,
       targetStation: nextStation.properties.name,
+      upcomingStations,
       secondsToTarget: Math.max(0, nextCall[0] - serviceSeconds),
     };
   }
@@ -144,6 +155,7 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
 };
 
 export const getScheduledSbahnVehicles = (now = Date.now()) => {
+  if (!isSbahnScheduleUsable(now)) return [];
   const instant = now instanceof Date ? now : new Date(now);
   const serviceDays = [instant, new Date(instant.getTime() - 86400000)]
     .map((date, index) => {
@@ -176,6 +188,7 @@ const resolveStation = (stationProps) => {
 };
 
 export const getScheduledSbahnArrivals = (stationProps, now = Date.now()) => {
+  if (!isSbahnScheduleUsable(now)) return [];
   const station = resolveStation(stationProps);
   if (!station) return [];
   const stationId = station.properties.stop_id;

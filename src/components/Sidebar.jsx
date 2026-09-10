@@ -1,10 +1,20 @@
 import React from 'react';
-import { ChevronLeft, Check } from 'lucide-react';
+import { ChevronLeft, Check, Eye, EyeOff } from 'lucide-react';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
+import { getSbahnFreshness } from '../services/dataFreshness';
 
-const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHoverLine, trainStats = { live: 0, confirmed: 0, scheduled: 0 } }) => {
+const Sidebar = ({
+  isOpen,
+  onToggleSidebar,
+  activeLineFilter,
+  onSelectLine,
+  onHoverLine,
+  trainStats = { live: 0, confirmed: 0, scheduled: 0 },
+  mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true },
+  onToggleVisibility,
+}) => {
   // Combine line features from bundled metro JSON and GTFS-generated data.
   const allFeatures = [
     ...metroData.features,
@@ -20,6 +30,13 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
     seen.add(id);
     lines.push({ properties: { line: id, mode: f.properties?.mode || 'ubahn', color: f.properties && f.properties.color ? f.properties.color : '#888', name: f.properties && f.properties.name ? f.properties.name : `Line ${id}` } });
   }
+  const freshness = getSbahnFreshness();
+  const visibilityControls = [
+    ['ubahnLines', 'U-Bahn lines'],
+    ['sbahnLines', 'S-Bahn lines'],
+    ['liveTrains', 'U-Bahn trains'],
+    ['scheduledTrains', 'Scheduled S-Bahn'],
+  ];
 
   return (
     <>
@@ -60,11 +77,38 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
 
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
+            <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+              Map layers
+            </h2>
+            <div className="layer-control-grid">
+              {visibilityControls.map(([key, label]) => {
+                const visible = mapVisibility[key];
+                return (
+                  <button
+                    key={key}
+                    className="layer-control-button"
+                    aria-pressed={visible}
+                    onClick={() => onToggleVisibility(key)}
+                  >
+                    {visible ? <Eye size={15} /> : <EyeOff size={15} />}
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="marker-legend" aria-label="Train marker legend">
+              <span><i className="legend-marker live" />Live estimate</span>
+              <span><i className="legend-marker scheduled" />Scheduled</span>
+              <span><i className="legend-marker simulated" />Fallback</span>
+            </div>
+          </div>
+
+          <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
                 Lines & Services
               </h2>
-              {activeLineFilter && (
+              {Array.isArray(activeLineFilter) && activeLineFilter.length > 0 && (
                 <button 
                   onClick={() => onSelectLine(null)}
                   style={{ fontSize: '0.75rem', color: '#FFD100', textDecoration: 'underline' }}
@@ -164,6 +208,10 @@ const Sidebar = ({ isOpen, onToggleSidebar, activeLineFilter, onSelectLine, onHo
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>
               <span>📍 {trainStats.confirmed} U-Bahn confirmed · ÖBB S-Bahn</span>
               <span style={{ opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>v{__APP_VERSION__}</span>
+            </div>
+            <div className={`data-freshness ${freshness.status}`}>
+              <span className="data-freshness-dot" />
+              {freshness.message}
             </div>
           </div>
 

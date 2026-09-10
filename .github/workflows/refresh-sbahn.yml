@@ -1,0 +1,46 @@
+name: Refresh annual S-Bahn timetable
+
+on:
+  schedule:
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-sbahn-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Download and rebuild the latest timetable
+        run: npm run build:sbahn
+      - name: Verify the refreshed website
+        run: |
+          npm test
+          npx vite build
+      - name: Publish a changed timetable
+        run: |
+          git show HEAD:src/data/sbahn_network.json | jq 'del(.generatedAt)' > /tmp/sbahn-before.json
+          jq 'del(.generatedAt)' src/data/sbahn_network.json > /tmp/sbahn-after.json
+          if cmp -s /tmp/sbahn-before.json /tmp/sbahn-after.json; then
+            echo "Timetable is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/sbahn_network.json
+          git commit -m "Refresh ÖBB S-Bahn timetable"
+          git push
