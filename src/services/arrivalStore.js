@@ -42,6 +42,12 @@ export const MAJOR_STATIONS = [
   { id: 60200743, name: 'Mitte-Landstraße' },
 ];
 
+// Only these synchronized reference stations may anchor map positions. A
+// station opened in the departure panel is useful to that panel, but mixing an
+// arbitrary fresh prediction into the tracking model makes existing markers
+// jump to a new anchor at click time.
+export const POSITION_SOURCE_IDS = new Set(MAJOR_STATIONS.map((station) => station.id));
+
 // How often a Network Sync sweeps the Major Stations. Long enough to stay well
 // inside the upstream rate budget, short enough that no prediction reaches the
 // 18-minute age-out before being replaced. It lives here rather than with the
@@ -105,6 +111,9 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
           destination,
           directionCode,
           targetTimestamp,
+          plannedTargetTimestamp: Number.isFinite(plannedTimestamp)
+            ? plannedTimestamp
+            : targetTimestamp,
           initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
           isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
           vehicleId: vehicle.id || vehicle.vehicleId || undefined,
@@ -161,7 +170,7 @@ class ArrivalStore {
   hydrateFromSessionStorage() {
     try {
       if (typeof window === 'undefined' || !window.sessionStorage) return;
-      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v3');
+      const raw = sessionStorage.getItem('vienna_ubahn_arrival_memory_v4');
       if (!raw) return;
       const parsed = JSON.parse(raw);
       const now = Date.now();
@@ -185,7 +194,7 @@ class ArrivalStore {
           obj[k] = v;
         }
       }
-      sessionStorage.setItem('vienna_ubahn_arrival_memory_v3', JSON.stringify(obj));
+      sessionStorage.setItem('vienna_ubahn_arrival_memory_v4', JSON.stringify(obj));
     } catch {
       // Ignore storage errors
     }

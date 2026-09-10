@@ -59,7 +59,9 @@ describe('batched live synchronization', () => {
     expect(requestedUrl).toContain('diva=60201320');
     expect(requestedUrl).toContain('diva=60201182');
     expect(updated).toBe(1);
-    expect(arrivalStore.memory.get('60201320').arrivals[0].isLive).toBe(true);
-    expect(arrivalStore.memory.get('60201320').arrivals[0].directionCode).toBe('H');
+    const [arrival] = arrivalStore.memory.get('60201320').arrivals;
+    expect(arrival.isLive).toBe(true);
+    expect(arrival.directionCode).toBe('H');
+    expect(arrival.plannedTargetTimestamp).toBeTypeOf('number');
   });
 });

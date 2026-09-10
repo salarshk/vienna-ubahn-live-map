@@ -14,7 +14,7 @@
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import segmentTimes from '../data/segment_times.json';
-import arrivalStore, { NETWORK_SYNC_INTERVAL_MS } from './arrivalStore';
+import arrivalStore, { NETWORK_SYNC_INTERVAL_MS, POSITION_SOURCE_IDS } from './arrivalStore';
 
 // Haversine distance in meters
 export const haversineDistance = (c1, c2) => {
@@ -69,6 +69,12 @@ const MAX_SECONDS_AHEAD = 1080;
 // A platform must sit close to its line geometry before it participates in the
 // walk. This protects the station order if an upstream geometry ever changes.
 const MAX_STATION_OFFSET_METRES = 250;
+
+// Rendering must remain physically plausible when the upstream prediction is
+// corrected. Vienna U-Bahn trains do not reverse between stations, and 25 m/s
+// (90 km/h) is already above normal service speed, so corrections are eased at
+// or below this ceiling rather than teleporting a marker.
+const MAX_RENDER_SPEED_METRES_PER_SECOND = 25;
 
 // ─── How much to trust a placed train ────────────────────────────────────────
 //
@@ -516,6 +522,7 @@ class TrainPositionEngine {
 
     for (const [, entry] of arrivalStore.memory.entries()) {
       if (!entry || !Array.isArray(entry.arrivals)) continue;
+      if (!POSITION_SOURCE_IDS.has(Number(entry.stationId))) continue;
 
       // When we last heard from the API about this station. Not how old the
       // countdown is — that stays honest on its own — but how long the train
@@ -536,11 +543,15 @@ class TrainPositionEngine {
         // each sighting forward to its destination produces a stable trip slot
         // that can join the same train seen at two different stations.
         const destinationStation = this.findStation(lineId, arrival.destination);
+        // Planned times identify a trip more stably than real-time predictions,
+        // which move whenever the estimated delay changes. Real time still
+        // controls the position; planned time is used only for synthetic IDs.
+        const identityTimestamp = arrival.plannedTargetTimestamp || arrival.targetTimestamp;
         const destinationTimestamp = destinationStation
-          ? arrival.targetTimestamp + this.getSecondsBetweenStations(
+          ? identityTimestamp + this.getSecondsBetweenStations(
             lineId, station, destinationStation
           ) * 1000
-          : arrival.targetTimestamp;
+          : identityTimestamp;
         const key = arrival.vehicleId
           ? `${lineId}-${arrival.vehicleId}`
           : `${lineId}-${arrival.directionCode || 'unknown'}-${arrival.destination}-${Math.round(destinationTimestamp / 60000)}`;
@@ -711,21 +722,23 @@ class TrainPositionEngine {
     if (!vehicle.isLive) return vehicle;
 
     const previous = this.renderState.get(vehicle.id);
-    this.renderState.set(vehicle.id, {
-      trackDist: vehicle.distanceAlongTrack,
-      at: now,
-    });
+    if (!previous) {
+      this.renderState.set(vehicle.id, {
+        trackDist: vehicle.distanceAlongTrack,
+        at: now,
+      });
+      return vehicle;
+    }
 
-    if (!previous) return vehicle;
-
-    const jump = Math.abs(vehicle.distanceAlongTrack - previous.trackDist);
-    // Below this the marker is simply moving; far above it the anchor changed
-    // so much that easing would drag the train visibly along the track.
-    if (jump < 5 || jump > 2000) return vehicle;
-
-    const elapsed = Math.max(0, now - previous.at);
-    const blend = Math.min(1, elapsed / 900);
-    const eased = previous.trackDist + (vehicle.distanceAlongTrack - previous.trackDist) * blend;
+    const sign = vehicle.isForward === false ? -1 : 1;
+    const elapsedSeconds = Math.max(0, (now - previous.at) / 1000);
+    const requestedAdvance = (vehicle.distanceAlongTrack - previous.trackDist) * sign;
+    // Never render an upstream correction as a train physically reversing.
+    // Hold its last position until the corrected estimate catches up.
+    const forwardAdvance = Math.max(0, requestedAdvance);
+    const maxAdvance = MAX_RENDER_SPEED_METRES_PER_SECOND * elapsedSeconds;
+    const appliedAdvance = Math.min(forwardAdvance, maxAdvance);
+    const eased = previous.trackDist + sign * appliedAdvance;
     const { coordinates, bearing } = this.getCoordsAndBearingAtDistance(
       vehicle.line, eased, vehicle.isForward !== false
     );

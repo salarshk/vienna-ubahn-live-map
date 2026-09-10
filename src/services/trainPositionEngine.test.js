@@ -6,13 +6,18 @@ import trainPositionEngine, {
   MIN_POSITION_CONFIDENCE,
   MIN_WALKED_CONFIDENCE,
 } from './trainPositionEngine';
-import arrivalStore, { MAJOR_STATIONS, STRATEGIC_HUBS } from './arrivalStore';
+import arrivalStore, {
+  MAJOR_STATIONS,
+  POSITION_SOURCE_IDS,
+  STRATEGIC_HUBS,
+} from './arrivalStore';
 import paradasApi from '../data/paradas_api.json';
 import segmentTimes from '../data/segment_times.json';
 
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const stationByName = (lineId, name) =>
   trainPositionEngine.getLineStations(lineId).find((station) => station.name === name);
+const sourceIdByName = new Map(MAJOR_STATIONS.map((station) => [station.name, station.id]));
 
 const sighting = ({
   key,
@@ -22,11 +27,13 @@ const sighting = ({
   directionCode,
   vehicleId,
   secondsFromNow,
+  plannedSecondsFromNow = secondsFromNow,
   now,
   fetchedAt = now,
+  stationId = sourceIdByName.get(stationName) || key,
 }) => {
   arrivalStore.memory.set(key, {
-    stationId: key,
+    stationId,
     stationName,
     fetchedAt,
     arrivals: [{
@@ -35,6 +42,7 @@ const sighting = ({
       directionCode,
       vehicleId,
       targetTimestamp: now + secondsFromNow * 1000,
+      plannedTargetTimestamp: now + plannedSecondsFromNow * 1000,
       isLive: true,
     }],
   });
@@ -49,6 +57,7 @@ describe('Vienna network data', () => {
 
   it.each(MAJOR_STATIONS)('network station $name has the intended DIVA id', (station) => {
     expect(stationNameById.get(station.id)).toBe(station.name);
+    expect(POSITION_SOURCE_IDS.has(station.id)).toBe(true);
   });
 
   it('contains exactly the five operating U-Bahn lines', () => {
@@ -158,6 +167,50 @@ describe('live vehicle reconstruction', () => {
     });
     const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
     expect(vehicle.isForward).toBe(false);
+  });
+
+  it('does not let a clicked station re-anchor global train positions', () => {
+    const now = Date.now();
+    sighting({
+      key: 'clicked', stationId: 60209999, stationName: 'Schwedenplatz',
+      directionCode: 'H', secondsFromNow: 120, now,
+    });
+    expect(trainPositionEngine.getLiveVehiclesFromMemory(now)).toEqual([]);
+  });
+
+  it('keeps a synthetic train identity stable when its live delay changes', () => {
+    const now = Date.now();
+    sighting({
+      key: 'a', stationName: 'Stephansplatz', directionCode: 'H',
+      secondsFromNow: 120, plannedSecondsFromNow: 300, now,
+    });
+    const firstId = trainPositionEngine.getLiveVehiclesFromMemory(now)[0].id;
+
+    arrivalStore.memory.clear();
+    sighting({
+      key: 'a', stationName: 'Stephansplatz', directionCode: 'H',
+      secondsFromNow: 240, plannedSecondsFromNow: 300, now,
+    });
+    expect(trainPositionEngine.getLiveVehiclesFromMemory(now)[0].id).toBe(firstId);
+  });
+
+  it('never renders a live train moving backward or teleporting', () => {
+    const now = Date.now();
+    const base = {
+      id: 'live-guard', line: 'U1', isLive: true, isForward: true,
+      distanceAlongTrack: 1000, coordinates: [16.37, 48.2],
+    };
+    trainPositionEngine.smoothVehicle(base, now);
+
+    const backward = trainPositionEngine.smoothVehicle(
+      { ...base, distanceAlongTrack: 800 }, now + 1000
+    );
+    expect(backward.distanceAlongTrack).toBe(1000);
+
+    const jump = trainPositionEngine.smoothVehicle(
+      { ...base, distanceAlongTrack: 5000 }, now + 2000
+    );
+    expect(jump.distanceAlongTrack).toBe(1025);
   });
 
   it('fuses keyless Wiener Linien sightings by their projected terminus time', () => {
