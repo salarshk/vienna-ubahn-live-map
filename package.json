@@ -12,6 +12,7 @@
     "build:vienna-data": "node scripts/build_vienna_data.cjs",
     "build:sbahn": "node scripts/build_sbahn_data.cjs",
     "ml:collect": "node scripts/ml/collect_ubahn_delays.mjs",
+    "ml:incidents": "node scripts/ml/sync_ubahn_incidents.mjs",
     "ml:train": "node scripts/ml/train_delay_model.mjs",
     "lint": "oxlint",
     "preview": "vite preview",

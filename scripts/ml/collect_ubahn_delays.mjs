@@ -2,6 +2,7 @@
 
 import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { incidentFeaturesAt, normaliseLiveTrafficInfos } from './incident_features.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const STATIONS_PATH = resolve(ROOT, 'src/data/paradas_api.json');
@@ -75,7 +76,32 @@ const fetchBatch = async (stations) => {
   return [];
 };
 
-const rowsFromMonitors = (monitors, observedAt) => monitors.flatMap((monitor) => {
+const fetchCurrentIncidents = async (observedAt) => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(`${API_BASE}/trafficInfoList`, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'vienna-ubahn-delay-research/1.0 (+https://github.com/salarshk/vienna-ubahn-live-map)',
+        },
+        signal: AbortSignal.timeout(30000),
+      });
+      if (response.ok) return normaliseLiveTrafficInfos(await response.json(), observedAt);
+      const retryable = response.status === 403 || response.status === 429 || response.status >= 500;
+      if (!retryable || attempt === 2) throw new Error(`HTTP ${response.status}`);
+      await response.body?.cancel();
+    } catch (error) {
+      if (attempt === 2) {
+        console.warn(`Current incident context unavailable: ${error.message}`);
+        return [];
+      }
+    }
+    await sleep(5000 * (attempt + 1));
+  }
+  return [];
+};
+
+const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((monitor) => {
   const stop = monitor?.locationStop?.properties || {};
   const stationId = Number(stop.name);
   const stationName = String(stop.title || '').replace(/\s+U$/, '') || String(stationId);
@@ -89,6 +115,7 @@ const rowsFromMonitors = (monitors, observedAt) => monitors.flatMap((monitor) =>
       if (!Number.isFinite(plannedMs) || !Number.isFinite(realMs)) return [];
       const vehicle = departure.vehicle || {};
       const direction = String(vehicle.direction || line.direction || '').toUpperCase();
+      const incidentContext = incidentFeaturesAt(incidents, lineId, observedAt);
       const row = {
         schemaVersion: 1,
         observedAt,
@@ -106,6 +133,7 @@ const rowsFromMonitors = (monitors, observedAt) => monitors.flatMap((monitor) =>
         realtimeSupported: line.realtimeSupported !== false,
         trafficJam: Boolean(vehicle.trafficjam ?? line.trafficjam),
         barrierFree: vehicle.barrierFree ?? line.barrierFree ?? null,
+        ...incidentContext,
       };
       row.eventKey = eventKey(row);
       // We need an early feature observation and a near-departure label. Rows
@@ -122,13 +150,14 @@ const stations = JSON.parse(await readFile(STATIONS_PATH, 'utf8'))
   .filter((station, index, all) => all.findIndex((candidate) => candidate.id === station.id) === index);
 
 const observedAt = Date.now();
+const currentIncidents = await fetchCurrentIncidents(observedAt);
 const observationDate = new Date(observedAt).toISOString().slice(0, 10);
 const outputPath = resolve(OUTPUT_DIR, `${observationDate}.jsonl`);
 const collectedRows = [];
 for (let index = 0; index < stations.length; index += BATCH_SIZE) {
   const batch = stations.slice(index, index + BATCH_SIZE);
   const monitors = await fetchBatch(batch);
-  collectedRows.push(...rowsFromMonitors(monitors, observedAt));
+  collectedRows.push(...rowsFromMonitors(monitors, observedAt, currentIncidents));
   if (index + BATCH_SIZE < stations.length) await sleep(1100);
 }
 
@@ -153,6 +182,7 @@ console.log(JSON.stringify({
   stationsRequested: stations.length,
   rowsCollected: collectedRows.length,
   liveRows,
+  activeUbahnIncidentRecords: currentIncidents.length,
   totalRowsRetained: deduplicated.length,
   output: outputPath,
 }, null, 2));

@@ -10,7 +10,7 @@ import {
 } from '../services/transitModels';
 import OnboardPilot from './OnboardPilot';
 import arrivalStore from '../services/arrivalStore';
-import delayModelStore, { predictFinalDelay } from '../services/delayModel';
+import delayModelStore, { incidentContextForLine, predictFinalDelay } from '../services/delayModel';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -38,15 +38,17 @@ const RailIntelligence = ({
   });
   const delayMetrics = delaySnapshot.metrics;
   const delayRequirements = delayMetrics?.requirements || {};
+  const preliminaryRequirements = delayRequirements.preliminary || { minimumDays: 2, minimumExamples: 150 };
   const collectionProgress = Math.min(100, Math.round(100 * Math.min(
-    (delayMetrics?.dataDays || 0) / (delayRequirements.minimumDays || 7),
-    (delayMetrics?.labelledJourneyCount || 0) / (delayRequirements.minimumExamples || 500),
+    (delayMetrics?.dataDays || 0) / preliminaryRequirements.minimumDays,
+    (delayMetrics?.labelledJourneyCount || 0) / preliminaryRequirements.minimumExamples,
   )));
   const delayPredictions = delaySnapshot.status === 'ready'
     ? LINES.map((line) => {
+      const incidentContext = incidentContextForLine(disruptions, line, now);
       const predictions = arrivalStore.getNetworkArrivals(now)
         .filter((arrival) => arrival.isLive && arrival.line === line && arrival.seconds >= 240 && arrival.seconds <= 900)
-        .map((arrival) => predictFinalDelay(delaySnapshot.model, arrival, now))
+        .map((arrival) => predictFinalDelay(delaySnapshot.model, { ...arrival, ...incidentContext }, now))
         .filter(Number.isFinite);
       return predictions.length ? { line, minutes: Math.max(...predictions) } : null;
     }).filter(Boolean)
@@ -96,7 +98,9 @@ const RailIntelligence = ({
           <div className="intelligence-section-title">
             <Activity size={14} /><strong>U-Bahn delay model</strong>
             <em className={delaySnapshot.status === 'ready' ? 'model-ready' : ''}>
-              {delaySnapshot.status === 'ready' ? 'Validated' : delaySnapshot.status === 'error' ? 'Unavailable' : 'Collecting'}
+              {delaySnapshot.status === 'ready'
+                ? delayMetrics?.validationStage === 'validated' ? 'Validated' : 'Preliminary'
+                : delaySnapshot.status === 'error' ? 'Unavailable' : 'Collecting'}
             </em>
           </div>
           {delaySnapshot.status === 'ready' ? <>
@@ -118,7 +122,7 @@ const RailIntelligence = ({
                 </span>
               ))}
             </div>}
-            <p className="intelligence-note">Scored on the newest 20% of complete calendar days, kept outside training. “Delay accuracy” classifies delays of 3+ minutes.</p>
+            <p className="intelligence-note">Scored on the newest 20% of complete calendar days, kept outside training. “Delay accuracy” classifies delays of 3+ minutes. {delayMetrics.promotion}</p>
           </> : delaySnapshot.status === 'error' ? (
             <div className="model-collection-copy">The published model report could not be loaded.</div>
           ) : <>
@@ -126,10 +130,13 @@ const RailIntelligence = ({
             <div className="model-collection-stats">
               <strong>{delayMetrics?.observationCount || 0}</strong><span>observations</span>
               <strong>{delayMetrics?.labelledJourneyCount || 0}</strong><span>labelled journeys</span>
-              <strong>{delayMetrics?.dataDays || 0}/{delayRequirements.minimumDays || 7}</strong><span>days</span>
+              <strong>{delayMetrics?.dataDays || 0}/{preliminaryRequirements.minimumDays}</strong><span>days to preliminary</span>
             </div>
-            <p className="intelligence-note">No accuracy is shown yet. A score is published only after at least {delayRequirements.minimumDays || 7} days and {delayRequirements.minimumExamples || 500} journeys, using later journeys as an untouched test set.</p>
+            <p className="intelligence-note">No accuracy is shown yet. A preliminary score starts after at least {preliminaryRequirements.minimumDays} days, {preliminaryRequirements.minimumCoverageHours || 36} hours of coverage and {preliminaryRequirements.minimumExamples} journeys. It is automatically promoted after {delayRequirements.validated?.minimumDays || 7} days.</p>
           </>}
+          {delayMetrics?.incidentContext?.archiveImported && (
+            <p className="intelligence-note">Incident context includes {delayMetrics.incidentContext.archivedUbahnEpisodes.toLocaleString('en-GB')} official historical U-Bahn episodes plus current service messages.</p>
+          )}
           <p className="model-label-caveat">Target: Wiener Linien’s final reported <code>timeReal − timePlanned</code>, not independent GPS ground truth.</p>
         </section>
 

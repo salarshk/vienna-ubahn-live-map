@@ -32,12 +32,15 @@ are always drawn hollow and labelled as scheduled estimates.
 - Station departure panels with live countdowns
 - Full-screen departure board at `?mode=dashboard`
 - Automated U-Bahn delay-data collection with chronological holdout evaluation
+- Official historical incident import and live disruption context as model features
 - Public MAE, RMSE, R², within-one-minute accuracy and 3+ minute delay metrics
 - Shared React codebase for the web and a Capacitor iOS shell
 
-The delay model does not publish a score until it has at least seven days of
-observations and a sufficiently large untouched test period. Its methodology is
-documented in [`docs/ml-delay-model.md`](docs/ml-delay-model.md).
+The delay model can publish a clearly marked preliminary score after at least
+36 hours spanning two calendar days and a sufficiently large untouched test
+period. It is automatically promoted to validated status only after the
+seven-day safeguards are met. Its methodology is documented in
+[`docs/ml-delay-model.md`](docs/ml-delay-model.md).
 
 ## Run locally
 
@@ -87,6 +90,7 @@ withdraws S-Bahn movements rather than presenting stale scheduled positions.
 
 - Static station sequences, coordinates and identifiers: [Wiener Linien Open Data](https://www.wienerlinien.at/open-data)
 - Live departures: [Wiener Linien real-time monitor API](https://www.wienerlinien.at/ogd_realtime/doku/ogd/wienerlinien-echtzeitdaten-dokumentation.pdf)
+- Historical disruptions: [Mobilitätsdaten Österreich – Wiener Linien incident history](https://www.mobilitaetsdaten.gv.at/daten/daten-zu-versp%C3%A4tungen-und-ausf%C3%A4llen-im-linienverkehr)
 - S-Bahn routes and timetable: [ÖBB GTFS Fahrplan](https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~)
 - Data attribution: Datenquelle Stadt Wien – <https://data.wien.gv.at>
 - Basemap: OpenStreetMap/Esri in a fresh clone

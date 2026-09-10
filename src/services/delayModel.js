@@ -3,6 +3,23 @@ const BASE_URL = import.meta.env.BASE_URL || '/';
 const REPORT_BASE = `${BASE_URL}ml`.replace(/\/$/, '');
 
 const clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
+const DELAY_TERMS = /verspät|verkehrsbedingt|unregelmäßig|signalstörung|fahrzeugstörung|betriebsstörung|polizeieinsatz|kein betrieb|eingestellt|kurzführung/i;
+
+export const incidentContextForLine = (disruptions, line, now = Date.now()) => {
+  const active = (Array.isArray(disruptions) ? disruptions : []).filter((incident) => {
+    if (!incident?.lines?.includes(line)) return false;
+    const startsAt = Date.parse(incident.startsAt || '');
+    const endsAt = Date.parse(incident.endsAt || '');
+    return (!Number.isFinite(startsAt) || startsAt <= now) && (!Number.isFinite(endsAt) || endsAt >= now);
+  });
+  return {
+    activeIncidentCount: active.length,
+    incidentPriority: active.reduce((highest, incident) => Math.max(highest, Number(incident.priority) || 0), 0),
+    delayRelatedIncident: active.some((incident) => DELAY_TERMS.test([
+      incident.title, incident.description, incident.reason,
+    ].filter(Boolean).join(' '))),
+  };
+};
 
 export const featureVector = (arrival, now = Date.now()) => {
   const plannedTimestamp = Number(arrival?.plannedTargetTimestamp);
@@ -21,6 +38,9 @@ export const featureVector = (arrival, now = Date.now()) => {
     Math.cos(2 * Math.PI * weekday / 7),
     arrival.trafficJam ? 1 : 0,
     arrival.directionCode === 'H' ? 1 : 0,
+    clamp(Number(arrival.activeIncidentCount) || 0, 0, 10),
+    clamp(Number(arrival.incidentPriority) || 0, 0, 10),
+    arrival.delayRelatedIncident ? 1 : 0,
     ...LINES.map((line) => arrival.line === line ? 1 : 0),
   ];
 };

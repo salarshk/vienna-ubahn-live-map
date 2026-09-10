@@ -47,3 +47,4 @@ public/basemap/
 # The compact trained model and its public metrics are committed separately.
 data/ml/observations/
 data/ml/observations.jsonl
+data/ml/ubahn-incidents.json

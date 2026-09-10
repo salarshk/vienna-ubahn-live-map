@@ -43,10 +43,13 @@ jobs:
           run-id: ${{ steps.previous.outputs.run_id }}
           github-token: ${{ github.token }}
 
+      - name: Import official historical U-Bahn incidents
+        run: node scripts/ml/sync_ubahn_incidents.mjs
+
       - name: Collect one Wiener Linien snapshot
         run: node scripts/ml/collect_ubahn_delays.mjs
 
-      - name: Train with a chronological holdout when ready
+      - name: Train preliminary or validated model with a chronological holdout
         env:
           DELAY_MODEL_PATH: data/ml/candidate-model.json
           DELAY_METRICS_PATH: data/ml/candidate-metrics.json

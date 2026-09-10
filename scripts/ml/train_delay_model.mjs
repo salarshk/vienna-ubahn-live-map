@@ -2,14 +2,28 @@
 
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { incidentFeaturesAt } from './incident_features.mjs';
+import { trainingStageFor } from './training_policy.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const INPUT_DIR = resolve(ROOT, process.env.DELAY_OBSERVATIONS_DIR || 'data/ml/observations');
 const MODEL_PATH = resolve(ROOT, process.env.DELAY_MODEL_PATH || 'public/ml/delay-model.json');
 const METRICS_PATH = resolve(ROOT, process.env.DELAY_METRICS_PATH || 'public/ml/delay-metrics.json');
-const MIN_DAYS = Number(process.env.DELAY_MIN_DAYS || 7);
-const MIN_EXAMPLES = Number(process.env.DELAY_MIN_EXAMPLES || 500);
-const MIN_TEST_EXAMPLES = Number(process.env.DELAY_MIN_TEST_EXAMPLES || 100);
+const INCIDENTS_PATH = resolve(ROOT, process.env.DELAY_INCIDENTS_PATH || 'data/ml/ubahn-incidents.json');
+const REQUIREMENTS = {
+  preliminary: {
+    minimumDays: Number(process.env.DELAY_PRELIMINARY_MIN_DAYS || 2),
+    minimumCoverageHours: Number(process.env.DELAY_PRELIMINARY_MIN_COVERAGE_HOURS || 36),
+    minimumExamples: Number(process.env.DELAY_PRELIMINARY_MIN_EXAMPLES || 150),
+    minimumTestExamples: Number(process.env.DELAY_PRELIMINARY_MIN_TEST_EXAMPLES || 30),
+  },
+  validated: {
+    minimumDays: Number(process.env.DELAY_MIN_DAYS || 7),
+    minimumCoverageHours: Number(process.env.DELAY_MIN_COVERAGE_HOURS || 144),
+    minimumExamples: Number(process.env.DELAY_MIN_EXAMPLES || 500),
+    minimumTestExamples: Number(process.env.DELAY_MIN_TEST_EXAMPLES || 100),
+  },
+};
 const DELAY_THRESHOLD_MINUTES = 3;
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 
@@ -23,6 +37,15 @@ const readRows = async () => {
     return texts.flatMap((text) => text.split('\n').filter(Boolean).map((line) => JSON.parse(line)));
   } catch (error) {
     if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+};
+
+const readIncidentArchive = async () => {
+  try {
+    return JSON.parse(await readFile(INCIDENTS_PATH, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
     throw error;
   }
 };
@@ -62,6 +85,7 @@ const makeExamples = (rows) => {
 const featureNames = [
   'intercept', 'currentDelayMinutes', 'leadMinutes', 'hourSin', 'hourCos',
   'weekdaySin', 'weekdayCos', 'trafficJam', 'directionH',
+  'activeIncidentCount', 'incidentPriority', 'delayRelatedIncident',
   ...LINES.map((line) => `line_${line}`),
 ];
 
@@ -79,11 +103,14 @@ const rawFeatures = (example) => {
     Math.cos(2 * Math.PI * weekday / 7),
     example.trafficJam ? 1 : 0,
     example.direction === 'H' ? 1 : 0,
+    clamp(Number(example.activeIncidentCount) || 0, 0, 10),
+    clamp(Number(example.incidentPriority) || 0, 0, 10),
+    example.delayRelatedIncident ? 1 : 0,
     ...LINES.map((line) => example.line === line ? 1 : 0),
   ];
 };
 
-const standardisedIndices = new Set([1, 2]);
+const standardisedIndices = new Set([1, 2, 9, 10]);
 
 const calculateScaling = (examples) => {
   const vectors = examples.map(rawFeatures);
@@ -183,13 +210,23 @@ const metricsFor = (actual, predicted) => {
   };
 };
 
-const rows = await readRows();
+const incidentArchive = await readIncidentArchive();
+const rawRows = await readRows();
+const rows = rawRows.map((row) => {
+  if (Number.isFinite(Number(row.activeIncidentCount))) return row;
+  return {
+    ...row,
+    ...incidentFeaturesAt(incidentArchive?.incidents, row.line, Number(row.observedAt)),
+  };
+});
 const examples = makeExamples(rows);
 const uniqueDates = [...new Set(rows.map((row) => new Date(row.observedAt).toISOString().slice(0, 10)))].sort();
 const firstObservationMs = rows.reduce((earliest, row) => Math.min(earliest, row.observedAt), Infinity);
 const lastObservationMs = rows.reduce((latest, row) => Math.max(latest, row.observedAt), -Infinity);
 const firstObservation = Number.isFinite(firstObservationMs) ? new Date(firstObservationMs).toISOString() : null;
 const lastObservation = Number.isFinite(lastObservationMs) ? new Date(lastObservationMs).toISOString() : null;
+const coverageHours = Number.isFinite(firstObservationMs) && Number.isFinite(lastObservationMs)
+  ? round((lastObservationMs - firstObservationMs) / 3600000, 1) : 0;
 const exampleDates = [...new Set(examples.map((example) => (
   new Date(example.plannedTimestamp).toISOString().slice(0, 10)
 )))].sort();
@@ -201,6 +238,12 @@ const candidateTraining = examples.filter((example) => !testDates.has(
 const candidateTest = examples.filter((example) => testDates.has(
   new Date(example.plannedTimestamp).toISOString().slice(0, 10)
 ));
+const validationStage = trainingStageFor({
+  dataDays: uniqueDates.length,
+  coverageHours,
+  examples: examples.length,
+  testExamples: candidateTest.length,
+}, REQUIREMENTS);
 
 const common = {
   schemaVersion: 1,
@@ -208,19 +251,31 @@ const common = {
   observationCount: rows.length,
   labelledJourneyCount: examples.length,
   dataDays: uniqueDates.length,
+  coverageHours,
   firstObservation,
   lastObservation,
-  requirements: { minimumDays: MIN_DAYS, minimumExamples: MIN_EXAMPLES, minimumTestExamples: MIN_TEST_EXAMPLES },
+  requirements: {
+    ...REQUIREMENTS.validated,
+    preliminary: REQUIREMENTS.preliminary,
+    validated: REQUIREMENTS.validated,
+  },
+  incidentContext: {
+    source: incidentArchive?.sourceCatalogUrl || incidentArchive?.sourceUrl || 'Live Wiener Linien traffic information only',
+    archiveImported: Boolean(incidentArchive),
+    archivedUbahnEpisodes: incidentArchive?.ubahnEpisodeCount || 0,
+    sourceExportDate: incidentArchive?.sourceExportDate || null,
+    features: ['active incident count', 'highest incident priority', 'delay-related incident flag'],
+  },
 };
 
 let model;
 let metrics;
-if (uniqueDates.length < MIN_DAYS || examples.length < MIN_EXAMPLES || candidateTest.length < MIN_TEST_EXAMPLES) {
+if (validationStage === 'collecting') {
   model = { ...common, status: 'collecting', trainedAt: null };
   metrics = {
     ...common,
     status: 'collecting',
-    message: `Collecting at least ${MIN_DAYS} days and ${MIN_EXAMPLES} labelled journeys before publishing a score.`,
+    message: `Collecting at least ${REQUIREMENTS.preliminary.minimumCoverageHours} hours across ${REQUIREMENTS.preliminary.minimumDays} days and ${REQUIREMENTS.preliminary.minimumExamples} labelled journeys before publishing a preliminary score.`,
     leakageControl: 'One early observation per journey; later near-departure observation becomes its label.',
   };
 } else {
@@ -239,6 +294,7 @@ if (uniqueDates.length < MIN_DAYS || examples.length < MIN_EXAMPLES || candidate
   model = {
     ...common,
     status: 'ready',
+    validationStage,
     algorithm: 'ridge-regression',
     trainedAt,
     deployed,
@@ -251,6 +307,7 @@ if (uniqueDates.length < MIN_DAYS || examples.length < MIN_EXAMPLES || candidate
   metrics = {
     ...common,
     status: 'ready',
+    validationStage,
     trainedAt,
     algorithm: 'Ridge regression',
     split: {
@@ -267,6 +324,9 @@ if (uniqueDates.length < MIN_DAYS || examples.length < MIN_EXAMPLES || candidate
     },
     delayClassificationThresholdMinutes: DELAY_THRESHOLD_MINUTES,
     labelCaveat: 'The target is Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.',
+    promotion: validationStage === 'validated'
+      ? 'Validated automatically after meeting the seven-day safeguards.'
+      : 'Preliminary result; it will be replaced automatically after meeting the seven-day safeguards.',
   };
 }
 
