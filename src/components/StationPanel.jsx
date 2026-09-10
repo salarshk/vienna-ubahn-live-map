@@ -6,12 +6,13 @@
 // tablet that is where a thumb rests; bottom in portrait, because on a phone it
 // is the only place a thumb reaches at all.
 import React, { useEffect, useState } from 'react';
-import { X, Radio, Database, Navigation } from 'lucide-react';
+import { X, Radio, Database, Navigation, Timer } from 'lucide-react';
 import arrivalStore from '../services/arrivalStore';
 import { getStationFocus } from '../services/stationFocus';
 import { countdownHeat, countdownLabel } from '../utils/countdownHeat';
 import { lineColor } from '../utils/lineColor';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
+import { estimateLeaveNow } from '../services/transitModels';
 
 // Landscape docks the panel right, portrait docks it bottom. Measured rather
 // than read from an orientation media query, because a narrow landscape window
@@ -32,7 +33,7 @@ const useIsLandscape = () => {
   return landscape;
 };
 
-const StationPanel = ({ station, theme, onClose, onCenter }) => {
+const StationPanel = ({ station, theme, userLocation, onClose, onCenter }) => {
   const [now, setNow] = useState(Date.now());
   const landscape = useIsLandscape();
 
@@ -60,6 +61,9 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
   if (!station) return null;
 
   const focus = getStationFocus(station.properties, now);
+  const leaveNow = estimateLeaveNow(station.properties, userLocation, now);
+  const bestDeparture = leaveNow?.options?.find((option) => option.chance >= 45)
+    || leaveNow?.options?.[0];
   const scheduledOnly = focus.hasScheduled && !focus.hasRealtime;
   const unheardLabel = focus.secondsUnheard === null
     ? 'never fetched'
@@ -189,6 +193,18 @@ const StationPanel = ({ station, theme, onClose, onCenter }) => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {userLocation?.status === 'located' && leaveNow && (
+        <div className="leave-now-card">
+          <Timer size={15} />
+          <div>
+            <strong>{bestDeparture ? `${bestDeparture.chance}% chance · ${bestDeparture.advice}` : 'Calculating leave-now advice'}</strong>
+            <span>{bestDeparture
+              ? `${bestDeparture.line} towards ${bestDeparture.destination} · about ${Math.ceil(leaveNow.walkingSeconds / 60)} min walk`
+              : 'Waiting for a live departure prediction.'}</span>
+          </div>
         </div>
       )}
 

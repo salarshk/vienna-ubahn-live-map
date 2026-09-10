@@ -262,9 +262,11 @@ class NetworkIntelligenceStore {
   }
 
   getSnapshot() {
+    const generatedAt = Date.now();
     const first = this.snapshots[0]?.at || null;
     const last = this.snapshots.at(-1)?.at || null;
     return {
+      generatedAt,
       issues: analyseHeadways(),
       replay: { first, last, samples: this.snapshots.length },
       reliability: this.getReliabilityByLine(),

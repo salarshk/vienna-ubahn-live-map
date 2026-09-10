@@ -51,6 +51,7 @@ function App() {
     liveTrains: true,
     scheduledTrains: true,
     confidenceRanges: true,
+    reliabilityAtlas: false,
   });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
 
@@ -131,6 +132,8 @@ function App() {
       setSelectedStation(null);
       setSelectedVehicle(null);
       setAlertsOpen(true);
+      setIntelligenceOpen(false);
+      setReplayOffset(0);
     }
     setSelectedAlert(alert);
   };
@@ -222,6 +225,11 @@ function App() {
     setIntelligenceOpen((open) => !open);
   };
 
+  const closeIntelligence = () => {
+    setIntelligenceOpen(false);
+    setReplayOffset(0);
+  };
+
   // Back and forward have to land on the mode the URL names, or a bookmarked
   // dashboard stops being a reliable place to return to.
   useEffect(() => {
@@ -254,6 +262,7 @@ function App() {
         onSelectDisruption={handleSelectAlert}
         onSelectVehicle={handleSelectVehicle}
         replaySnapshot={replaySnapshot}
+        reliabilityScores={intelligenceSnapshot.reliability}
       />
 
       {/* Collapsible Sidebar */}
@@ -365,6 +374,12 @@ function App() {
         </button>
       )}
 
+      {replaySnapshot && !intelligenceOpen && (
+        <button className="replay-active-banner glass-panel" onClick={() => setReplayOffset(0)}>
+          Replaying {new Date(replaySnapshot.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · return live
+        </button>
+      )}
+
       <LocateButton
         state={locateState}
         lifted={Boolean(selectedStation || selectedVehicle)}
@@ -378,6 +393,7 @@ function App() {
         <StationPanel
           station={selectedStation}
           theme={theme}
+          userLocation={userLocation}
           onClose={() => setSelectedStation(null)}
           onCenter={() => handleCenterStation(selectedStation)}
         />
@@ -390,10 +406,16 @@ function App() {
       {intelligenceOpen && (
         <RailIntelligence
           snapshot={intelligenceSnapshot}
+          disruptions={disruptionSnapshot.alerts}
           replayOffset={replayOffset}
           replaySnapshot={replaySnapshot}
           onReplayChange={setReplayOffset}
-          onClose={() => setIntelligenceOpen(false)}
+          atlasVisible={mapVisibility.reliabilityAtlas}
+          onToggleAtlas={() => setMapVisibility((previous) => ({
+            ...previous,
+            reliabilityAtlas: !previous.reliabilityAtlas,
+          }))}
+          onClose={closeIntelligence}
         />
       )}
 
@@ -408,6 +430,8 @@ function App() {
         onOpen={() => {
           setSelectedStation(null);
           setSelectedVehicle(null);
+          setIntelligenceOpen(false);
+          setReplayOffset(0);
         }}
       />
     </div>

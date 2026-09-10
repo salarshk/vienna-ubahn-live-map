@@ -370,6 +370,18 @@ const metroLayers = [
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   },
   {
+    id: 'reliability-atlas',
+    type: 'line',
+    source: 'reliability-atlas',
+    paint: {
+      'line-color': ['interpolate', ['linear'], ['get', 'score'], 0, '#ff3b30', 70, '#ffb74d', 95, '#4caf50'],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 6, 13, 11, 17, 17],
+      'line-opacity': 0.5,
+      'line-blur': 3,
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+  },
+  {
     id: 'position-confidence-centre',
     type: 'line',
     source: 'position-confidence',
@@ -414,6 +426,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     [tileSourceId]: { type: 'raster', tiles, tileSize: 256, attribution: TILE_ATTRIBUTION, maxzoom: 16 },
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
+    'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
   },
   layers: [
     { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
@@ -440,6 +453,7 @@ const buildVectorStyle = (flavour) => ({
     },
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
+    'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
@@ -631,6 +645,7 @@ const MapView = ({
   onSelectDisruption,
   onSelectVehicle,
   replaySnapshot = null,
+  reliabilityScores = [],
 }) => {
   const containerRef    = useRef(null);
   const mapRef          = useRef(null);
@@ -647,6 +662,7 @@ const MapView = ({
   const hoverRef        = useRef(null);
   const visibilityRef   = useRef(mapVisibility);
   const replayRef       = useRef(replaySnapshot);
+  const reliabilityRef  = useRef(reliabilityScores);
   const disruptionsRef  = useRef(disruptions);
   const selectStRef     = useRef(onSelectStation);
   const selectVehicleRef= useRef(onSelectVehicle);
@@ -671,6 +687,31 @@ const MapView = ({
   useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
   useEffect(() => { replayRef.current = replaySnapshot; }, [replaySnapshot]);
   useEffect(() => { disruptionsRef.current = disruptions; }, [disruptions]);
+
+  const updateReliabilityAtlas = (map) => {
+    const source = map?.getSource('reliability-atlas');
+    if (!source || typeof source.setData !== 'function') return;
+    const scoreByLine = new Map((reliabilityRef.current || [])
+      .filter((item) => item.observations >= 3 && Number.isFinite(item.score))
+      .map((item) => [String(item.line), item.score]));
+    const features = visibilityRef.current?.reliabilityAtlas ? lineFeatures
+      .filter((feature) => scoreByLine.has(String(feature.properties.line)))
+      .map((feature) => ({
+        ...feature,
+        properties: {
+          ...feature.properties,
+          score: scoreByLine.get(String(feature.properties.line)),
+        },
+      })) : [];
+    source.setData({ type: 'FeatureCollection', features });
+  };
+
+  useEffect(() => {
+    reliabilityRef.current = reliabilityScores;
+    const map = mapRef.current;
+    if (map?.isStyleLoaded()) updateReliabilityAtlas(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reliabilityScores]);
 
   const stopAnimation = () => {
     if (animFrameRef.current) {
@@ -1170,6 +1211,7 @@ const MapView = ({
       initAlertMarkers(map);
       initVehicleLoop(map);
       applyLineFilter(map, filterRef.current);
+      updateReliabilityAtlas(map);
       arrivalStore.syncNetwork();
     });
 
@@ -1249,6 +1291,7 @@ const MapView = ({
     initStationMarkers(map);
     initAlertMarkers(map);
     initVehicleLoop(map);
+    updateReliabilityAtlas(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapVisibility]);
 
