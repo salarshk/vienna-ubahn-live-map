@@ -21,6 +21,18 @@ positions and the browser's short history.
     timing from the position inferred along the track.
 12. A local ten-minute official-delay archive and historical replay, distinct
     from the shorter inferred-position replay.
+13. Passenger reports for crowding, blocked doors, incidents, accessibility and
+    unshown delays. They are anonymous, browser-local and automatically expire.
+14. A privacy-preserving occupancy proxy that combines service patterns, time of
+    day, inferred vehicles and optional reports; it is not passenger counting.
+15. Explainable delay-cause classification with an evidence source and confidence.
+16. Model monitoring with a safe automatic rollback to the live estimate when a
+    candidate is stale, invalid, too inaccurate or worse than the baseline.
+17. A line-by-line Operations view showing attention status, occupancy proxy,
+    reliability, reports, causes and a human-review action cue.
+18. S-Bahn live-status and exact-position adapters. Configure
+    `VITE_OEBB_REALTIME_URL` and `VITE_OEBB_POSITION_URL` only for an authorized
+    feed; otherwise the UI stays on the published timetable/inferred position.
 
 The estimates intentionally remain advisory. Public Wiener Linien data does
 not expose signalling state, track occupation, passenger counts or GPS ground

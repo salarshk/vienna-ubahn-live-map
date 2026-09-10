@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, GitBranch, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Accessibility, Activity, AlertTriangle, GitBranch, MapPin, Radio, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import { getSbahnFreshness } from '../services/dataFreshness';
 import {
@@ -8,11 +8,21 @@ import {
   buildRouteRisk, buildTransferHealth, simulateNetworkScenario,
 } from '../services/advancedIntelligence';
 import { LINES } from '../services/transitModels';
+import { addReport, getReports, REPORT_CATEGORIES, subscribe as subscribeReports, summariseReports } from '../services/communityReports';
+import { estimateNetworkOccupancy } from '../services/occupancyEstimation';
+import { classifyDelayCauses } from '../services/delayCause';
+import getSbahnRealtimeSnapshot from '../services/sbahnRealtime';
+import getExactPositionSnapshot from '../services/exactPositionFeed';
 
-const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, accessibility, reliability, vehicles, entries }) => {
+const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, accessibility, reliability, vehicles, entries, modelHealth }) => {
   const [scenarioLine, setScenarioLine] = useState('U1');
   const [scenarioMinutes, setScenarioMinutes] = useState(15);
   const [causeLine, setCauseLine] = useState('U1');
+  const [reports, setReports] = useState(() => getReports(now));
+  const [reportForm, setReportForm] = useState({ line: 'U1', station: '', category: 'crowding', severity: 'medium', note: '' });
+  const [reportSaved, setReportSaved] = useState(false);
+  const [sbahnRealtime, setSbahnRealtime] = useState({ status: 'unavailable', records: [] });
+  const [exactPositions, setExactPositions] = useState({ status: 'unavailable', positions: [] });
   const eta = useMemo(() => buildEtaUncertainty(vehicles), [vehicles]);
   const transfers = useMemo(() => buildTransferHealth(vehicles, now), [vehicles, now]);
   const recovery = useMemo(() => buildRecoveryForecast({ issues, forecasts, reliability }), [issues, forecasts, reliability]);
@@ -22,8 +32,31 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
   const pressure = useMemo(() => buildCalendarPressure(now, crowding), [now, crowding]);
   const routeRisk = useMemo(() => buildRouteRisk({ recovery, pressure: crowding, reliability }), [recovery, crowding, reliability]);
   const causes = useMemo(() => buildCauseSignals({ line: causeLine, issues, disruptions, crowding, forecasts }), [causeLine, issues, disruptions, crowding, forecasts]);
+  const classifiedCauses = useMemo(() => classifyDelayCauses({ line: causeLine, issues, disruptions, reports }), [causeLine, issues, disruptions, reports]);
+  const occupancy = useMemo(() => estimateNetworkOccupancy({ now, crowding, issues, vehicles, reports }), [now, crowding, issues, vehicles, reports]);
+  const reportSummary = useMemo(() => summariseReports(reports, now), [reports, now]);
   const scenario = useMemo(() => simulateNetworkScenario({ line: scenarioLine, extraMinutes: scenarioMinutes, issues, forecasts }), [scenarioLine, scenarioMinutes, issues, forecasts]);
   const quality = useMemo(() => buildDataQuality({ now, entries, vehicles, sbahnFreshness: getSbahnFreshness(now) }), [now, entries, vehicles]);
+
+  useEffect(() => subscribeReports(setReports), []);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const [sbahn, exact] = await Promise.all([getSbahnRealtimeSnapshot(), getExactPositionSnapshot()]);
+      if (!cancelled) { setSbahnRealtime(sbahn); setExactPositions(exact); }
+    };
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
+
+  const submitReport = (event) => {
+    event.preventDefault();
+    addReport(reportForm, now);
+    setReportForm((previous) => ({ ...previous, station: '', note: '' }));
+    setReportSaved(true);
+    window.setTimeout(() => setReportSaved(false), 2400);
+  };
 
   return <section className="intelligence-section advanced-signals">
     <div className="intelligence-section-title"><Activity size={14} /><strong>Advanced network signals</strong><em>Experimental</em></div>
@@ -35,6 +68,46 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
         <i style={{ background: lineColor(item.line) }}>{item.line}</i><div><strong>{item.station || 'next station'}</strong><span>{item.destination}</span></div><b>{item.low}–{item.high} min</b><small>{item.confidence}%</small>
       </div>)}</div> : <p className="advanced-empty">Waiting for live U-Bahn positions.</p>}
       <small className="advanced-caveat">Range uses position uncertainty and feed freshness; it is not GPS ground truth.</small>
+    </div>
+
+    <div className="advanced-card">
+      <div className="advanced-card-title"><strong>Occupancy estimate</strong><span>privacy-preserving proxy</span></div>
+      <div className="advanced-line-grid">{occupancy.map((item) => <div key={item.line} title={item.factors.join(' · ') || 'No extra factor'}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong className={`occupancy-${item.level}`}>{item.level.replace('-', ' ')}</strong><span>{item.score}/100 · {item.confidence}% confidence</span></div>)}</div>
+      <small className="advanced-caveat">Estimated from service gaps, time-of-day, inferred trains and optional anonymous reports. No passenger counting is performed.</small>
+    </div>
+
+    <div className="advanced-card community-report-card">
+      <div className="advanced-card-title"><strong><Users size={14} /> Passenger reports</strong><span>{reportSummary.total} active · expires after 6h</span></div>
+      <form className="community-report-form" onSubmit={submitReport}>
+        <select value={reportForm.line} onChange={(event) => setReportForm({ ...reportForm, line: event.target.value })} aria-label="Line"><option value="">Network</option>{LINES.map((line) => <option key={line}>{line}</option>)}</select>
+        <input value={reportForm.station} maxLength={80} placeholder="Station (optional)" onChange={(event) => setReportForm({ ...reportForm, station: event.target.value })} />
+        <select value={reportForm.category} onChange={(event) => setReportForm({ ...reportForm, category: event.target.value })} aria-label="Report type">{REPORT_CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
+        <select value={reportForm.severity} onChange={(event) => setReportForm({ ...reportForm, severity: event.target.value })} aria-label="Severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+        <input value={reportForm.note} maxLength={240} placeholder="Short note (optional)" onChange={(event) => setReportForm({ ...reportForm, note: event.target.value })} />
+        <button type="submit"><MapPin size={13} />{reportSaved ? 'Saved' : 'Report'}</button>
+      </form>
+      {reportSummary.recent.length ? <div className="community-report-list">{reportSummary.recent.slice(0, 4).map((report) => <div key={report.id}><b>{report.line || 'Network'}</b><span>{REPORT_CATEGORIES.find((item) => item.id === report.category)?.label || report.category}{report.station ? ` · ${report.station}` : ''}</span><small>{report.severity}</small></div>)}</div> : <p className="advanced-empty">No passenger reports on this device yet.</p>}
+      <small className="advanced-caveat">Reports are anonymous and stored only in this browser. They are advisory, not verified incident reports.</small>
+    </div>
+
+    <div className="advanced-card">
+      <div className="advanced-card-title"><strong><Radio size={14} /> S-Bahn live status</strong><span>{sbahnRealtime.status === 'live' ? 'authorized feed' : 'timetable fallback'}</span></div>
+      {sbahnRealtime.status === 'live' ? <div className="feed-status live"><strong>{sbahnRealtime.records.length}</strong><span>live S-Bahn records · fetched {new Date(sbahnRealtime.fetchedAt).toLocaleTimeString()}</span></div> : <div className="feed-status"><AlertTriangle size={14} /><span>{sbahnRealtime.reason || 'No authorized ÖBB real-time feed configured.'}</span></div>}
+      {sbahnRealtime.records.filter((record) => record.cancelled || Number(record.delaySeconds) > 120).slice(0, 4).map((record) => <div className="advanced-impact" key={record.tripId || `${record.line}-${record.destination}`}><AlertTriangle size={13} /><div><strong>{record.line} · {record.cancelled ? 'cancelled' : `+${Math.round(record.delaySeconds / 60)} min`}</strong><span>{record.destination || 'S-Bahn service'}</span></div></div>)}
+      <small className="advanced-caveat">When no authorized feed is configured, S-Bahn markers and arrivals remain schedule-based estimates; no delay is invented.</small>
+    </div>
+
+    <div className="advanced-card">
+      <div className="advanced-card-title"><strong><MapPin size={14} /> Exact train positioning</strong><span>{exactPositions.status === 'live' ? 'authorized feed' : 'not connected'}</span></div>
+      {exactPositions.status === 'live' ? <div className="feed-status live"><strong>{exactPositions.positions.length}</strong><span>exact positions available</span></div> : <div className="feed-status"><ShieldAlert size={14} /><span>{exactPositions.reason || 'The public feed does not expose per-train GPS.'}</span></div>}
+      <small className="advanced-caveat">The map continues to label U-Bahn movement as inferred from official departures. Exact coordinates are used only when an authorized position feed is configured.</small>
+    </div>
+
+    <div className="advanced-card">
+      <div className="advanced-card-title"><strong>Model monitoring & rollback</strong><span>{modelHealth?.status || 'loading'}</span></div>
+      <div className="quality-grid"><span>MAE {modelHealth?.maeMinutes == null ? '—' : `${modelHealth.maeMinutes} min`}</span><span>RMSE {modelHealth?.rmseMinutes == null ? '—' : `${modelHealth.rmseMinutes} min`}</span><span>{modelHealth?.sampleCount || 0} test journeys</span><span>{modelHealth?.ageHours == null ? 'age unknown' : `${modelHealth.ageHours}h old`}</span></div>
+      {modelHealth?.rollback ? <div className="advanced-warning"><AlertTriangle size={13} />Predictions are automatically rolled back to the live estimate: {modelHealth.reasons?.join('; ')}</div> : <div className="feed-status live"><ShieldCheck size={14} /><span>{modelHealth?.status === 'healthy' ? 'Model passes deployment checks.' : 'Monitoring is collecting enough evidence.'}</span></div>}
+      <small className="advanced-caveat">Rollback disables the ML adjustment without hiding its metrics, so a human can inspect why a candidate was held back.</small>
     </div>
 
     <div className="advanced-card">
@@ -88,7 +161,7 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
     <div className="advanced-card">
       <div className="advanced-card-title"><strong>Delay-cause evidence</strong><span>explainable signals</span></div>
       <div className="advanced-controls">{LINES.map((line) => <button key={line} onClick={() => setCauseLine(line)} className={causeLine === line ? 'active' : ''} style={{ '--line-color': lineColor(line) }}>{line}</button>)}</div>
-      {causes.length ? <ul className="advanced-evidence-list">{causes.map((item) => <li key={`${item.label}-${item.detail}`}><strong>{item.label}</strong>{item.detail}</li>)}</ul> : <p className="advanced-empty">No causal signal is visible for {causeLine}.</p>}
+      {classifiedCauses.length ? <ul className="advanced-evidence-list">{classifiedCauses.map((item, index) => <li key={`${item.cause}-${item.evidence}-${index}`}><strong>{item.cause}</strong><span>{item.evidence}</span><small>{item.source} · {item.confidence}%</small></li>)}</ul> : causes.length ? <ul className="advanced-evidence-list">{causes.map((item) => <li key={`${item.label}-${item.detail}`}><strong>{item.label}</strong>{item.detail}</li>)}</ul> : <p className="advanced-empty">No causal signal is visible for {causeLine}.</p>}
     </div>
 
     <div className="advanced-card">

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, History, Radar, Sparkles, X } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, Gauge, History, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
   analyseAccessibility,
@@ -17,6 +17,8 @@ import RailAdvisor from './RailAdvisor';
 import AdvancedSignals from './AdvancedSignals';
 import trainPositionEngine from '../services/trainPositionEngine';
 import { summariseOfficialSnapshot } from '../services/officialSnapshotStore';
+import { getReports, subscribe as subscribeReports } from '../services/communityReports';
+import OperationsDashboard from './OperationsDashboard';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -28,10 +30,11 @@ const RailIntelligence = ({
   snapshot, disruptions = [], replayOffset, replaySnapshot, onReplayChange,
   atlasVisible, onToggleAtlas, onClose, officialSnapshotState, officialReplaySnapshot,
 }) => {
+  const now = snapshot.generatedAt || 0;
   const [tab, setTab] = useState('forecast');
   const [explainLineId, setExplainLineId] = useState('U1');
   const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
-  const now = snapshot.generatedAt || 0;
+  const [reports, setReports] = useState(() => getReports(now));
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
   const officialOldestMinutes = Math.max(0, Number(officialSnapshotState?.oldestMinutes) || 0);
@@ -74,8 +77,10 @@ const RailIntelligence = ({
   useEffect(() => {
     const unsubscribe = delayModelStore.subscribe(setDelaySnapshot);
     delayModelStore.load();
-    return unsubscribe;
+    const refresh = setInterval(() => delayModelStore.load(), 10 * 60 * 1000);
+    return () => { unsubscribe(); clearInterval(refresh); };
   }, []);
+  useEffect(() => subscribeReports(setReports), []);
 
   return (
     <aside className="glass-panel intelligence-panel" aria-label="Rail intelligence">
@@ -91,7 +96,7 @@ const RailIntelligence = ({
         {[
           ['forecast', Radar, 'Forecast'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
-          ['advisor', Sparkles, 'Advisor'],
+          ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'],
         ].map(([id, Icon, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)} aria-pressed={tab === id}>
             <Icon size={14} />{label}
@@ -216,7 +221,13 @@ const RailIntelligence = ({
       {tab === 'signals' && <AdvancedSignals
         now={now} issues={issues} forecasts={forecasts} disruptions={disruptions}
         crowding={crowding} accessibility={accessibility} reliability={snapshot.reliability || []}
-        vehicles={vehicles} entries={entries}
+        vehicles={vehicles} entries={entries} modelHealth={delaySnapshot.health}
+      />}
+
+      {tab === 'operations' && <OperationsDashboard
+        now={now} issues={issues} disruptions={disruptions} crowding={crowding}
+        vehicles={vehicles} reliability={snapshot.reliability || []} reports={reports}
+        modelHealth={delaySnapshot.health} delayPredictions={delayPredictions}
       />}
 
       {tab === 'history' && <>

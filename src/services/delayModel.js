@@ -1,3 +1,5 @@
+import { assessModelHealth } from './modelMonitoring';
+
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const BASE_URL = import.meta.env.BASE_URL || '/';
 const REPORT_BASE = `${BASE_URL}ml`.replace(/\/$/, '');
@@ -104,7 +106,15 @@ class DelayModelStore {
     ]).then(async ([modelResponse, metricsResponse]) => {
       if (!modelResponse.ok || !metricsResponse.ok) throw new Error('Model report is unavailable');
       const [model, metrics] = await Promise.all([modelResponse.json(), metricsResponse.json()]);
-      this.snapshot = { status: model.status, model, metrics, error: null };
+      const health = assessModelHealth({ model, metrics });
+      // A published candidate remains visible for transparency, but predictions
+      // are disabled automatically when the monitor detects a stale, invalid or
+      // baseline-worse model. This is a safe client-side rollback to no ML.
+      const activeModel = health.rollback ? { ...model, deployed: false } : model;
+      this.snapshot = {
+        status: model.status, model: activeModel, metrics, health,
+        error: null,
+      };
       this.notify();
       return this.snapshot;
     }).catch(() => {

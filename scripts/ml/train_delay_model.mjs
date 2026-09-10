@@ -287,6 +287,13 @@ const common = {
     officialLabelledJourneys: examples.filter((example) => example.officialLabel).length,
     fallbackLabelledJourneys: examples.filter((example) => !example.officialLabel).length,
   },
+  monitoring: {
+    cadence: 'Every 10 minutes when the collector workflow runs',
+    rollbackPolicy: 'Disable ML predictions when the candidate is stale, invalid, or does not beat the live-estimate baseline.',
+    maxAgeHours: 36,
+    maxMaeMinutes: 10,
+    maxRmseMinutes: 15,
+  },
 };
 
 const onlineReady = onlineReplay.status === 'ready';
@@ -320,13 +327,14 @@ const onlineCalibrationMetrics = {
 let model;
 let metrics;
 if (validationStage === 'collecting') {
-  model = { ...common, status: 'collecting', trainedAt: null, onlineCalibration: onlineCalibrationModel };
+  model = { ...common, status: 'collecting', trainedAt: null, deployed: false, onlineCalibration: onlineCalibrationModel };
   metrics = {
     ...common,
     status: 'collecting',
     message: `Collecting at least ${REQUIREMENTS.preliminary.minimumCoverageHours} hours across ${REQUIREMENTS.preliminary.minimumDays} days and ${REQUIREMENTS.preliminary.minimumExamples} labelled journeys before publishing a preliminary score.`,
     leakageControl: 'One early observation per journey; later near-departure observation becomes its label.',
     onlineCalibration: onlineCalibrationMetrics,
+    monitoring: common.monitoring,
   };
 } else {
   const training = candidateTraining;
@@ -372,6 +380,12 @@ if (validationStage === 'collecting') {
     deployment: {
       deployed,
       rule: 'Publish live predictions only when test MAE beats carrying forward the early operator estimate.',
+    },
+    monitoring: {
+      ...common.monitoring,
+      evaluatedAt: trainedAt,
+      beatsBaseline: deployed,
+      rollbackActive: !deployed,
     },
     delayClassificationThresholdMinutes: DELAY_THRESHOLD_MINUTES,
     labelCaveat: 'The target is the official Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.',
