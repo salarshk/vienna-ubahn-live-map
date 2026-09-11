@@ -20,6 +20,8 @@ import { summariseOfficialSnapshot } from '../services/officialSnapshotStore';
 import { getReports, subscribe as subscribeReports } from '../services/communityReports';
 import OperationsDashboard from './OperationsDashboard';
 import DelayTimeline from './DelayTimeline';
+import PredictionLab from './PredictionLab';
+import { buildRecoveryForecast, buildRouteRisk, buildTransferHealth } from '../services/advancedIntelligence';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -74,6 +76,9 @@ const RailIntelligence = ({
     : [];
   const vehicles = useMemo(() => trainPositionEngine.getAllVehicles(now), [now]);
   const entries = [...arrivalStore.memory.values()];
+  const labTransfers = useMemo(() => buildTransferHealth(vehicles, now), [vehicles, now]);
+  const labRecovery = useMemo(() => buildRecoveryForecast({ issues, forecasts, reliability: snapshot.reliability || [] }), [issues, forecasts, snapshot.reliability]);
+  const labRouteRisk = useMemo(() => buildRouteRisk({ recovery: labRecovery, pressure: crowding, reliability: snapshot.reliability || [] }), [labRecovery, crowding, snapshot.reliability]);
 
   useEffect(() => {
     const unsubscribe = delayModelStore.subscribe(setDelaySnapshot);
@@ -97,7 +102,7 @@ const RailIntelligence = ({
         {[
           ['forecast', Radar, 'Forecast'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
-          ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'],
+          ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'], ['predictions', Sparkles, 'Models'],
         ].map(([id, Icon, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)} aria-pressed={tab === id}>
             <Icon size={14} />{label}
@@ -225,6 +230,18 @@ const RailIntelligence = ({
           <p className="intelligence-note">A transparent time-and-service-gap risk model. Passenger-count data is not publicly available.</p>
         </section>
       </>}
+
+      {tab === 'predictions' && <PredictionLab
+        now={now}
+        issues={issues}
+        disruptions={disruptions}
+        crowding={crowding}
+        reliability={snapshot.reliability || []}
+        vehicles={vehicles}
+        arrivals={arrivalStore.getNetworkArrivals(now)}
+        transfers={labTransfers}
+        routeRisk={labRouteRisk}
+      />}
 
       {tab === 'signals' && <AdvancedSignals
         now={now} issues={issues} forecasts={forecasts} disruptions={disruptions}

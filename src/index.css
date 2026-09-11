@@ -482,7 +482,7 @@ button:active {
 .reliability-grid span { font-size: .63rem; font-weight: 900; }
 .reliability-grid strong { margin-top: 2px; overflow: hidden; font-size: .66rem; }
 
-.intelligence-tabs { display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px; gap: 4px; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 2; background: var(--bg-panel-solid); }
+.intelligence-tabs { display: grid; grid-template-columns: repeat(8, 1fr); padding: 6px; gap: 4px; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 2; background: var(--bg-panel-solid); }
 .intelligence-tabs button { min-width: 0; padding: 7px 3px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); font-size: .62rem; font-weight: 800; }
 .intelligence-tabs button.active { background: var(--bg-hover-active); color: var(--text-primary); }
 .intelligence-section-title em { margin-left: auto; padding: 2px 5px; border-radius: 5px; background: rgba(255, 183, 77, .14); color: #ffb74d; font-size: .54rem; font-style: normal; letter-spacing: .04em; text-transform: uppercase; }

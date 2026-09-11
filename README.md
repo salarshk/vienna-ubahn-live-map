@@ -42,6 +42,7 @@ are always drawn hollow and labelled as scheduled estimates.
 - Opt-in browser/PWA notifications for newly observed official disruptions
 - Update prompt when a newer PWA shell is ready
 - Delay evidence timeline separating planned time, operator-reported delay and model estimate
+- Experimental Prediction Lab: dwell, headway, disruption clearance, severity, transfers, route reliability, cancellation risk, crowding, weather/event readiness, S-Bahn connections, anomalies and uncertainty calibration
 
 The delay model can publish a clearly marked preliminary score after at least
 36 hours spanning two calendar days and a sufficiently large untouched test
