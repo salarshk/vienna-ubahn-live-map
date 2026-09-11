@@ -22,8 +22,10 @@ jobs:
 
       - name: Download and normalize accepted ÖBB resources
         env:
-          OEBB_ZUGFAHRTEN_URL: ${{ secrets.OEBB_ZUGFAHRTEN_URL }}
-          OEBB_NETEX_URL: ${{ secrets.OEBB_NETEX_URL }}
+          # The URLs are public official resources. Repository secrets can
+          # override them when ÖBB publishes a new resource location.
+          OEBB_ZUGFAHRTEN_URL: ${{ secrets.OEBB_ZUGFAHRTEN_URL || 'https://static.web.oebb.at/open-data/infra/delVO_mmtis/mmtis_zugfahrten.zip' }}
+          OEBB_NETEX_URL: ${{ secrets.OEBB_NETEX_URL || 'https://data.oebb.at/dam/jcr:845b5ed1-332b-4038-8924-f7eb92b1ceda/NETEX_2026.zip' }}
         run: node scripts/ml/ingest_oebb_open_data.mjs
 
       - name: Archive ÖBB data to Cloudflare R2
