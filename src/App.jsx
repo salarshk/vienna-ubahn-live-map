@@ -15,7 +15,7 @@ import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from '.
 import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, LayoutDashboard, Menu } from 'lucide-react';
+import { Activity, Sun, Moon, X, LayoutDashboard, Menu, Download } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -58,6 +58,28 @@ function App() {
     reliabilityAtlas: false,
   });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  useEffect(() => {
+    const captureInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const installed = () => setInstallPrompt(null);
+    window.addEventListener('beforeinstallprompt', captureInstallPrompt);
+    window.addEventListener('appinstalled', installed);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
+      window.removeEventListener('appinstalled', installed);
+    };
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
 
   useEffect(() => {
     const unsubscribe = disruptionStore.subscribe(setDisruptionSnapshot);
@@ -352,6 +374,17 @@ function App() {
           >
             <Activity size={18} color={intelligenceOpen ? '#4CAF50' : undefined} />
           </button>
+          {installPrompt && <button
+            onClick={installApp}
+            style={{
+              padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+            title="Install Vienna Rail as an app"
+            aria-label="Install Vienna Rail as an app"
+          >
+            <Download size={18} />
+          </button>}
           <button
             onClick={toggleTheme}
             style={{

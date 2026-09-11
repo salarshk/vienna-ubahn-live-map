@@ -57,6 +57,11 @@ npm run dev
 
 Open <http://localhost:5173>.
 
+The hosted site is also an installable Progressive Web App. On Android/Chrome
+use the browser's install prompt; on iPhone/Safari choose **Share → Add to Home
+Screen**. The installed shell can reopen during a short network interruption,
+while live departures refresh when connectivity returns.
+
 ```bash
 npm test
 npm run build
@@ -113,9 +118,11 @@ original Git history and Apache 2.0 license are preserved.
 
 ## Privacy
 
-The locate button compares one device location fix against the station list in
-the browser. The coordinates are not sent to Wiener Linien or to an application
-server.
+The locate button requests a high-accuracy device GPS fix, with a browser
+geolocation fallback for the PWA when the Capacitor bridge is unavailable. It
+compares that one fix against the station list in the browser. The coordinates
+are not sent to Wiener Linien or to an application server. A visible accuracy
+ring and freshness fade prevent an old or imprecise fix from looking exact.
 
 ## License
 

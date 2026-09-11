@@ -8,7 +8,8 @@
 // The provider is an argument rather than an import so the failure paths — a
 // denial, services switched off, a fix that never arrives — are testable
 // without a browser or a phone. See ADR-0004 for why the provider is the
-// Capacitor plugin on both targets and never `navigator.geolocation`.
+// Capacitor plugin on native targets, with `navigator.geolocation` as the
+// fallback for an installed browser PWA.
 import { Geolocation } from '@capacitor/geolocation';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
@@ -77,12 +78,6 @@ export const findNearestStation = (coordinates) => {
   return best;
 };
 
-const defaultProvider = {
-  checkPermissions: () => Geolocation.checkPermissions(),
-  requestPermissions: () => Geolocation.requestPermissions(),
-  getCurrentPosition: (options) => Geolocation.getCurrentPosition(options),
-};
-
 const MESSAGES = {
   denied: 'Location is off for this app. Turn it on in Settings to find your nearest station.',
   unavailable: 'Location services are unavailable on this device right now.',
@@ -99,6 +94,7 @@ const failure = (status) => ({
   nearestStation: null,
   distance: null,
   reason: null,
+  source: 'device-gps',
   message: MESSAGES[status],
 });
 
@@ -127,6 +123,48 @@ const classifyError = (error) => {
 // getCurrentPosition itself that raises the prompt — so both mean carry on.
 const isMethodMissing = (error) =>
   Boolean(error) && (error.code === 'UNIMPLEMENTED' || error.code === 'UNAVAILABLE');
+
+// A PWA may not have Capacitor's web bridge registered. In that case use the
+// phone browser's secure geolocation API directly; the permission prompt is
+// raised by getCurrentPosition itself.
+const browserProvider = {
+  checkPermissions: async () => {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+      throw Object.assign(new Error('Permissions API unavailable'), { code: 'UNAVAILABLE' });
+    }
+    const permission = await navigator.permissions.query({ name: 'geolocation' });
+    return { location: permission.state === 'granted' ? 'granted' : permission.state === 'denied' ? 'denied' : 'prompt' };
+  },
+  requestPermissions: async () => ({ location: 'prompt' }),
+  getCurrentPosition: (options) => new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      reject(Object.assign(new Error('Geolocation is unavailable in this browser'), { code: 2 }));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  }),
+};
+
+const defaultProvider = {
+  checkPermissions: async () => {
+    try { return await Geolocation.checkPermissions(); } catch (error) {
+      if (!isMethodMissing(error)) throw error;
+      return browserProvider.checkPermissions();
+    }
+  },
+  requestPermissions: async () => {
+    try { return await Geolocation.requestPermissions(); } catch (error) {
+      if (!isMethodMissing(error)) throw error;
+      return browserProvider.requestPermissions();
+    }
+  },
+  getCurrentPosition: async (options) => {
+    try { return await Geolocation.getCurrentPosition(options); } catch (error) {
+      if (!isMethodMissing(error)) throw error;
+      return browserProvider.getCurrentPosition(options);
+    }
+  },
+};
 
 const TIMED_OUT = Symbol('timed out');
 
@@ -175,7 +213,7 @@ export const locate = async ({
   if (permission && permission.location !== 'granted') {
     try {
       const requested = await provider.requestPermissions();
-      if (!requested || requested.location !== 'granted') return failure('denied');
+      if (requested?.location === 'denied') return failure('denied');
     } catch (error) {
       if (!isMethodMissing(error)) return failure('unavailable');
       // No way to ask up front, so the prompt — and any refusal of it — arrives
@@ -213,6 +251,7 @@ export const locate = async ({
     nearestStation: null,
     distance: null,
     reason: null,
+    source: 'device-gps',
     message: '',
   };
 

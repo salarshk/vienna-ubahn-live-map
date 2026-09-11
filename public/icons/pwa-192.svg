@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Vienna Rail">
+  <rect width="192" height="192" rx="42" fill="#16161f"/>
+  <g fill="none" stroke-linecap="round" stroke-width="23">
+    <path stroke="#E3007E" d="M33 159 L159 33"/>
+    <path stroke="#FFD100" d="M27 96 H165"/>
+    <path stroke="#004D99" d="M33 33 L159 159"/>
+  </g>
+  <circle cx="96" cy="96" r="31" fill="#16161f"/>
+  <circle cx="96" cy="96" r="20" fill="#fff"/>
+</svg>

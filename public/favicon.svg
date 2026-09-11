@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Metrovalencia live map">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Vienna rail live map">
   <!-- An interchange: three Lines crossing, one Station drawn on top of them.
        The palette is this network's own (src/data/line_colors_from_image.json) —
        line 3 red, line 1 yellow, line 5 green — rather than Metrovalencia's
