@@ -34,7 +34,9 @@ npm run ml:oebb
 
 The importer keeps the original ZIP, extracts it, writes a manifest, and
 normalises CSV train-run rows to `zugfahrten.normalized.jsonl`. It is safe to
-run with only one of the two URLs. If neither URL is set, it exits without
+run with only one of the two URLs. The original CSV rows remain in the ZIP;
+normalized output omits the duplicated `raw` object unless
+`OEBB_INCLUDE_RAW=true` is set. If neither URL is set, it exits without
 changing data and prints the official source page:
 
 <https://data.oebb.at/de/datensaetze~datenbereitstellung_delegierte_verordnung_eu_2024-490~>

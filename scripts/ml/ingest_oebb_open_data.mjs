@@ -3,7 +3,7 @@
 // Ingest the official ÖBB MMTIS downloads. The portal requires accepting its
 // terms before exposing the ZIP URLs, so the URLs are intentionally supplied
 // by the operator rather than guessed or scraped.
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
@@ -65,19 +65,46 @@ const findValue = (row, terms) => {
   return key ? row[key] : null;
 };
 
+const numberValue = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+const delaySecondsFromRow = (row, actualKey, plannedKey, delayMinutesKey) => {
+  const explicitMinutes = numberValue(row[delayMinutesKey]);
+  if (explicitMinutes !== null) return Math.round(explicitMinutes * 60);
+  const actual = Date.parse(String(row[actualKey] || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+  const planned = Date.parse(String(row[plannedKey] || '').replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+  return Number.isFinite(actual) && Number.isFinite(planned) ? Math.round((actual - planned) / 1000) : null;
+};
+
 const normaliseTrainRun = (row, sourceFile) => ({
   source: 'oebb-zugfahrten',
   sourceFile,
   sourceRow: row.rowIndex,
-  trainId: findValue(row, ['zugnummer', 'trainnumber', 'train_id', 'trip_id', 'fahrt']),
+  recordType: /ausgefallen/i.test(sourceFile)
+    ? 'cancelled'
+    : /verspaetet/i.test(sourceFile)
+      ? 'delayed'
+      : 'train-run',
+  trainId: row.zugnummer || findValue(row, ['trainnumber', 'train_id', 'trip_id', 'fahrt']),
   line: findValue(row, ['linie', 'line', 'route']),
-  station: findValue(row, ['haltestelle', 'bahnhof', 'station', 'stop']),
-  serviceDate: findValue(row, ['datum', 'date', 'betriebstag']),
-  plannedTime: findValue(row, ['plan', 'scheduled', 'soll']),
-  actualTime: findValue(row, ['ist', 'actual', 'real', 'ankunft']),
-  delaySeconds: findValue(row, ['verspaet', 'delay', 'abweich']),
-  cancelled: /ausfall|cancel|storno/i.test(Object.values(row).join(' ')),
-  raw: row,
+  station: row.start_betriebsstelle || findValue(row, ['haltestelle', 'bahnhof', 'station', 'stop']),
+  destinationStation: row.ziel_betriebsstelle || null,
+  serviceDate: row.betriebstag || findValue(row, ['datum', 'date']),
+  plannedTime: row.abfahrtzeit_soll || findValue(row, ['plan', 'scheduled', 'soll']),
+  actualTime: row.abfahrtzeit_ist || findValue(row, ['actual', 'real', 'ist']),
+  arrivalPlannedTime: row.ankunftzeit_soll || null,
+  arrivalActualTime: row.ankunftzeit_ist || null,
+  departureDelaySeconds: delaySecondsFromRow(row, 'abfahrtzeit_ist', 'abfahrtzeit_soll', 'abfahrt_verspaetung_min'),
+  arrivalDelaySeconds: delaySecondsFromRow(row, 'ankunftzeit_ist', 'ankunftzeit_soll', 'ankunft_verspaetung_min'),
+  delaySeconds: delaySecondsFromRow(row, 'ankunftzeit_ist', 'ankunftzeit_soll', 'ankunft_verspaetung_min')
+    ?? delaySecondsFromRow(row, 'abfahrtzeit_ist', 'abfahrtzeit_soll', 'abfahrt_verspaetung_min'),
+  cancelled: /ausgefallen|ausfall|cancel|storno/i.test(sourceFile) || /ausfall|cancel|storno/i.test(Object.values(row).join(' ')),
+  // The original CSV is preserved inside the downloaded ZIP. Avoid copying
+  // every source cell into the normalized JSONL by default; set
+  // OEBB_INCLUDE_RAW=true only when a forensic row-level copy is needed.
+  ...(process.env.OEBB_INCLUDE_RAW === 'true' ? { raw: row } : {}),
 });
 
 const inspectExtractedFiles = async (source, extractionDir) => {
@@ -128,19 +155,44 @@ const allTrainRuns = [];
 for (const source of sources) {
   const zipPath = resolve(RUN_DIR, `${source.key}.zip`);
   const extractionDir = resolve(RUN_DIR, source.key);
-  const response = await fetch(source.url, { signal: AbortSignal.timeout(180000) });
-  if (!response.ok) throw new Error(`ÖBB ${source.key} download returned HTTP ${response.status}`);
-  await writeFile(zipPath, Buffer.from(await response.arrayBuffer()));
+  const isLocalPath = source.url.startsWith('file://') || !/^[a-z][a-z\d+.-]*:\/\//i.test(source.url);
+  if (isLocalPath) {
+    const localPath = source.url.startsWith('file://') ? new URL(source.url) : source.url;
+  await writeFile(zipPath, await readFile(localPath));
+  } else {
+    const response = await fetch(source.url, { signal: AbortSignal.timeout(180000) });
+    if (!response.ok) throw new Error(`ÖBB ${source.key} download returned HTTP ${response.status}`);
+    await writeFile(zipPath, Buffer.from(await response.arrayBuffer()));
+  }
   await mkdir(extractionDir, { recursive: true });
   await execFileAsync('unzip', ['-o', '-q', zipPath, '-d', extractionDir]);
   const inspected = await inspectExtractedFiles(source, extractionDir);
-  allTrainRuns.push(...inspected.records);
-  manifest.sources.push({ key: source.key, url: source.url, zip: zipPath.slice(ROOT.length + 1), ...inspected });
+  // Avoid spreading hundreds of thousands of weekly CSV rows into a single
+  // function call; large ÖBB archives otherwise exceed the JS call stack.
+  for (const record of inspected.records) allTrainRuns.push(record);
+  // Keep the manifest compact: the normalized records are written separately
+  // and must not be duplicated inside manifest.json.
+  manifest.sources.push({
+    key: source.key,
+    url: source.url,
+    zip: zipPath.slice(ROOT.length + 1),
+    files: inspected.files,
+    normalizedRecords: inspected.records.length,
+  });
 }
 
 await writeFile(resolve(RUN_DIR, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 if (allTrainRuns.length) {
-  await writeFile(resolve(RUN_DIR, 'zugfahrten.normalized.jsonl'), `${allTrainRuns.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  const normalizedPath = resolve(RUN_DIR, 'zugfahrten.normalized.jsonl');
+  await writeFile(normalizedPath, '');
+  // Write bounded chunks so a large multi-week ZIP never exceeds V8's
+  // maximum string length while joining the complete archive.
+  for (let index = 0; index < allTrainRuns.length; index += 5000) {
+    const chunk = allTrainRuns.slice(index, index + 5000)
+      .map((row) => JSON.stringify(row))
+      .join('\n');
+    await appendFile(normalizedPath, `${chunk}\n`);
+  }
 }
 console.log(JSON.stringify({
   skipped: false,
