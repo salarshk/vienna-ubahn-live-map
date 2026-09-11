@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 5978,
-  "labelledJourneyCount": 76,
+  "observationCount": 6961,
+  "labelledJourneyCount": 222,
   "dataDays": 2,
   "coverageHours": 26.4,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-11T13:35:40.805Z",
+  "lastObservation": "2026-09-11T13:38:07.147Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 45,
+    "officialLabelledJourneys": 191,
     "fallbackLabelledJourneys": 31
   },
   "monitoring": {
@@ -55,51 +55,51 @@
   "onlineCalibration": {
     "status": "ready",
     "experimental": true,
-    "scoredJourneyCount": 76,
+    "scoredJourneyCount": 222,
     "minimumExamples": 30,
     "evaluationMethod": "Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.",
     "model": {
-      "sampleCount": 76,
-      "maeMinutes": 0.27,
-      "rmseMinutes": 0.38,
-      "rSquared": 0.768,
-      "withinOneMinutePercent": 98.7,
-      "withinTwoMinutesPercent": 100,
+      "sampleCount": 222,
+      "maeMinutes": 0.4,
+      "rmseMinutes": 0.53,
+      "rSquared": 0.714,
+      "withinOneMinutePercent": 95.9,
+      "withinTwoMinutesPercent": 99.5,
       "delayedThreeMinutes": {
-        "accuracyPercent": 100,
-        "precision": 0,
-        "recall": 0,
-        "f1": 0,
+        "accuracyPercent": 99.1,
+        "precision": 1,
+        "recall": 0.667,
+        "f1": 0.8,
         "confusionMatrix": {
-          "truePositive": 0,
-          "trueNegative": 76,
+          "truePositive": 4,
+          "trueNegative": 216,
           "falsePositive": 0,
-          "falseNegative": 0
+          "falseNegative": 2
         }
       }
     },
     "currentEstimateBaseline": {
-      "sampleCount": 76,
-      "maeMinutes": 0.28,
-      "rmseMinutes": 0.41,
-      "rSquared": 0.734,
-      "withinOneMinutePercent": 98.7,
-      "withinTwoMinutesPercent": 100,
+      "sampleCount": 222,
+      "maeMinutes": 0.37,
+      "rmseMinutes": 0.5,
+      "rSquared": 0.741,
+      "withinOneMinutePercent": 96.8,
+      "withinTwoMinutesPercent": 99.5,
       "delayedThreeMinutes": {
-        "accuracyPercent": 100,
-        "precision": 0,
-        "recall": 0,
-        "f1": 0,
+        "accuracyPercent": 99.1,
+        "precision": 1,
+        "recall": 0.667,
+        "f1": 0.8,
         "confusionMatrix": {
-          "truePositive": 0,
-          "trueNegative": 76,
+          "truePositive": 4,
+          "trueNegative": 216,
           "falsePositive": 0,
-          "falseNegative": 0
+          "falseNegative": 2
         }
       }
     },
     "deployment": {
-      "deployed": true,
+      "deployed": false,
       "rule": "Enable online predictions after 30 scored journeys only when their MAE beats the unadjusted live estimate."
     }
   }
