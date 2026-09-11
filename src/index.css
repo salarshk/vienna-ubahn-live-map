@@ -1007,7 +1007,14 @@ button:active {
 .commute-dashboard > header span { margin-top: 2px; color: var(--text-secondary); font-size: .62rem; }
 .commute-intro, .commute-caveat { padding: 10px 13px 5px; color: var(--text-secondary); font-size: .66rem; line-height: 1.4; }
 .commute-add { display: flex; gap: 6px; padding: 8px 13px 10px; }
-.commute-add input { min-width: 0; flex: 1; padding: 8px 9px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-hover); color: var(--text-primary); font-size: .7rem; }
+.commute-search-box { position: relative; min-width: 0; flex: 1; }
+.commute-add input { width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-hover); color: var(--text-primary); font-size: .7rem; }
+.commute-search-results { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 3; max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-panel-solid); box-shadow: 0 10px 24px rgba(0,0,0,.3); }
+.commute-search-results button { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 9px; color: var(--text-primary); text-align: left; }
+.commute-search-results button:hover, .commute-search-results button:focus-visible { background: var(--bg-hover-active); }
+.commute-search-results strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .67rem; }
+.commute-search-results span { flex-shrink: 0; color: var(--text-secondary); font-size: .57rem; }
+.commute-search-results p { margin: 0; padding: 10px; color: var(--text-secondary); font-size: .64rem; }
 .commute-add button, .commute-notification { display: flex; align-items: center; gap: 5px; border: 1px solid var(--border-color); border-radius: 7px; padding: 7px 9px; color: var(--text-primary); background: var(--bg-hover); font-size: .66rem; font-weight: 800; }
 .commute-add button:disabled { opacity: .45; }
 .commute-cards { display: grid; gap: 7px; padding: 0 13px 9px; }
