@@ -21,8 +21,17 @@ const embeddedData = (entity) => {
 const relatedLines = (item) => {
   const attributes = item?.attributes || {};
   return [...new Set(asArray(item?.relatedLines?.length ? item.relatedLines : attributes.relatedLines)
-    .map(String)
+    .flatMap((value) => String(value || '').split(','))
+    .map((value) => value.trim())
     .filter((line) => U_BAHN_LINES.has(line)))];
+};
+
+const relatedStops = (item) => {
+  const attributes = item?.attributes || {};
+  return [...new Set(asArray(item?.relatedStops?.length ? item.relatedStops : attributes.relatedStops)
+    .flatMap((value) => String(value || '').split(','))
+    .map((value) => value.trim())
+    .filter(Boolean))];
 };
 
 const delayRelated = (item) => DELAY_TERMS.test([
@@ -43,8 +52,15 @@ export const normaliseArchiveEntity = (entity) => {
   const base = {
     id,
     category: String(entity.category || data.category || ''),
+    categoryId: Number(data.refTrafficInfoCategoryId ?? entity.categoryId) || null,
     title: String(data.title || entity.title || ''),
     priority: Number(data.priority ?? entity.priority ?? 0) || 0,
+    status: String(data.attributes?.status || entity.status || ''),
+    owner: String(data.owner || entity.owner || ''),
+    relatedStops: relatedStops(data),
+    createdAt: data.time?.created || null,
+    lastUpdatedAt: data.time?.lastupdate || null,
+    resumeAt: data.time?.resume || null,
     delayRelated: delayRelated({ ...data, category: entity.category || data.category }),
     startMs: Math.min(firstSeenMs, lastSeenMs),
     endMs: Math.max(firstSeenMs, lastSeenMs),
@@ -63,8 +79,15 @@ export const normaliseLiveTrafficInfos = (payload, observedAt = Date.now()) => {
       id,
       line,
       category: String(item.category || ''),
+      categoryId: Number(item.refTrafficInfoCategoryId) || null,
       title: String(item.title || ''),
       priority: Number(item.priority ?? item.attributes?.priority ?? 0) || 0,
+      status: String(item.attributes?.status || ''),
+      owner: String(item.owner || ''),
+      relatedStops: relatedStops(item),
+      createdAt: item.time?.created || null,
+      lastUpdatedAt: item.time?.lastupdate || null,
+      resumeAt: item.time?.resume || null,
       delayRelated: delayRelated(item),
       startMs: Math.min(startMs, endMs),
       endMs: Math.max(startMs, endMs),

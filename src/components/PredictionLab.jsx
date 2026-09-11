@@ -38,7 +38,12 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
 
     <div className="advanced-card"><div className="advanced-card-title"><strong><TrainFront size={13} /> Headway & bunching</strong><span>next 20–30 min</span></div>
       {explain('Predicts service gaps and trains running too close together on each U-Bahn line.')}
-      <div className="advanced-line-grid">{headways.map((item) => <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong className={`risk-label ${item.status === 'high' ? 'high' : item.status === 'watch' ? 'medium' : 'low'}`}>{item.risk}% {item.status}</strong><span>{item.evidence}</span></div>)}</div>
+      <div className="advanced-line-grid">{headways.map((item) => <div key={item.line}>
+        <i style={{ background: lineColor(item.line) }}>{item.line}</i>
+        <strong className={`risk-label ${item.status === 'high' ? 'high' : item.status === 'watch' ? 'medium' : 'low'}`}>{item.risk}% {item.status}</strong>
+        <span>{item.evidence}</span>
+        <small className="headway-location">Location: {item.location}</small>
+      </div>)}</div>
     </div>
 
     <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Disruption resolution</strong><span>incident clearance</span></div>

@@ -50,6 +50,22 @@ export const compactOfficialSnapshot = (entries, at = Date.now()) => {
         labelSource: arrival.delaySource || 'wiener-linien-timeReal-minus-timePlanned',
         barrierFree: arrival.barrierFree ?? null,
         trafficJam: Boolean(arrival.trafficJam),
+        platform: arrival.platform ?? null,
+        gate: arrival.gate ?? null,
+        rbl: arrival.rbl ?? null,
+        lineId: arrival.lineId ?? null,
+        routeDirectionId: arrival.routeDirectionId ?? null,
+        vehicleId: arrival.vehicleId ?? null,
+        vehicleName: arrival.vehicleName ?? null,
+        vehicleType: arrival.vehicleType ?? null,
+        onStop: arrival.onStop ?? null,
+        foldingRamp: arrival.foldingRamp ?? null,
+        cooling: arrival.cooling ?? null,
+        exactGpsCoordinates: arrival.exactGpsCoordinates ?? null,
+        exactGpsAvailable: Boolean(arrival.exactGpsAvailable),
+        positionSource: arrival.positionSource || 'inferred-from-departure-prediction',
+        feedServerTime: arrival.feedServerTime ?? null,
+        feedAgeSeconds: arrival.feedAgeSeconds ?? null,
       }))
   )).filter((arrival) => Number.isFinite(arrival.plannedTimestamp));
 

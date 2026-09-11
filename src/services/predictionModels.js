@@ -27,11 +27,37 @@ export const predictHeadwayRisk = ({ issues = [], arrivals = [] } = {}) => {
     const lineIssues = issues.filter((item) => lineOf(item.line) === line);
     const live = arrivals.filter((arrival) => arrival.isLive && lineOf(arrival.line) === line
       && Number.isFinite(arrival.seconds)).sort((a, b) => a.seconds - b.seconds);
-    const gaps = live.slice(1).map((arrival, index) => arrival.seconds - live[index].seconds);
-    const largestGap = Math.max(0, ...gaps);
-    const smallestGap = gaps.length ? Math.min(...gaps) : null;
+    // Departures from different stations must not be compared with each
+    // other. Grouping by station lets the model say where the interval issue
+    // is expected instead of reporting only a line-level score.
+    const byStation = new Map();
+    for (const arrival of live) {
+      const stationKey = String(arrival.stationName || arrival.stationId || 'network');
+      if (!byStation.has(stationKey)) byStation.set(stationKey, []);
+      byStation.get(stationKey).push(arrival);
+    }
+    let largestGap = 0;
+    let largestGapStation = null;
+    let smallestGap = null;
+    let smallestGapStation = null;
+    for (const [station, stationArrivals] of byStation) {
+      stationArrivals.sort((a, b) => a.seconds - b.seconds);
+      for (let index = 1; index < stationArrivals.length; index += 1) {
+        const seconds = stationArrivals[index].seconds - stationArrivals[index - 1].seconds;
+        if (seconds > largestGap) {
+          largestGap = seconds;
+          largestGapStation = station === 'network' ? null : station;
+        }
+        if (smallestGap === null || seconds < smallestGap) {
+          smallestGap = seconds;
+          smallestGapStation = station === 'network' ? null : station;
+        }
+      }
+    }
     const gap = lineIssues.find((item) => item.type === 'gap');
     const bunch = lineIssues.find((item) => item.type === 'bunch');
+    const gapStation = gap?.station || (largestGap >= 12 * 60 ? largestGapStation : null);
+    const bunchStation = bunch?.station || (smallestGap !== null && smallestGap < 120 ? smallestGapStation : null);
     const risk = clamp(Math.round(
       (gap ? 70 + Number(gap.severity || 0) / 20 : largestGap >= 12 * 60 ? 65 : 15)
       + (bunch || (smallestGap !== null && smallestGap < 120) ? 20 : 0),
@@ -42,6 +68,16 @@ export const predictHeadwayRisk = ({ issues = [], arrivals = [] } = {}) => {
       smallestGapMinutes: smallestGap === null ? null : round(smallestGap / 60, 1),
       horizon: risk >= 40 ? 'next 20 min' : 'next 30 min',
       evidence: gap ? gap.label : bunch ? bunch.label : largestGap >= 12 * 60 ? 'large live interval' : 'regular departures',
+      gapStation: gapStation || null,
+      bunchStation: bunchStation || null,
+      station: gapStation || bunchStation || null,
+      location: gapStation && bunchStation && gapStation !== bunchStation
+        ? `Gap near ${gapStation}; trains close near ${bunchStation}`
+        : gapStation
+          ? `Gap near ${gapStation}`
+          : bunchStation
+            ? `Trains close near ${bunchStation}`
+            : 'Station location unavailable',
     });
   }
   return output.sort((a, b) => b.risk - a.risk);
@@ -157,4 +193,3 @@ export const calibrateUncertainty = ({ vehicles = [], reliability = [] } = {}) =
   const calibration = clamp(Math.round(100 - uncertainty / 12 + (history?.observations >= 10 ? 8 : 0)), 10, 95);
   return { line, intervalMinutes, calibration, sampleCount: lineVehicles.length, status: calibration >= 70 ? 'calibrated' : 'wide interval' };
 });
-

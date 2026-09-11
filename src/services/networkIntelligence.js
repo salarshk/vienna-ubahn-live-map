@@ -8,6 +8,11 @@ const SNAPSHOT_INTERVAL_MS = 30 * 1000;
 const RELIABILITY_INTERVAL_MS = 5 * 60 * 1000;
 const RELIABILITY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_STATION_AGE_MS = 5 * 60 * 1000;
+const HEADWAY_EVENTS_KEY = 'vienna_headway_events_v1';
+const HEADWAY_STATE_KEY = 'vienna_headway_event_state_v1';
+const HEADWAY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const HEADWAY_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
+const HEADWAY_RECOVERY_GRACE_MS = 2 * HEADWAY_SAMPLE_INTERVAL_MS;
 
 export const GAP_SECONDS = 7 * 60;
 export const BUNCH_SECONDS = 2 * 60;
@@ -29,6 +34,81 @@ const write = (key, value) => {
     // A private browser or a full storage quota should not break the live map.
   }
 };
+
+const readObject = (key, fallback = {}) => {
+  try {
+    if (typeof localStorage === 'undefined') return fallback;
+    const parsed = JSON.parse(localStorage.getItem(key));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+/** Persist station-level gap/bunching observations and their recovery time. */
+export const recordHeadwayEvents = (issues = [], at = Date.now()) => {
+  const archive = read(HEADWAY_EVENTS_KEY, []);
+  const state = readObject(HEADWAY_STATE_KEY);
+  const currentIds = new Set(issues.map((issue) => issue.id));
+  const observations = [];
+
+  for (const issue of issues) {
+    const previous = state[issue.id];
+    const startedAt = Number.isFinite(Number(previous?.startedAt)) ? Number(previous.startedAt) : at;
+    const lastArchivedAt = Number(previous?.lastArchivedAt) || 0;
+    const shouldArchive = !previous || at - lastArchivedAt >= HEADWAY_SAMPLE_INTERVAL_MS;
+    const lifecycle = {
+      schemaVersion: 1,
+      source: 'wiener-linien-departure-predictions',
+      eventId: issue.id,
+      eventStatus: 'active',
+      type: issue.type,
+      line: issue.line,
+      direction: issue.direction,
+      station: issue.station,
+      stationId: issue.stationId || null,
+      intervalSeconds: issue.seconds,
+      severitySeconds: issue.severity,
+      observedAt: at,
+      startedAt,
+      durationSeconds: Math.max(0, Math.round((at - startedAt) / 1000)),
+      positionSource: 'inferred-from-departure-predictions',
+      exactGpsAvailable: false,
+    };
+    if (shouldArchive) observations.push(lifecycle);
+    state[issue.id] = {
+      ...lifecycle,
+      lastArchivedAt: shouldArchive ? at : lastArchivedAt,
+      lastObservedAt: at,
+    };
+  }
+
+  for (const [eventId, previous] of Object.entries(state)) {
+    if (currentIds.has(eventId)) continue;
+    const lastObservedAt = Number(previous.lastObservedAt);
+    if (!Number.isFinite(lastObservedAt) || at - lastObservedAt < HEADWAY_RECOVERY_GRACE_MS) continue;
+    observations.push({
+      ...previous,
+      eventStatus: 'recovered',
+      recoveredAt: at,
+      durationSeconds: Math.max(0, Math.round((at - Number(previous.startedAt)) / 1000)),
+      recoveryDurationSeconds: Math.max(0, Math.round((at - Number(previous.startedAt)) / 1000)),
+      observedAt: at,
+    });
+    delete state[eventId];
+  }
+
+  if (observations.length) {
+    const cutoff = at - HEADWAY_RETENTION_MS;
+    write(HEADWAY_EVENTS_KEY, [...archive, ...observations]
+      .filter((event) => Number(event.observedAt) >= cutoff)
+      .slice(-10000));
+  }
+  write(HEADWAY_STATE_KEY, state);
+  return observations;
+};
+
+export const getHeadwayEventArchive = () => read(HEADWAY_EVENTS_KEY, []);
 
 const compactVehicle = (vehicle) => ({
   id: vehicle.id,
@@ -93,6 +173,7 @@ export const analyseHeadwayEntries = (entries, now = Date.now()) => {
             severity: BUNCH_SECONDS - seconds,
             line: previous.line,
             direction: previous.destination,
+            stationId: entry.stationId,
             station: entry.stationName,
             seconds,
             label: `${Math.max(1, Math.round(seconds / 60))} min between trains`,
@@ -104,6 +185,7 @@ export const analyseHeadwayEntries = (entries, now = Date.now()) => {
             severity: seconds - GAP_SECONDS,
             line: previous.line,
             direction: previous.destination,
+            stationId: entry.stationId,
             station: entry.stationName,
             seconds,
             label: `${Math.round(seconds / 60)} min service gap`,
@@ -212,6 +294,9 @@ class NetworkIntelligenceStore {
   }
 
   record(now = Date.now()) {
+    const issues = analyseHeadways(now);
+    recordHeadwayEvents(issues, now);
+
     if (now - this.lastSnapshotAt >= SNAPSHOT_INTERVAL_MS) {
       const vehicles = trainPositionEngine.getAllVehicles(now)
         .filter((vehicle) => vehicle.isLive)
@@ -233,7 +318,6 @@ class NetworkIntelligenceStore {
         entry.arrivals?.some((arrival) => arrival.isLive)
       );
       if (hasLiveEvidence) {
-        const issues = analyseHeadways(now);
         const affected = new Set(issues.map((issue) => issue.line));
         this.reliability.push({ at: now, affected: [...affected] });
         this.reliability = this.reliability.filter((item) => now - item.at <= RELIABILITY_WINDOW_MS);

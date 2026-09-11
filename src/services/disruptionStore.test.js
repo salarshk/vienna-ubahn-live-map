@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTrafficInfos } from './disruptionStore';
+import { parseNewsInfos, parseTrafficInfos } from './disruptionStore';
 
 describe('Wiener Linien disruption parsing', () => {
   it('normalises affected lines, station details and whitespace', () => {
@@ -15,6 +15,7 @@ describe('Wiener Linien disruption parsing', () => {
 
     expect(alerts).toEqual([expect.objectContaining({
       id: 'tk_1', title: 'Station closed', lines: ['U3'], station: 'Stephansplatz', priority: 2,
+      categoryId: null, relatedStops: [], resolved: false,
     })]);
   });
 
@@ -26,5 +27,24 @@ describe('Wiener Linien disruption parsing', () => {
       attributes: { relatedLines: ['U6'], status: 'außer Betrieb' },
     }] } });
     expect(alert).toMatchObject({ lines: ['U6'], isElevator: true });
+  });
+
+  it('keeps incident lifecycle and news fields for modelling', () => {
+    const [alert] = parseTrafficInfos({ data: { trafficInfos: [{
+      name: 'incident-42', refTrafficInfoCategoryId: 7, owner: 'operations',
+      title: 'Signal issue', relatedLines: ['U1'], relatedStops: ['60200031'],
+      time: { start: '2026-09-10T12:00:00+0200', created: '2026-09-10T11:55:00+0200', lastupdate: '2026-09-10T12:05:00+0200' },
+      attributes: { status: 'active' },
+    }] } });
+    expect(alert).toMatchObject({
+      uniqueName: 'incident-42', categoryId: 7, owner: 'operations',
+      relatedStops: ['60200031'], createdAt: '2026-09-10T11:55:00+0200',
+    });
+
+    const [news] = parseNewsInfos({ data: { pois: [{
+      sname: 'lift-42', title: 'Lift maintenance', relatedLines: 'U6', relatedStops: '60201499',
+      time: { validfrom: '2026-09-10T12:00:00+0200' },
+    }] } });
+    expect(news).toMatchObject({ id: 'lift-42', lines: ['U6'], relatedStops: ['60201499'] });
   });
 });

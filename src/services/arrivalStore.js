@@ -122,11 +122,13 @@ const buildMonitorUrl = (stationIds) => {
   return `/api/vienna/monitor?${query}`;
 };
 
-const parseMonitorArrivals = (monitors, fetchTime) => {
+export const parseMonitorArrivals = (monitors, fetchTime, feedServerTime = null) => {
+  const parsedFeedServerTime = parseWienerTimestamp(feedServerTime);
   const arrivals = monitors.flatMap((monitor) =>
     (monitor.lines || []).flatMap((line) => {
       const lineId = String(line.name || '');
       if (!U_BAHN_LINES.has(lineId)) return [];
+      const stopProperties = monitor.locationStop?.properties || {};
 
       return ((line.departures && line.departures.departure) || []).map((departure) => {
         const timing = departure.departureTime || {};
@@ -139,6 +141,12 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
             ? plannedTimestamp
             : fetchTime + (Number.isFinite(countdown) ? countdown * 60000 : 0);
         const vehicle = departure.vehicle || {};
+        const gpsCandidate = vehicle.gpsCoordinates || vehicle.coordinates || vehicle.position?.coordinates || null;
+        const exactGpsCoordinates = Array.isArray(gpsCandidate) && gpsCandidate.length >= 2
+          ? gpsCandidate.slice(0, 2).map(Number)
+          : null;
+        const validExactGpsCoordinates = exactGpsCoordinates?.every(Number.isFinite)
+          ? exactGpsCoordinates : null;
         const destination = vehicle.towards || line.towards || 'Unknown destination';
         const rawDirectionCode = String(vehicle.direction || line.direction || '').toUpperCase();
         const directionCode = rawDirectionCode === 'H' || rawDirectionCode === 'R'
@@ -171,8 +179,30 @@ const parseMonitorArrivals = (monitors, fetchTime) => {
           timingSource: Number.isFinite(realTimestamp)
             ? 'official-wiener-linien-realtime'
             : 'wiener-linien-timetable',
+          // Metadata exposed by the official monitor feed. These fields are
+          // intentionally retained so prediction jobs can join observations
+          // by platform, route direction and vehicle type.
+          platform: line.platform ?? vehicle.platform ?? stopProperties.gate ?? null,
+          gate: stopProperties.gate ?? null,
+          rbl: stopProperties.rbl ?? stopProperties.name ?? null,
+          lineId: line.linienId ?? line.lineId ?? null,
+          routeDirectionId: vehicle.richtungsId ?? line.richtungsId ?? null,
+          vehicleName: vehicle.name ?? null,
+          vehicleType: vehicle.type ?? null,
+          onStop: vehicle.onStop ?? null,
+          foldingRamp: vehicle.foldingRamp ?? null,
+          cooling: vehicle.cooling ?? null,
+          exactGpsCoordinates: validExactGpsCoordinates,
+          exactGpsAvailable: Boolean(validExactGpsCoordinates),
+          positionSource: validExactGpsCoordinates ? 'official-vehicle-gps' : 'inferred-from-departure-prediction',
+          realtimeSupported: vehicle.realtimeSupported ?? line.realtimeSupported ?? null,
+          feedServerTime: Number.isFinite(parsedFeedServerTime) ? parsedFeedServerTime : null,
+          feedAgeSeconds: Number.isFinite(parsedFeedServerTime)
+            ? Math.max(0, Math.round((fetchTime - parsedFeedServerTime) / 1000))
+            : null,
           initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
-          isLive: Boolean(timing.timeReal) && line.realtimeSupported !== false,
+          isLive: Boolean(timing.timeReal)
+            && (vehicle.realtimeSupported ?? line.realtimeSupported) !== false,
           trafficJam: Boolean(vehicle.trafficjam ?? line.trafficjam),
           vehicleId: vehicle.id || vehicle.vehicleId || undefined,
           barrierFree: vehicle.barrierFree ?? line.barrierFree,
@@ -343,7 +373,12 @@ class ArrivalStore {
           stationId,
           stationName: station.name,
           fetchedAt: fetchTime,
-          arrivals: parseMonitorArrivals(stationMonitors, fetchTime),
+          arrivals: parseMonitorArrivals(
+            stationMonitors,
+            fetchTime,
+            data?.message?.serverTime || data?.data?.message?.serverTime || null,
+          ),
+          feedServerTime: data?.message?.serverTime || data?.data?.message?.serverTime || null,
           fetchError: null,
         });
         updated += 1;
@@ -425,6 +460,8 @@ class ArrivalStore {
 
       projected.push({
         ...arr,
+        stationId: entry.stationId,
+        stationName: entry.stationName,
         seconds: remainingSeconds,
         minutes,
         status,
@@ -554,7 +591,8 @@ class ArrivalStore {
           : null;
         if (monitors) {
           const fetchTime = Date.now();
-          const parsedArrivals = parseMonitorArrivals(monitors, fetchTime);
+          const feedServerTime = data?.message?.serverTime || data?.data?.message?.serverTime || null;
+          const parsedArrivals = parseMonitorArrivals(monitors, fetchTime, feedServerTime);
 
           // Store in memory
           const updatedEntry = {
@@ -562,6 +600,7 @@ class ArrivalStore {
             stationName: stationProps.name,
             fetchedAt: fetchTime,
             arrivals: parsedArrivals,
+            feedServerTime,
             fetchError: null,
           };
           this.memory.set(key, updatedEntry);

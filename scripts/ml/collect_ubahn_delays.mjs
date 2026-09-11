@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { incidentFeaturesAt, normaliseLiveTrafficInfos } from './incident_features.mjs';
+import { detectHeadwayEvents, reconcileHeadwayEvents } from './headway_events.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const STATIONS_PATH = resolve(ROOT, 'src/data/paradas_api.json');
@@ -10,20 +11,22 @@ const OUTPUT_DIR = resolve(
   ROOT,
   process.env.DELAY_OBSERVATIONS_DIR || 'data/ml/observations',
 );
+const RAW_OUTPUT_DIR = resolve(
+  ROOT,
+  process.env.DELAY_RAW_DIR || 'data/ml/raw',
+);
+const HEADWAY_EVENT_DIR = resolve(
+  ROOT,
+  process.env.HEADWAY_EVENTS_DIR || 'data/ml/headway-events',
+);
+const HEADWAY_STATE_PATH = resolve(
+  ROOT,
+  process.env.HEADWAY_STATE_PATH || 'data/ml/headway-state.json',
+);
 const API_BASE = String(
   process.env.VIENNA_API_BASE || 'https://www.wienerlinien.at/ogd_realtime',
 ).replace(/\/$/, '');
 const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
-// Evenly distributed reference stations used by the map's position engine.
-// Sampling the complete 99-station network would repeat the same train at
-// every downstream stop and make the longitudinal artifact needlessly large.
-const REFERENCE_STATION_IDS = new Set([
-  60201481, 60201095, 60200657, 60201040, 60200031, 60201860, 60201859,
-  60200910, 60200299, 60201299, 60201894, 60201182, 60201430,
-  60201317, 60201468, 60201320, 60200743, 60201199, 60200425,
-  60200956, 60200520, 60200820, 60201198, 60200357, 60201062,
-  60201007, 60201499, 60201015, 60200615, 60201510, 60201705, 60201668,
-]);
 const BATCH_SIZE = 24;
 const RETENTION_DAYS = 30;
 
@@ -52,6 +55,13 @@ const readExistingRows = async (outputPath) => {
   }
 };
 
+const readJson = async (path, fallback) => {
+  try { return JSON.parse(await readFile(path, 'utf8')); } catch (error) {
+    if (error.code === 'ENOENT') return fallback;
+    throw error;
+  }
+};
+
 const fetchBatch = async (stations) => {
   const query = stations.map(({ id }) => `diva=${encodeURIComponent(id)}`).join('&');
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -64,7 +74,11 @@ const fetchBatch = async (stations) => {
     });
     if (response.ok) {
       const payload = await response.json();
-      return Array.isArray(payload?.data?.monitors) ? payload.data.monitors : [];
+      return {
+        monitors: Array.isArray(payload?.data?.monitors) ? payload.data.monitors : [],
+        serverTime: payload?.message?.serverTime || payload?.data?.message?.serverTime || null,
+        payload,
+      };
     }
     const retryable = response.status === 403 || response.status === 429 || response.status >= 500;
     if (!retryable || attempt === 2) {
@@ -73,7 +87,7 @@ const fetchBatch = async (stations) => {
     await response.body?.cancel();
     await sleep(5000 * (attempt + 1));
   }
-  return [];
+  return { monitors: [], serverTime: null, payload: null };
 };
 
 const fetchCurrentIncidents = async (observedAt) => {
@@ -86,22 +100,38 @@ const fetchCurrentIncidents = async (observedAt) => {
         },
         signal: AbortSignal.timeout(30000),
       });
-      if (response.ok) return normaliseLiveTrafficInfos(await response.json(), observedAt);
+      if (response.ok) {
+        const payload = await response.json();
+        return { records: normaliseLiveTrafficInfos(payload, observedAt), payload };
+      }
       const retryable = response.status === 403 || response.status === 429 || response.status >= 500;
       if (!retryable || attempt === 2) throw new Error(`HTTP ${response.status}`);
       await response.body?.cancel();
     } catch (error) {
       if (attempt === 2) {
         console.warn(`Current incident context unavailable: ${error.message}`);
-        return [];
+        return { records: [], payload: null };
       }
     }
     await sleep(5000 * (attempt + 1));
   }
-  return [];
+  return { records: [], payload: null };
 };
 
-const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((monitor) => {
+const fetchNews = async () => {
+  const url = `${API_BASE}/newsList?name=news&name=aufzugsservice`;
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'vienna-ubahn-delay-research/1.0' },
+      signal: AbortSignal.timeout(30000),
+    });
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
+  }
+};
+
+const rowsFromMonitors = (monitors, observedAt, incidents, feedServerTime = null) => monitors.flatMap((monitor) => {
   const stop = monitor?.locationStop?.properties || {};
   const stationId = Number(stop.name);
   const stationName = String(stop.title || '').replace(/\s+U$/, '') || String(stationId);
@@ -114,10 +144,16 @@ const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((
       const realMs = parseTimestamp(timing.timeReal);
       if (!Number.isFinite(plannedMs) || !Number.isFinite(realMs)) return [];
       const vehicle = departure.vehicle || {};
+      const gpsCandidate = vehicle.gpsCoordinates || vehicle.coordinates || vehicle.position?.coordinates || null;
+      const exactGpsCoordinates = Array.isArray(gpsCandidate) && gpsCandidate.length >= 2
+        ? gpsCandidate.slice(0, 2).map(Number)
+        : null;
+      const validExactGpsCoordinates = exactGpsCoordinates?.every(Number.isFinite)
+        ? exactGpsCoordinates : null;
       const direction = String(vehicle.direction || line.direction || '').toUpperCase();
       const incidentContext = incidentFeaturesAt(incidents, lineId, observedAt);
       const row = {
-        schemaVersion: 2,
+        schemaVersion: 3,
         observedAt,
         stationId,
         stationName,
@@ -135,6 +171,24 @@ const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((
         realtimeSupported: line.realtimeSupported !== false,
         trafficJam: Boolean(vehicle.trafficjam ?? line.trafficjam),
         barrierFree: vehicle.barrierFree ?? line.barrierFree ?? null,
+        platform: line.platform ?? vehicle.platform ?? stop.gate ?? null,
+        gate: stop.gate ?? null,
+        rbl: stop.rbl ?? stop.name ?? null,
+        lineId: line.linienId ?? line.lineId ?? null,
+        routeDirectionId: vehicle.richtungsId ?? line.richtungsId ?? null,
+        vehicleId: vehicle.id || vehicle.vehicleId || null,
+        vehicleName: vehicle.name || null,
+        vehicleType: vehicle.type || null,
+        onStop: vehicle.onStop ?? null,
+        foldingRamp: vehicle.foldingRamp ?? null,
+        cooling: vehicle.cooling ?? null,
+        exactGpsCoordinates: validExactGpsCoordinates,
+        exactGpsAvailable: Boolean(validExactGpsCoordinates),
+        positionSource: validExactGpsCoordinates ? 'official-vehicle-gps' : 'inferred-from-departure-prediction',
+        feedServerTime,
+        feedAgeSeconds: feedServerTime && Number.isFinite(parseTimestamp(feedServerTime))
+          ? Math.max(0, Math.round((observedAt - parseTimestamp(feedServerTime)) / 1000))
+          : null,
         ...incidentContext,
       };
       row.eventKey = eventKey(row);
@@ -148,18 +202,24 @@ const rowsFromMonitors = (monitors, observedAt, incidents) => monitors.flatMap((
 const stations = JSON.parse(await readFile(STATIONS_PATH, 'utf8'))
   .filter((station) => Number.isFinite(Number(station.id)))
   .map((station) => ({ id: Number(station.id), name: station.nombre }))
-  .filter((station) => REFERENCE_STATION_IDS.has(station.id))
   .filter((station, index, all) => all.findIndex((candidate) => candidate.id === station.id) === index);
 
 const observedAt = Date.now();
-const currentIncidents = await fetchCurrentIncidents(observedAt);
+const currentIncidentContext = await fetchCurrentIncidents(observedAt);
+const currentIncidents = currentIncidentContext.records;
+const newsPayload = await fetchNews();
 const observationDate = new Date(observedAt).toISOString().slice(0, 10);
 const outputPath = resolve(OUTPUT_DIR, `${observationDate}.jsonl`);
 const collectedRows = [];
 for (let index = 0; index < stations.length; index += BATCH_SIZE) {
   const batch = stations.slice(index, index + BATCH_SIZE);
-  const monitors = await fetchBatch(batch);
-  collectedRows.push(...rowsFromMonitors(monitors, observedAt, currentIncidents));
+  const monitorPayload = await fetchBatch(batch);
+  collectedRows.push(...rowsFromMonitors(
+    monitorPayload.monitors,
+    observedAt,
+    currentIncidents,
+    monitorPayload.serverTime,
+  ));
   if (index + BATCH_SIZE < stations.length) await sleep(1100);
 }
 
@@ -171,11 +231,45 @@ const deduplicated = [...new Map(merged.map((row) => [
   row,
 ])).values()].sort((a, b) => a.observedAt - b.observedAt || a.eventKey.localeCompare(b.eventKey));
 
+const headwayState = await readJson(HEADWAY_STATE_PATH, {});
+const currentHeadwayEvents = detectHeadwayEvents(collectedRows, observedAt);
+const reconciledHeadway = reconcileHeadwayEvents({
+  current: currentHeadwayEvents,
+  state: headwayState,
+  observedAt,
+});
+
 await mkdir(OUTPUT_DIR, { recursive: true });
 await writeFile(outputPath, `${deduplicated.map((row) => JSON.stringify(row)).join('\n')}\n`);
+await mkdir(RAW_OUTPUT_DIR, { recursive: true });
+await appendFile(resolve(RAW_OUTPUT_DIR, `${observationDate}.jsonl`), `${JSON.stringify({
+  observedAt,
+  source: 'wiener-linien',
+  incidentPayload: currentIncidentContext.payload,
+  newsPayload,
+})}\n`);
+await mkdir(HEADWAY_EVENT_DIR, { recursive: true });
+if (reconciledHeadway.observations.length) {
+  await appendFile(
+    resolve(HEADWAY_EVENT_DIR, `${observationDate}.jsonl`),
+    `${reconciledHeadway.observations.map((event) => JSON.stringify({
+      schemaVersion: 1,
+      source: 'wiener-linien-monitor',
+      archivedAt: observedAt,
+      ...event,
+    })).join('\n')}\n`,
+  );
+}
+await writeFile(HEADWAY_STATE_PATH, `${JSON.stringify(reconciledHeadway.state, null, 2)}\n`);
 const oldestDate = new Date(cutoff).toISOString().slice(0, 10);
 for (const file of await readdir(OUTPUT_DIR)) {
   if (file.endsWith('.jsonl') && file.slice(0, 10) < oldestDate) await unlink(resolve(OUTPUT_DIR, file));
+}
+for (const file of await readdir(RAW_OUTPUT_DIR)) {
+  if (file.endsWith('.jsonl') && file.slice(0, 10) < oldestDate) await unlink(resolve(RAW_OUTPUT_DIR, file));
+}
+for (const file of await readdir(HEADWAY_EVENT_DIR)) {
+  if (file.endsWith('.jsonl') && file.slice(0, 10) < oldestDate) await unlink(resolve(HEADWAY_EVENT_DIR, file));
 }
 
 const liveRows = collectedRows.filter((row) => row.realtimeSupported).length;
@@ -185,6 +279,10 @@ console.log(JSON.stringify({
   rowsCollected: collectedRows.length,
   liveRows,
   activeUbahnIncidentRecords: currentIncidents.length,
+  fullStationCoverage: stations.length,
+  newsPayloadCollected: Boolean(newsPayload),
+  headwayEventsObserved: currentHeadwayEvents.length,
+  headwayLifecycleRowsWritten: reconciledHeadway.observations.length,
   totalRowsRetained: deduplicated.length,
   output: outputPath,
 }, null, 2));

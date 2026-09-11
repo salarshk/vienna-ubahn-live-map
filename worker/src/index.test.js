@@ -10,6 +10,21 @@ const advisorRequest = (body, options = {}) => new Request('https://worker.examp
 });
 
 describe('advisor worker', () => {
+  it('proxies the documented Wiener Linien feed endpoints', async () => {
+    const fetchMock = vi.fn(async (url) => {
+      expect(String(url)).toContain('https://www.wienerlinien.at/ogd_realtime/newsList?name=news');
+      return new Response(JSON.stringify({ data: { pois: [] } }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    const response = await handleRequest(new Request('https://worker.example/newsList?name=news', {
+      method: 'GET', headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() },
+    }), env, fetchMock);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    expect(await response.json()).toEqual({ data: { pois: [] } });
+  });
+
   it('answers an allowed CORS preflight', async () => {
     const response = await handleRequest(new Request('https://worker.example/advice', {
       method: 'OPTIONS', headers: { Origin: origin },

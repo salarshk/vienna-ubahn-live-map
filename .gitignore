@@ -45,8 +45,13 @@ src/data/line3_timetable.json
 public/basemap/
 .cache/
 
-# Restored between scheduled ML collection runs as a GitHub Actions artifact.
-# The compact trained model and its public metrics are committed separately.
+# Restored between scheduled ML collection runs from the GitHub Actions
+# fallback artifact or the durable Cloudflare R2 archive. The compact trained
+# model and its public metrics are committed separately.
 data/ml/observations/
 data/ml/observations.jsonl
 data/ml/ubahn-incidents.json
+data/ml/raw/
+data/ml/oebb/
+data/ml/headway-events/
+data/ml/headway-state.json

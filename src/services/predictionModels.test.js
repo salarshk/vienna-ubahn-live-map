@@ -9,7 +9,13 @@ describe('prediction lab models', () => {
   it('flags prolonged dwell and headway risk from observable signals', () => {
     const vehicles = [{ line: 'U1', isLive: true, status: 'At Platform', targetStation: 'Karlsplatz', secondsUnheard: 180, positionUncertaintyMetres: 300 }];
     expect(predictDwellTimes({ vehicles })[0]).toMatchObject({ line: 'U1', station: 'Karlsplatz' });
-    expect(predictHeadwayRisk({ issues: [{ line: 'U1', type: 'gap', severity: 200, label: 'large gap' }], arrivals: [] })[0].status).toBe('high');
+    expect(predictHeadwayRisk({ issues: [{ line: 'U1', type: 'gap', severity: 200, label: 'large gap', station: 'Karlsplatz' }], arrivals: [] })[0])
+      .toMatchObject({ status: 'high', station: 'Karlsplatz', location: 'Gap near Karlsplatz' });
+    const fallback = predictHeadwayRisk({ arrivals: [
+      { line: 'U2', isLive: true, seconds: 60, stationName: 'Aspernstraße' },
+      { line: 'U2', isLive: true, seconds: 60 + 13 * 60, stationName: 'Aspernstraße' },
+    ] }).find((item) => item.line === 'U2');
+    expect(fallback).toMatchObject({ station: 'Aspernstraße', location: 'Gap near Aspernstraße' });
   });
 
   it('classifies delay severity and exposes incident clearance evidence', () => {

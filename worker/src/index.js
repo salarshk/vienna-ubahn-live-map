@@ -65,11 +65,13 @@ const allowedOrigins = (env) => String(env.ALLOWED_ORIGINS || '')
 
 const corsHeaders = (origin) => ({
   'Access-Control-Allow-Origin': origin,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Max-Age': '86400',
   Vary: 'Origin',
 });
+
+const FEED_PATHS = new Set(['/monitor', '/trafficInfoList', '/trafficInfo', '/newsList']);
 
 const json = (body, status, origin) => new Response(JSON.stringify(body), {
   status,
@@ -86,6 +88,18 @@ const withinRateLimit = (request) => {
   }
   current.count += 1;
   return current.count <= 6;
+};
+
+const withinFeedRateLimit = (request) => {
+  const now = Date.now();
+  const key = `feed:${request.headers.get('CF-Connecting-IP') || 'local'}`;
+  const current = requestCounts.get(key);
+  if (!current || now - current.startedAt >= 60000) {
+    requestCounts.set(key, { startedAt: now, count: 1 });
+    return true;
+  }
+  current.count += 1;
+  return current.count <= 60;
 };
 
 const extractOutputText = (response) => (response.output || [])
@@ -110,6 +124,19 @@ export const handleRequest = async (request, env, fetchImpl = fetch) => {
   if (!allowedOrigins(env).includes(origin)) return json({ error: 'Origin is not allowed.' }, 403, null);
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (request.method === 'GET' && FEED_PATHS.has(url.pathname)) {
+    if (!withinFeedRateLimit(request)) return json({ error: 'Too many feed requests. Please wait a minute.' }, 429, origin);
+    const upstream = new URL(`https://www.wienerlinien.at/ogd_realtime${url.pathname}`);
+    upstream.search = url.search;
+    try {
+      const response = await fetchImpl(upstream, { headers: { Accept: 'application/json' } });
+      const headers = new Headers(corsHeaders(origin));
+      headers.set('Content-Type', response.headers.get('Content-Type') || 'application/json; charset=utf-8');
+      return new Response(response.body, { status: response.status, headers });
+    } catch {
+      return json({ error: 'Wiener Linien feed is temporarily unavailable.' }, 502, origin);
+    }
+  }
   if (url.pathname !== '/advice' || request.method !== 'POST') return json({ error: 'Not found.' }, 404, origin);
   if (!env.OPENAI_API_KEY) return json({ error: 'AI advisor is not configured.' }, 503, origin);
   if (!withinRateLimit(request)) return json({ error: 'Too many requests. Please wait a minute.' }, 429, origin);

@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { arrivalStore, STATION_ID_MAP } from './arrivalStore';
+import { arrivalStore, parseMonitorArrivals, STATION_ID_MAP } from './arrivalStore';
 
 describe('Vienna U-Bahn station identifiers', () => {
   it('resolves central interchanges to Wiener Linien DIVA ids', () => {
@@ -67,5 +67,32 @@ describe('batched live synchronization', () => {
     expect(arrival.reportedDelaySeconds).toBeTypeOf('number');
     expect(arrival.delaySource).toBe('wiener-linien-timeReal-minus-timePlanned');
     expect(arrival.timingSource).toBe('official-wiener-linien-realtime');
+  });
+
+  it('retains platform, vehicle and feed-health metadata', () => {
+    const fetchTime = Date.parse('2026-09-09T18:08:00.000+0200');
+    const [arrival] = parseMonitorArrivals([{
+      locationStop: { properties: { name: '60201320', gate: '2', rbl: '1234' } },
+      lines: [{
+        name: 'U1', towards: 'Leopoldau', direction: 'H', platform: '2',
+        linienId: 'u1-id', richtungsId: 'u1-north', realtimeSupported: true,
+        departures: { departure: [{
+          departureTime: {
+            timePlanned: '2026-09-09T18:09:00.000+0200',
+            timeReal: '2026-09-09T18:10:00.000+0200',
+          },
+          vehicle: {
+            name: 'X', id: 'v-1', type: 'X', direction: 'H',
+            richtungsId: 'u1-north', onStop: true, foldingRamp: false, cooling: true,
+          },
+        }] },
+      }],
+    }], fetchTime, '2026-09-09T18:08:10.000+0200');
+
+    expect(arrival).toMatchObject({
+      platform: '2', gate: '2', rbl: '1234', lineId: 'u1-id',
+      routeDirectionId: 'u1-north', vehicleId: 'v-1', vehicleType: 'X',
+      onStop: true, cooling: true, feedAgeSeconds: 0,
+    });
   });
 });

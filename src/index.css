@@ -522,13 +522,20 @@ button:active {
 .advanced-row small { color: var(--text-secondary); font-size: .5rem; text-transform: capitalize; white-space: nowrap; }
 .advanced-line-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .advanced-line-grid > div { display: grid; grid-template-columns: 25px minmax(0, 1fr); gap: 2px 6px; align-items: center; padding: 6px; border-radius: 6px; background: var(--bg-card, var(--bg-primary)); }
-.advanced-line-grid i { grid-row: 1 / span 2; }
+.advanced-line-grid i { grid-row: 1 / span 3; align-self: start; }
 .advanced-line-grid strong, .advanced-line-grid span { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .advanced-line-grid strong { font-size: .58rem; }
 .advanced-line-grid strong.risk-label.high { color: #ff6b6b; }
 .advanced-line-grid strong.risk-label.medium { color: #ffb74d; }
 .advanced-line-grid strong.risk-label.low { color: #4caf50; }
 .advanced-line-grid span { color: var(--text-secondary); font-size: .51rem; }
+.advanced-line-grid .headway-location {
+  grid-column: 2;
+  color: var(--text-primary);
+  font-size: .5rem;
+  line-height: 1.25;
+  white-space: normal;
+}
 .advanced-hotspots { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .advanced-hotspots span { padding: 3px 5px; border-radius: 4px; color: var(--text-secondary); background: var(--bg-card, var(--bg-primary)); font-size: .51rem; }
 .advanced-caveat { display: block; margin-top: 6px; color: var(--text-secondary); font-size: .52rem; line-height: 1.35; }
@@ -766,8 +773,8 @@ button:active {
   position: absolute;
   z-index: 35;
   left: 20px;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  transition: left .3s cubic-bezier(.4, 0, .2, 1);
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  transition: left .3s cubic-bezier(.4, 0, .2, 1), bottom .3s ease;
 }
 
 .service-alerts.sidebar-open { left: 360px; }
@@ -1180,7 +1187,9 @@ button:active {
   .service-alerts,
   .service-alerts.sidebar-open {
     left: 12px;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    /* The mobile sidebar is a 45vh bottom sheet. Keep the alert control
+       above its top edge instead of stacking it over the sheet. */
+    bottom: calc(45vh + 28px + env(safe-area-inset-bottom, 0px));
   }
 
   .service-alerts-panel { width: calc(100vw - 24px); }
