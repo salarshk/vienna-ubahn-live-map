@@ -509,6 +509,7 @@ button:active {
 .advanced-card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; margin-bottom: 7px; }
 .advanced-card-title strong { font-size: .68rem; }
 .advanced-card-title span { color: var(--text-secondary); font-size: .53rem; }
+.prediction-description { margin: -2px 0 7px; color: var(--text-secondary); font-size: .56rem; line-height: 1.35; }
 .advanced-list { display: flex; flex-direction: column; gap: 5px; }
 .advanced-row { display: grid; grid-template-columns: 27px minmax(0, 1fr) auto auto; align-items: center; gap: 6px; min-width: 0; padding: 5px; border-radius: 6px; background: var(--bg-card, var(--bg-primary)); }
 .advanced-row > i, .advanced-line-grid i { min-width: 24px; padding: 2px 3px; border-radius: 4px; color: #fff; font-size: .53rem; font-style: normal; font-weight: 900; text-align: center; }
