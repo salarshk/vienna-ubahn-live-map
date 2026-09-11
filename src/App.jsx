@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MapView from './components/MapView';
 import Sidebar from './components/Sidebar';
 import SearchBar from './components/SearchBar';
@@ -8,14 +8,17 @@ import ServiceAlerts from './components/ServiceAlerts';
 import DashboardBoard from './components/DashboardBoard';
 import LocateButton from './components/LocateButton';
 import RailIntelligence from './components/RailIntelligence';
-import { locate } from './services/userLocation';
+import NearbyStations from './components/NearbyStations';
+import CommuteDashboard from './components/CommuteDashboard';
+import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
+import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, LayoutDashboard, Menu, Download } from 'lucide-react';
+import { Activity, Sun, Moon, X, LayoutDashboard, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -59,6 +62,12 @@ function App() {
   });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [commuteOpen, setCommuteOpen] = useState(false);
+  const [nearbyOpen, setNearbyOpen] = useState(true);
+  const [isFollowingGPS, setIsFollowingGPS] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const followCleanupRef = useRef(null);
+  const seenDisruptionIdsRef = useRef(new Set());
 
   useEffect(() => {
     const captureInstallPrompt = (event) => {
@@ -72,6 +81,17 @@ function App() {
       window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
       window.removeEventListener('appinstalled', installed);
     };
+  }, []);
+
+  useEffect(() => {
+    const onUpdate = () => setUpdateAvailable(true);
+    window.addEventListener('vienna-pwa-update', onUpdate);
+    return () => window.removeEventListener('vienna-pwa-update', onUpdate);
+  }, []);
+
+  useEffect(() => () => {
+    followCleanupRef.current?.();
+    followCleanupRef.current = null;
   }, []);
 
   const installApp = async () => {
@@ -96,6 +116,22 @@ function App() {
       document.removeEventListener('visibilitychange', refresh);
     };
   }, []);
+
+  useEffect(() => {
+    const alerts = disruptionSnapshot.alerts || [];
+    const ids = new Set(alerts.map((alert) => alert.id || alert.title));
+    // Establish the initial baseline silently; only later arrivals are new to
+    // this open session and worth notifying about.
+    if (seenDisruptionIdsRef.current.size === 0) {
+      seenDisruptionIdsRef.current = ids;
+      return;
+    }
+    if (notificationState().enabled) {
+      alerts.filter((alert) => !seenDisruptionIdsRef.current.has(alert.id || alert.title))
+        .forEach((alert) => notifyDisruption(alert));
+    }
+    seenDisruptionIdsRef.current = ids;
+  }, [disruptionSnapshot.alerts]);
 
   useEffect(() => {
     const record = () => networkIntelligenceStore.record();
@@ -220,11 +256,42 @@ function App() {
     if (result.nearestStation) setSelectedStation(result.nearestStation);
   };
 
+  const stopFollowingGPS = () => {
+    followCleanupRef.current?.();
+    followCleanupRef.current = null;
+    setIsFollowingGPS(false);
+  };
+
+  const startFollowingGPS = async () => {
+    if (isFollowingGPS) return stopFollowingGPS();
+    try {
+      const cleanup = await watchDeviceLocation({
+        onPosition: (position) => {
+          const result = resultFromPosition(position);
+          if (result.status === 'located') {
+            setUserLocation(result);
+            setNearbyOpen(true);
+          }
+        },
+        onError: (error) => {
+          stopFollowingGPS();
+          setLocateNotice({ text: `Live location stopped: ${error?.message || 'GPS unavailable'}`, _ts: Date.now() });
+        },
+      });
+      followCleanupRef.current = cleanup;
+      setIsFollowingGPS(true);
+      setLocateNotice({ text: 'Live location on — your position will update as you move.', _ts: Date.now() });
+    } catch (error) {
+      setLocateNotice({ text: `Live location unavailable: ${error?.message || 'GPS unavailable'}`, _ts: Date.now() });
+    }
+  };
+
   // Holding the locate button clears the dot. The fix is a snapshot that goes
   // stale on its own — the fade says so — and once it has served its purpose
   // there was previously no way to take it off the map short of a reload.
   const handleHideLocation = () => {
     if (!userLocation) return;
+    stopFollowingGPS();
     setUserLocation(null);
     setLocateState('idle');
     setLocateNotice({ text: 'Location hidden.', _ts: Date.now() });
@@ -272,6 +339,15 @@ function App() {
     setSelectedAlert(null);
     setAlertsOpen(false);
     setIntelligenceOpen((open) => !open);
+  };
+
+  const openCommute = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setIntelligenceOpen(false);
+    setCommuteOpen((open) => !open);
   };
 
   const closeIntelligence = () => {
@@ -374,6 +450,16 @@ function App() {
           >
             <Activity size={18} color={intelligenceOpen ? '#4CAF50' : undefined} />
           </button>
+          <button
+            onClick={openCommute}
+            className={commuteOpen ? 'top-action-active' : ''}
+            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title="My saved commute stations"
+            aria-label="Open my commute"
+            aria-pressed={commuteOpen}
+          >
+            <Star size={18} color={commuteOpen ? '#FFD166' : undefined} />
+          </button>
           {installPrompt && <button
             onClick={installApp}
             style={{
@@ -440,6 +526,10 @@ function App() {
         </button>
       )}
 
+      {updateAvailable && <button className="pwa-update-banner glass-panel" onClick={() => window.location.reload()}>
+        <RefreshCw size={13} /> Update available · reload Vienna Rail
+      </button>}
+
       <LocateButton
         state={locateState}
         lifted={Boolean(selectedStation || selectedVehicle)}
@@ -447,6 +537,28 @@ function App() {
         onLocate={handleLocate}
         onHide={handleHideLocation}
       />
+
+      {userLocation && <button
+        className={`follow-gps-button glass-panel ${isFollowingGPS ? 'active' : ''}`}
+        data-lifted={Boolean(selectedStation || selectedVehicle)}
+        onClick={startFollowingGPS}
+        title={isFollowingGPS ? 'Stop following my live location' : 'Follow my live location'}
+        aria-pressed={isFollowingGPS}
+      >
+        <Navigation2 size={16} /> {isFollowingGPS ? 'Following' : 'Follow me'}
+      </button>}
+
+      {userLocation && nearbyOpen && !commuteOpen && !intelligenceOpen && <NearbyStations
+        userLocation={userLocation}
+        onSelectStation={handleSelectStation}
+        onClose={() => setNearbyOpen(false)}
+      />}
+
+      {commuteOpen && <CommuteDashboard
+        now={Date.now()}
+        onClose={() => setCommuteOpen(false)}
+        onSelectStation={handleSelectStation}
+      />}
 
       {/* Station Focus panel — right in landscape, bottom in portrait */}
       {selectedStation && (

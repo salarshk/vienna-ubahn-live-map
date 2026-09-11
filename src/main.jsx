@@ -16,6 +16,16 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
+    }).then((registration) => {
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.dispatchEvent(new Event('vienna-pwa-update'));
+          }
+        });
+      });
     }).catch(() => {
       // A blocked worker must not affect the live map.
     });

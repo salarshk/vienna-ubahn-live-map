@@ -19,6 +19,7 @@ import trainPositionEngine from '../services/trainPositionEngine';
 import { summariseOfficialSnapshot } from '../services/officialSnapshotStore';
 import { getReports, subscribe as subscribeReports } from '../services/communityReports';
 import OperationsDashboard from './OperationsDashboard';
+import DelayTimeline from './DelayTimeline';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -192,6 +193,13 @@ const RailIntelligence = ({
           )}
           <p className="model-label-caveat">Target: Wiener Linien’s final reported <code>timeReal − timePlanned</code>, not independent GPS ground truth.</p>
         </section>
+
+        <DelayTimeline
+          arrivals={arrivalStore.getNetworkArrivals(now)}
+          now={now}
+          predictions={delayPredictions}
+          disruptions={disruptions}
+        />
 
         <section className="intelligence-section">
           <div className="intelligence-section-title"><Radar size={14} /><strong>Irregularity propagation</strong><em>Experimental</em></div>

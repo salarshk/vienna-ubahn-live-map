@@ -78,6 +78,18 @@ export const findNearestStation = (coordinates) => {
   return best;
 };
 
+export const findNearbyStations = (coordinates, maxDistance = NEAREST_STATION_RANGE_M) => {
+  const closestByName = new Map();
+  for (const station of STATIONS) {
+    const distance = getDistance(coordinates, station.geometry.coordinates);
+    if (distance > maxDistance) continue;
+    const name = station.properties?.name || station.id;
+    const previous = closestByName.get(name);
+    if (!previous || distance < previous.distance) closestByName.set(name, { station, distance });
+  }
+  return [...closestByName.values()].sort((a, b) => a.distance - b.distance);
+};
+
 const MESSAGES = {
   denied: 'Location is off for this app. Turn it on in Settings to find your nearest station.',
   unavailable: 'Location services are unavailable on this device right now.',
@@ -176,6 +188,44 @@ const withTimeout = (promise, ms) => {
   return Promise.race([promise, stopwatch]).finally(() => clearTimeout(timer));
 };
 
+export const resultFromPosition = (position, now = Date.now()) => {
+  if (!position?.coords) return failure('unavailable');
+  const coordinates = [position.coords.longitude, position.coords.latitude];
+  const accuracy = Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null;
+  const located = {
+    status: 'located', coordinates, accuracy, fetchedAt: now,
+    nearestStation: null, distance: null, reason: null,
+    source: 'device-gps', message: '',
+  };
+  if (accuracy !== null && accuracy > MAX_USABLE_ACCURACY_M) {
+    return { ...located, reason: 'imprecise', message: `GPS accuracy ±${Math.round(accuracy)} m is too rough to pick a station.` };
+  }
+  const nearest = findNearestStation(coordinates);
+  if (!nearest || nearest.distance > NEAREST_STATION_RANGE_M) {
+    return { ...located, reason: 'out-of-range', message: MESSAGES['out-of-range'] };
+  }
+  return {
+    ...located, nearestStation: nearest.station, distance: nearest.distance,
+    message: `${nearest.station.properties.name} · ${Math.round(nearest.distance)} m away · GPS ±${accuracy === null ? '—' : Math.round(accuracy)} m`,
+  };
+};
+
+export const watchDeviceLocation = async ({ onPosition, onError } = {}) => {
+  const options = { enableHighAccuracy: true, maximumAge: 10000, timeout: FIX_TIMEOUT_MS };
+  if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    const id = navigator.geolocation.watchPosition(onPosition, onError, options);
+    return () => navigator.geolocation.clearWatch(id);
+  }
+  if (typeof Geolocation.watchPosition === 'function') {
+    const id = await Geolocation.watchPosition(options, (position, error) => {
+      if (error) onError?.(error);
+      else onPosition?.(position);
+    });
+    return () => Geolocation.clearWatch({ id });
+  }
+  throw Object.assign(new Error('Continuous location is unavailable'), { code: 'UNAVAILABLE' });
+};
+
 /**
  * Take one fix of the User Location and say what it is good for.
  *
@@ -238,38 +288,7 @@ export const locate = async ({
   if (position === TIMED_OUT) return failure('timeout');
   if (!position || !position.coords) return failure('unavailable');
 
-  const coordinates = [position.coords.longitude, position.coords.latitude];
-  const accuracy = Number.isFinite(position.coords.accuracy)
-    ? position.coords.accuracy
-    : null;
-
-  const located = {
-    status: 'located',
-    coordinates,
-    accuracy,
-    fetchedAt: now,
-    nearestStation: null,
-    distance: null,
-    reason: null,
-    source: 'device-gps',
-    message: '',
-  };
-
-  if (accuracy !== null && accuracy > MAX_USABLE_ACCURACY_M) {
-    return { ...located, reason: 'imprecise', message: MESSAGES.imprecise };
-  }
-
-  const nearest = findNearestStation(coordinates);
-  if (!nearest || nearest.distance > NEAREST_STATION_RANGE_M) {
-    return { ...located, reason: 'out-of-range', message: MESSAGES['out-of-range'] };
-  }
-
-  return {
-    ...located,
-    nearestStation: nearest.station,
-    distance: nearest.distance,
-    message: `${nearest.station.properties.name} · ${Math.round(nearest.distance)} m away`,
-  };
+  return resultFromPosition(position, now);
 };
 
 export default locate;

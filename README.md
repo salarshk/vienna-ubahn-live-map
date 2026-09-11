@@ -37,6 +37,11 @@ are always drawn hollow and labelled as scheduled estimates.
 - Public MAE, RMSE, R², within-one-minute accuracy and 3+ minute delay metrics
 - Button-triggered AI advisor with evidence-backed passenger and operations suggestions
 - Shared React codebase for the web and a Capacitor iOS shell
+- Opt-in follow-me GPS mode with a nearby-station list (coordinates stay on the device)
+- Device-local commute dashboard for up to four saved stations
+- Opt-in browser/PWA notifications for newly observed official disruptions
+- Update prompt when a newer PWA shell is ready
+- Delay evidence timeline separating planned time, operator-reported delay and model estimate
 
 The delay model can publish a clearly marked preliminary score after at least
 36 hours spanning two calendar days and a sufficiently large untouched test
@@ -61,6 +66,13 @@ The hosted site is also an installable Progressive Web App. On Android/Chrome
 use the browser's install prompt; on iPhone/Safari choose **Share → Add to Home
 Screen**. The installed shell can reopen during a short network interruption,
 while live departures refresh when connectivity returns.
+
+The map's **My commute** panel stores saved stations only in local browser
+storage. **Follow me** uses the phone's GPS only after the user starts it; it
+can be stopped at any time. Disruption notifications are also opt-in and are
+generated from the official service-message feed while the app is open or
+installed with notification support. A server-backed push system would require
+an additional subscription backend and is intentionally not enabled here.
 
 ```bash
 npm test
@@ -123,6 +135,8 @@ geolocation fallback for the PWA when the Capacitor bridge is unavailable. It
 compares that one fix against the station list in the browser. The coordinates
 are not sent to Wiener Linien or to an application server. A visible accuracy
 ring and freshness fade prevent an old or imprecise fix from looking exact.
+Continuous follow mode uses the same browser-local path and is explicitly
+stopped when the user hides the location or closes the page.
 
 ## License
 
