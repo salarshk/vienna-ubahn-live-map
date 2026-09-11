@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 7938,
-  "labelledJourneyCount": 308,
+  "observationCount": 9893,
+  "labelledJourneyCount": 579,
   "dataDays": 2,
-  "coverageHours": 26.5,
+  "coverageHours": 26.8,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-11T13:39:37.833Z",
+  "lastObservation": "2026-09-11T14:00:09.968Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 277,
+    "officialLabelledJourneys": 548,
     "fallbackLabelledJourneys": 31
   },
   "monitoring": {
@@ -55,46 +55,46 @@
   "onlineCalibration": {
     "status": "ready",
     "experimental": true,
-    "scoredJourneyCount": 308,
+    "scoredJourneyCount": 579,
     "minimumExamples": 30,
     "evaluationMethod": "Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.",
     "model": {
-      "sampleCount": 308,
-      "maeMinutes": 0.45,
-      "rmseMinutes": 0.61,
-      "rSquared": 0.668,
-      "withinOneMinutePercent": 92.9,
-      "withinTwoMinutesPercent": 99,
+      "sampleCount": 579,
+      "maeMinutes": 0.51,
+      "rmseMinutes": 0.69,
+      "rSquared": 0.534,
+      "withinOneMinutePercent": 88.4,
+      "withinTwoMinutesPercent": 98.6,
       "delayedThreeMinutes": {
-        "accuracyPercent": 98.7,
-        "precision": 1,
-        "recall": 0.6,
-        "f1": 0.75,
+        "accuracyPercent": 98.8,
+        "precision": 0.889,
+        "recall": 0.571,
+        "f1": 0.696,
         "confusionMatrix": {
-          "truePositive": 6,
-          "trueNegative": 298,
-          "falsePositive": 0,
-          "falseNegative": 4
+          "truePositive": 8,
+          "trueNegative": 564,
+          "falsePositive": 1,
+          "falseNegative": 6
         }
       }
     },
     "currentEstimateBaseline": {
-      "sampleCount": 308,
-      "maeMinutes": 0.43,
-      "rmseMinutes": 0.58,
-      "rSquared": 0.702,
-      "withinOneMinutePercent": 95.5,
-      "withinTwoMinutesPercent": 99,
+      "sampleCount": 579,
+      "maeMinutes": 0.5,
+      "rmseMinutes": 0.7,
+      "rSquared": 0.521,
+      "withinOneMinutePercent": 89.6,
+      "withinTwoMinutesPercent": 98.1,
       "delayedThreeMinutes": {
-        "accuracyPercent": 98.7,
-        "precision": 1,
-        "recall": 0.6,
-        "f1": 0.75,
+        "accuracyPercent": 98.6,
+        "precision": 0.875,
+        "recall": 0.5,
+        "f1": 0.636,
         "confusionMatrix": {
-          "truePositive": 6,
-          "trueNegative": 298,
-          "falsePositive": 0,
-          "falseNegative": 4
+          "truePositive": 7,
+          "trueNegative": 564,
+          "falsePositive": 1,
+          "falseNegative": 7
         }
       }
     },
