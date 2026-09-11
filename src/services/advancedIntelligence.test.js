@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCalendarPressure, buildDataQuality, buildEtaUncertainty,
-  buildRecoveryForecast, buildRouteRisk, simulateNetworkScenario,
+  buildControlRoomActions, buildRecoveryForecast, buildRouteRisk, simulateNetworkScenario,
 } from './advancedIntelligence';
 
 describe('advanced network intelligence', () => {
@@ -42,5 +42,7 @@ describe('advanced network intelligence', () => {
     expect(scenario[0].risk).toBeGreaterThan(0);
     expect(buildRouteRisk({ recovery: [{ line: 'U1', status: 'watch' }], pressure: [{ line: 'U1', level: 'high' }], reliability: [] })[0])
       .toMatchObject({ line: 'U1', level: 'high' });
+    expect(buildControlRoomActions({ issues: [{ line: 'U1', type: 'gap', label: 'gap at Karlsplatz' }] })[0])
+      .toMatchObject({ line: 'U1', humanReview: true, confidence: 64 });
   });
 });

@@ -30,6 +30,15 @@ positions and the browser's short history.
     candidate is stale, invalid, too inaccurate or worse than the baseline.
 17. A line-by-line Operations view showing attention status, occupancy proxy,
     reliability, reports, causes and a human-review action cue.
+18. Probabilistic delay bands showing typical and high-delay boundaries instead
+    of one falsely precise prediction.
+19. A keyless Vienna weather context feed from Open-Meteo, with a transparent
+    weather-impact score and cached fallback when the feed is unavailable.
+20. Event-demand extraction from official service/news text for stadiums,
+    concerts, festivals, demonstrations and similar event signals.
+21. Control-room-style suggestions for protecting interchanges, reviewing
+    bunching, preparing passenger messaging and monitoring propagation. These
+    are human-review recommendations, never automatic operating commands.
 
 The estimates intentionally remain advisory. Public Wiener Linien data does
 not expose signalling state, track occupation, passenger counts or GPS ground

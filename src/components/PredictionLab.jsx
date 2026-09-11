@@ -3,23 +3,24 @@ import { Activity, CloudRain, GitBranch, ShieldCheck, Sparkles, TrainFront, User
 import { lineColor } from '../utils/lineColor';
 import {
   calibrateUncertainty, classifyDelaySeverity, detectPredictiveAnomalies,
-  forecastCrowding, predictCancellationRisk, predictDisruptionResolution,
+  forecastCrowding, predictCancellationRisk, predictDelayBands, predictDisruptionResolution,
   predictDwellTimes, predictEventDemand, predictHeadwayRisk,
   predictSbahnConnections, predictTransferSuccess, predictWeatherImpact,
   scoreRouteReliability,
 } from '../services/predictionModels';
 
-const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [] }) => {
+const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null }) => {
   const dwell = useMemo(() => predictDwellTimes({ vehicles }), [vehicles]);
   const headways = useMemo(() => predictHeadwayRisk({ issues, arrivals }), [issues, arrivals]);
   const resolution = useMemo(() => predictDisruptionResolution({ disruptions, issues, reliability }), [disruptions, issues, reliability]);
   const severity = useMemo(() => classifyDelaySeverity({ arrivals, disruptions }), [arrivals, disruptions]);
+  const delayBands = useMemo(() => predictDelayBands({ arrivals, linePredictions: delayPredictions }), [arrivals, delayPredictions]);
   const transfer = useMemo(() => predictTransferSuccess({ transfers }), [transfers]);
   const routes = useMemo(() => scoreRouteReliability({ routeRisk, reliability }), [routeRisk, reliability]);
   const cancellations = useMemo(() => predictCancellationRisk({ arrivals, disruptions, issues }), [arrivals, disruptions, issues]);
   const crowd = useMemo(() => forecastCrowding({ crowding, issues, now }), [crowding, issues, now]);
-  const weather = useMemo(() => predictWeatherImpact({ now }), [now]);
-  const events = useMemo(() => predictEventDemand({ now }), [now]);
+  const weatherForecast = useMemo(() => predictWeatherImpact({ weather, now }), [weather, now]);
+  const events = useMemo(() => predictEventDemand({ alerts: disruptions, now }), [disruptions, now]);
   const sbahn = useMemo(() => predictSbahnConnections({ vehicles, now }), [vehicles, now]);
   const anomalies = useMemo(() => detectPredictiveAnomalies({ vehicles, issues, arrivals }), [vehicles, issues, arrivals]);
   const uncertainty = useMemo(() => calibrateUncertainty({ vehicles, reliability }), [vehicles, reliability]);
@@ -57,6 +58,12 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
       <div className="advanced-line-grid">{severity.map((item) => <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong className={`risk-label ${item.category === 'severe' || item.category === 'major' ? 'high' : item.category === 'minor' ? 'medium' : 'low'}`}>{item.category}</strong><span>{item.meanMinutes}m mean · {item.samples} reports</span></div>)}</div>
     </div>
 
+    <div className="advanced-card"><div className="advanced-card-title"><strong>Probabilistic delay bands</strong><span>next 15 min</span></div>
+      {explain('Shows a typical delay and a high-delay boundary, so a route is not represented by one falsely precise number.')}
+      <div className="advanced-line-grid">{delayBands.map((item) => <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong>{item.low.toFixed(1)}–{item.high.toFixed(1)} min</strong><span>typical {item.typical.toFixed(1)}m · {item.confidence}% confidence</span><small>{item.evidence}</small></div>)}</div>
+      <small className="advanced-caveat">Bands combine current operator-reported delay observations with the published model when it is available.</small>
+    </div>
+
     <div className="advanced-card"><div className="advanced-card-title"><strong>Transfer success probability</strong><span>connection margin</span></div>
       {explain('Estimates the chance of catching a connecting train from the predicted arrival and departure margin.')}
       {transfer.length ? <div className="advanced-list">{transfer.slice(0, 4).map((item) => <div className="advanced-row" key={`${item.from}-${item.to}-${item.station}`}><i style={{ background: lineColor(item.from) }}>{item.from}</i><div><strong>{item.station} → {item.to}</strong><span>{item.destination}</span></div><b>{item.probability}%</b><small>{item.rating}</small></div>)}</div> : <p className="advanced-empty">No live connection margin available.</p>}
@@ -79,12 +86,12 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
 
     <div className="advanced-card"><div className="advanced-card-title"><strong><CloudRain size={13} /> Weather impact</strong><span>external feed</span></div>
       {explain('Would estimate additional disruption risk from rain, snow, wind and other weather conditions when a feed is connected.')}
-      <div className="quality-grid"><span>Status<strong>{weather.status}</strong></span><span>Impact<strong>{weather.impact ?? '—'}</strong></span><span>Confidence<strong>{weather.confidence}%</strong></span><span>Horizon<strong>{weather.horizon}</strong></span></div>
-      <small className="advanced-caveat">No weather provider is connected yet; this remains a safe “not connected” model state.</small>
+      <div className="quality-grid"><span>Status<strong>{weatherForecast.status}</strong></span><span>Impact<strong>{weatherForecast.impact ?? '—'}</strong></span><span>Confidence<strong>{weatherForecast.confidence}%</strong></span><span>Horizon<strong>{weatherForecast.horizon}</strong></span></div>
+      <small className="advanced-caveat">{weather?.description ? `${weather.description} in Vienna · ${weather.source}.` : 'Waiting for the keyless Vienna weather context feed.'}</small>
     </div>
 
     <div className="advanced-card"><div className="advanced-card-title"><strong>Event-demand forecast</strong><span>calendar signal</span></div>
-      {explain('Estimates extra passenger pressure around events; it currently falls back to weekday and peak-hour baselines.')}
+      {explain('Extracts event-like demand signals from official service/news text, then falls back to weekday and peak-hour baselines.')}
       <div className="quality-grid"><span>State<strong>{events.status}</strong></span><span>Pressure<strong>{events.score}/100</strong></span><span>Confidence<strong>{events.confidence}%</strong></span><span>Evidence<strong>{events.evidence}</strong></span></div>
     </div>
 

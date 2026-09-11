@@ -145,8 +145,41 @@ export const simulateNetworkScenario = ({ line = 'U1', extraMinutes = 15, issues
     minutes: forecast.minutes,
     risk: clamp(Math.round(seed * Math.max(0.25, 1 - forecast.minutes / 120) + extraMinutes * 1.5), 0, 99),
     lines: forecast.lines.slice(0, 5).map((item) => item.line),
-  }));
+}));
 };
+
+/** Human-review suggestions for a traffic-control-room style view. */
+export const buildControlRoomActions = ({ issues = [], disruptions = [], crowding = [], forecasts = [] } = {}) => LINES.map((line) => {
+  const lineIssues = issues.filter((issue) => issue.line === line);
+  const lineAlerts = disruptions.filter((alert) => alert.lines?.includes(line));
+  const pressure = crowding.find((item) => item.line === line);
+  const propagation = forecasts.flatMap((forecast) => forecast.lines.filter((item) => item.line === line));
+  let action = 'Continue routine observation';
+  let reason = 'No current line-specific signal';
+  let confidence = 35;
+  if (lineAlerts.length) {
+    action = 'Verify incident scope and publish passenger alternatives';
+    reason = `${lineAlerts.length} official notice${lineAlerts.length === 1 ? '' : 's'} active`;
+    confidence = 78;
+  } else if (lineIssues.some((issue) => issue.type === 'gap')) {
+    action = 'Protect the next interchange and review following departures';
+    reason = lineIssues.find((issue) => issue.type === 'gap')?.label || 'large predicted headway';
+    confidence = 64;
+  } else if (lineIssues.some((issue) => issue.type === 'bunch')) {
+    action = 'Check whether a short holding instruction is operationally safe';
+    reason = lineIssues.find((issue) => issue.type === 'bunch')?.label || 'close predicted departures';
+    confidence = 56;
+  } else if (pressure?.level === 'high') {
+    action = 'Prepare crowd messaging and monitor platform pressure';
+    reason = 'service-pressure proxy is high';
+    confidence = 48;
+  } else if (propagation.some((item) => item.risk >= 60)) {
+    action = 'Pre-alert downstream lines and monitor transfer stations';
+    reason = 'propagation risk remains elevated';
+    confidence = 50;
+  }
+  return { line, action, reason, confidence, humanReview: true };
+});
 
 export const buildDataQuality = ({ now = Date.now(), entries = [], vehicles = [], sbahnFreshness = null } = {}) => {
   const freshEntries = entries.filter((entry) => Number.isFinite(entry?.fetchedAt) && now - entry.fetchedAt <= 5 * 60 * 1000);

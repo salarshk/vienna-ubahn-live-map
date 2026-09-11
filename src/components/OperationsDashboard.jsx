@@ -5,10 +5,12 @@ import { estimateNetworkOccupancy } from '../services/occupancyEstimation';
 import { summariseReports } from '../services/communityReports';
 import { classifyDelayCauses } from '../services/delayCause';
 import { LINES } from '../services/transitModels';
+import { buildControlRoomActions } from '../services/advancedIntelligence';
 
-const OperationsDashboard = ({ now, issues = [], disruptions = [], crowding = [], vehicles = [], reliability = [], reports = [], modelHealth, delayPredictions = [] }) => {
+const OperationsDashboard = ({ now, issues = [], disruptions = [], crowding = [], vehicles = [], reliability = [], reports = [], modelHealth, delayPredictions = [], forecasts = [] }) => {
   const occupancy = useMemo(() => estimateNetworkOccupancy({ now, crowding, issues, vehicles, reports }), [now, crowding, issues, vehicles, reports]);
   const reportSummary = useMemo(() => summariseReports(reports, now), [reports, now]);
+  const actions = useMemo(() => buildControlRoomActions({ issues, disruptions, crowding, forecasts }), [issues, disruptions, crowding, forecasts]);
   const lines = LINES.map((line) => {
     const lineIssues = issues.filter((item) => item.line === line);
     const lineIncidents = disruptions.filter((item) => item.lines?.includes(line));
@@ -34,6 +36,15 @@ const OperationsDashboard = ({ now, issues = [], disruptions = [], crowding = []
         <small className="operations-action">{attention === 'disrupted' ? 'Verify official incident scope and passenger messaging.' : attention === 'watch' ? 'Check headway and downstream transfer impact.' : 'Keep under routine observation.'}</small>
       </article>;
     })}</div>
+    <div className="advanced-card operations-actions-card">
+      <div className="advanced-card-title"><strong>Human-reviewed control-room suggestions</strong><span>not automatic control</span></div>
+      <div className="advanced-list">{actions.map((item) => <div className="advanced-row" key={item.line}>
+        <i style={{ background: lineColor(item.line) }}>{item.line}</i>
+        <div><strong>{item.action}</strong><span>{item.reason}</span></div>
+        <b>{item.confidence}%</b><small>review</small>
+      </div>)}</div>
+      <small className="advanced-caveat">These recommendations use public passenger-facing data and must never be sent directly to trains, signals, or staff without an authorised human decision.</small>
+    </div>
     <div className="operations-limitations"><ShieldAlert size={14} /><span>Public feeds do not expose dispatcher telemetry, exact train GPS or verified passenger counts. Treat every action as human-reviewed decision support.</span></div>
   </section>;
 };

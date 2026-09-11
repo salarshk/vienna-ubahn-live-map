@@ -22,6 +22,7 @@ import OperationsDashboard from './OperationsDashboard';
 import DelayTimeline from './DelayTimeline';
 import PredictionLab from './PredictionLab';
 import { buildRecoveryForecast, buildRouteRisk, buildTransferHealth } from '../services/advancedIntelligence';
+import { weatherStore } from '../services/contextSignals';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -38,6 +39,7 @@ const RailIntelligence = ({
   const [explainLineId, setExplainLineId] = useState('U1');
   const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
   const [reports, setReports] = useState(() => getReports(now));
+  const [weatherSnapshot, setWeatherSnapshot] = useState(weatherStore.getSnapshot());
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
   const officialOldestMinutes = Math.max(0, Number(officialSnapshotState?.oldestMinutes) || 0);
@@ -87,6 +89,11 @@ const RailIntelligence = ({
     return () => { unsubscribe(); clearInterval(refresh); };
   }, []);
   useEffect(() => subscribeReports(setReports), []);
+  useEffect(() => {
+    const unsubscribe = weatherStore.subscribe(setWeatherSnapshot);
+    weatherStore.refresh();
+    return unsubscribe;
+  }, []);
 
   return (
     <aside className="glass-panel intelligence-panel" aria-label="Rail intelligence">
@@ -241,6 +248,8 @@ const RailIntelligence = ({
         arrivals={arrivalStore.getNetworkArrivals(now)}
         transfers={labTransfers}
         routeRisk={labRouteRisk}
+        delayPredictions={delayPredictions}
+        weather={weatherSnapshot.current}
       />}
 
       {tab === 'signals' && <AdvancedSignals
@@ -252,7 +261,7 @@ const RailIntelligence = ({
       {tab === 'operations' && <OperationsDashboard
         now={now} issues={issues} disruptions={disruptions} crowding={crowding}
         vehicles={vehicles} reliability={snapshot.reliability || []} reports={reports}
-        modelHealth={delaySnapshot.health} delayPredictions={delayPredictions}
+        modelHealth={delaySnapshot.health} delayPredictions={delayPredictions} forecasts={forecasts}
       />}
 
       {tab === 'history' && <>

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   calibrateUncertainty, classifyDelaySeverity, detectPredictiveAnomalies,
-  predictCancellationRisk, predictDisruptionResolution, predictDwellTimes,
-  predictHeadwayRisk, predictWeatherImpact,
+  predictCancellationRisk, predictDelayBands, predictDisruptionResolution, predictDwellTimes,
+  predictEventDemand, predictHeadwayRisk, predictWeatherImpact,
 } from './predictionModels';
 
 describe('prediction lab models', () => {
@@ -29,5 +29,20 @@ describe('prediction lab models', () => {
     expect(predictCancellationRisk({ arrivals: [], disruptions: [], issues: [] })).toHaveLength(5);
     expect(calibrateUncertainty({ vehicles: [], reliability: [] })[0].intervalMinutes).toBeGreaterThan(0);
     expect(detectPredictiveAnomalies({ vehicles: [], issues: [], arrivals: [] })).toHaveLength(5);
+  });
+
+  it('builds delay bands and extracts event demand from official text', () => {
+    const bands = predictDelayBands({
+      arrivals: [
+        { line: 'U1', isLive: true, reportedDelaySeconds: 120 },
+        { line: 'U1', isLive: true, reportedDelaySeconds: 480 },
+      ],
+      linePredictions: [{ line: 'U1', minutes: 4 }],
+    });
+    expect(bands.find((item) => item.line === 'U1')).toMatchObject({ typical: 4, samples: 2 });
+    const event = predictEventDemand({
+      alerts: [{ title: 'Concert at stadium', lines: ['U1'] }],
+    });
+    expect(event).toMatchObject({ status: 'high', confidence: 45 });
   });
 });

@@ -112,6 +112,38 @@ export const classifyDelaySeverity = ({ arrivals = [], disruptions = [] } = {}) 
   return { line, category, score, meanMinutes: round(mean / 60, 1), samples: values.length, evidence: incident ? 'official notice' : `${values.length} reported arrivals` };
 });
 
+const quantile = (values, fraction) => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = (sorted.length - 1) * fraction;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sorted[lower];
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+};
+
+/** Probabilistic delay bands rather than a single optimistic number. */
+export const predictDelayBands = ({ arrivals = [], linePredictions = [] } = {}) => LINES.map((line) => {
+  const observed = arrivals
+    .filter((arrival) => arrival.isLive && lineOf(arrival.line) === line)
+    .filter((arrival) => arrival.reportedDelaySeconds !== null && arrival.reportedDelaySeconds !== undefined)
+    .map((arrival) => Number(arrival.reportedDelaySeconds) / 60)
+    .filter(Number.isFinite);
+  const model = Number(linePredictions.find((item) => item.line === line)?.minutes);
+  const p50 = quantile(observed, 0.5);
+  const p90 = quantile(observed, 0.9);
+  const centre = Number.isFinite(model) ? model : (p50 ?? 0);
+  const low = Math.max(-2, round(Math.min(p50 ?? centre, centre), 1));
+  const high = Math.max(low, round(Math.max(p90 ?? centre + (observed.length ? 2 : 4), centre), 1));
+  const confidence = clamp(Math.round(30 + Math.min(50, observed.length * 4) + (Number.isFinite(model) ? 15 : 0)), 20, 95);
+  return {
+    line, low, typical: round(centre, 1), high, confidence,
+    samples: observed.length,
+    horizon: 'next 15 min',
+    evidence: observed.length ? `${observed.length} live delay observations` : 'model baseline only',
+  };
+});
+
 export const predictTransferSuccess = ({ transfers = [] } = {}) => transfers.slice(0, 8).map((item) => ({
   ...item,
   probability: clamp(Math.round(Number(item.probability) || 0), 1, 99),
@@ -151,14 +183,30 @@ export const predictWeatherImpact = ({ weather = null, now = Date.now() } = {}) 
   return { status: impact >= 60 ? 'elevated' : impact >= 25 ? 'watch' : 'routine', impact, confidence: 55, horizon: new Date(now + 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
 };
 
-export const predictEventDemand = ({ events = [], now = Date.now() } = {}) => {
-  if (!events.length) {
+const EVENT_TERMS = /concert|konzert|stadion|match|spiel|festival|messe|parade|marathon|event|feuerwerk|demo/i;
+
+export const extractEventSignals = (alerts = []) => alerts
+  .map((alert) => {
+    const text = `${alert.title || ''} ${alert.description || alert.reason || ''}`;
+    if (!EVENT_TERMS.test(text)) return null;
+    const severity = /stadion|stadium|match|spiel|festival|marathon/i.test(text) ? 78 : 58;
+    return {
+      title: String(alert.title || 'Event-related service notice').slice(0, 120),
+      lines: alert.lines || [], expectedDemand: severity,
+      source: 'official service/news text',
+    };
+  })
+  .filter(Boolean);
+
+export const predictEventDemand = ({ events = [], alerts = [], now = Date.now() } = {}) => {
+  const signals = events.length ? events : extractEventSignals(alerts);
+  if (!signals.length) {
     const hour = new Date(now).getHours();
     const peak = [7, 8, 9, 16, 17, 18].includes(hour);
     return { status: peak ? 'weekday peak baseline' : 'no event feed', score: peak ? 55 : 20, confidence: 20, evidence: 'calendar baseline only' };
   }
-  const score = clamp(events.reduce((sum, event) => sum + Number(event.expectedDemand || event.demand || 50), 0) / events.length, 0, 99);
-  return { status: score >= 70 ? 'high' : score >= 40 ? 'watch' : 'routine', score: round(score), confidence: 50, evidence: `${events.length} event signal${events.length === 1 ? '' : 's'}` };
+  const score = clamp(signals.reduce((sum, event) => sum + Number(event.expectedDemand || event.demand || 50), 0) / signals.length, 0, 99);
+  return { status: score >= 70 ? 'high' : score >= 40 ? 'watch' : 'routine', score: round(score), confidence: signals.some((event) => event.source) ? 45 : 50, evidence: `${signals.length} event signal${signals.length === 1 ? '' : 's'} from official notices`, signals };
 };
 
 export const predictSbahnConnections = ({ vehicles = [], now = Date.now() } = {}) => vehicles
