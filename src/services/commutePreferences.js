@@ -18,13 +18,14 @@ const write = (value) => {
 
 export const getCommutePreferences = () => read();
 
-export const saveCommuteStation = (station) => {
+export const saveCommuteStation = (station, label = 'Favourite') => {
   const preferences = read();
   const summary = {
     name: station?.properties?.name || '',
     apiId: station?.properties?.apiId || null,
     lines: station?.properties?.lines || [],
     coordinates: station?.geometry?.coordinates || null,
+    label: label || 'Favourite',
   };
   if (!summary.name) return preferences;
   const stations = [summary, ...preferences.stations.filter((item) => item.name !== summary.name)].slice(0, MAX_STATIONS);

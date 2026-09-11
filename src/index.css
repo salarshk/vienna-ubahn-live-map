@@ -49,6 +49,14 @@
   padding: 0;
 }
 
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   display: flex;
@@ -58,6 +66,7 @@ body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #root {
@@ -79,6 +88,10 @@ body {
   width: 100%;
   height: 100%;
   z-index: 1;
+  /* Keep iPhone pinch gestures in MapLibre instead of letting Safari zoom the
+     whole page or create a rubber-band scroll surface. */
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .line3-train-count {
@@ -1007,6 +1020,7 @@ button:active {
 .commute-dashboard > header span { margin-top: 2px; color: var(--text-secondary); font-size: .62rem; }
 .commute-intro, .commute-caveat { padding: 10px 13px 5px; color: var(--text-secondary); font-size: .66rem; line-height: 1.4; }
 .commute-add { display: flex; gap: 6px; padding: 8px 13px 10px; }
+.commute-slot-select { flex: 0 0 78px; min-width: 0; padding: 7px 5px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-hover); color: var(--text-primary); font-size: .64rem; }
 .commute-search-box { position: relative; min-width: 0; flex: 1; }
 .commute-add input { width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-hover); color: var(--text-primary); font-size: .7rem; }
 .commute-search-results { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 3; max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-panel-solid); box-shadow: 0 10px 24px rgba(0,0,0,.3); }
@@ -1019,6 +1033,7 @@ button:active {
 .commute-add button:disabled { opacity: .45; }
 .commute-cards { display: grid; gap: 7px; padding: 0 13px 9px; }
 .commute-card { padding: 9px; border: 1px solid var(--border-color); border-radius: 9px; background: rgba(255,255,255,.025); }
+.commute-card-label { margin-bottom: 4px; color: #ffd166; font-size: .58rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .commute-card > header { display: flex; justify-content: space-between; align-items: center; }
 .commute-card > header button:first-child { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--text-primary); }
 .commute-card > header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .72rem; }

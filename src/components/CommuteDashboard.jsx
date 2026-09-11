@@ -13,10 +13,14 @@ const uniqueStations = [...new Map(STATIONS.map((station) => [station.properties
 const CommuteDashboard = ({ now = Date.now(), onClose, onSelectStation, onPreferencesChange }) => {
   const [preferences, setPreferences] = useState(getCommutePreferences);
   const [stationName, setStationName] = useState('');
+  const [stationLabel, setStationLabel] = useState('Home');
   const [searchOpen, setSearchOpen] = useState(false);
   const [notification, setNotification] = useState(notificationState);
   const [, refresh] = useState(0);
-  const selectedStations = useMemo(() => preferences.stations.map((saved) => uniqueStations.find((station) => station.properties.name === saved.name)).filter(Boolean), [preferences]);
+  const selectedStations = useMemo(() => preferences.stations.map((saved) => {
+    const station = uniqueStations.find((item) => item.properties.name === saved.name);
+    return station ? { station, saved } : null;
+  }).filter(Boolean), [preferences]);
   const stationMatches = useMemo(() => {
     const query = stationName.trim().toLocaleLowerCase();
     if (!query) return uniqueStations.slice(0, 8);
@@ -39,7 +43,7 @@ const CommuteDashboard = ({ now = Date.now(), onClose, onSelectStation, onPrefer
     const station = uniqueStations.find((item) => item.properties.name === stationName);
     if (!station) return;
     arrivalStore.getStationArrivals(station.properties);
-    updatePreferences(saveCommuteStation(station));
+    updatePreferences(saveCommuteStation(station, stationLabel));
     setStationName('');
     setSearchOpen(false);
   };
@@ -57,8 +61,11 @@ const CommuteDashboard = ({ now = Date.now(), onClose, onSelectStation, onPrefer
 
   return <aside className="glass-panel commute-dashboard" aria-label="My commute dashboard">
     <header><div><strong><Star size={16} /> My commute</strong><span>Saved on this device</span></div><button onClick={onClose} aria-label="Close commute dashboard"><X size={16} /></button></header>
-    <p className="commute-intro">Save up to four stations for a quick morning or evening check.</p>
+    <p className="commute-intro">Save up to four stations as Home, Work, School or another favourite.</p>
     <div className="commute-add">
+      <select className="commute-slot-select" value={stationLabel} onChange={(event) => setStationLabel(event.target.value)} aria-label="Station label">
+        <option>Home</option><option>Work</option><option>School</option><option>Airport</option><option>Other</option>
+      </select>
       <div className="commute-search-box">
         <input
           value={stationName}
@@ -85,9 +92,10 @@ const CommuteDashboard = ({ now = Date.now(), onClose, onSelectStation, onPrefer
       </div>
       <button onClick={addStation} disabled={!uniqueStations.some((station) => station.properties.name === stationName)}><Plus size={14} /> Add</button>
     </div>
-    <div className="commute-cards">{selectedStations.length ? selectedStations.map((station) => {
+    <div className="commute-cards">{selectedStations.length ? selectedStations.map(({ station, saved }) => {
       const focus = getStationFocus(station.properties, now);
       return <article className="commute-card" key={station.properties.name}>
+        <div className="commute-card-label">{saved.label || 'Favourite'}</div>
         <header><button onClick={() => onSelectStation(station)}><MapPin size={13} /><strong>{station.properties.name}</strong></button><button onClick={() => updatePreferences(removeCommuteStation(station.properties.name))} aria-label={`Remove ${station.properties.name}`}><Trash2 size={13} /></button></header>
         <div className="commute-lines">{(station.properties.lines || []).map((line) => <i key={line} style={{ background: lineColor(line) }}>{line}</i>)}</div>
         {focus.arrivals.slice(0, 3).map((arrival, index) => <div className="commute-arrival" key={`${arrival.line}-${arrival.destination}-${index}`}><b style={{ background: lineColor(arrival.line) }}>{arrival.line}</b><span>{arrival.destination}</span><strong>{arrival.minutes <= 0 ? 'now' : `${arrival.minutes} min`}</strong></div>)}
