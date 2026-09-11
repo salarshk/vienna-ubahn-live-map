@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 5016,
-  "labelledJourneyCount": 31,
+  "observationCount": 5978,
+  "labelledJourneyCount": 76,
   "dataDays": 2,
   "coverageHours": 26.4,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-11T13:33:29.905Z",
+  "lastObservation": "2026-09-11T13:35:40.805Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 0,
+    "officialLabelledJourneys": 45,
     "fallbackLabelledJourneys": 31
   },
   "monitoring": {
@@ -56,56 +56,56 @@
     "status": "ready",
     "algorithm": "prequential-hierarchical-calibration",
     "experimental": true,
-    "scoredJourneyCount": 31,
+    "scoredJourneyCount": 76,
     "minimumExamples": 30,
-    "deployed": false,
+    "deployed": true,
     "predictionRangeMinutes": [
       -2,
       30
     ],
     "state": {
       "global": {
-        "count": 31,
-        "sum": -2.366666666666667,
-        "sumSquares": 4.19111111111111
+        "count": 76,
+        "sum": -12.066666666666666,
+        "sumSquares": 12.638888888888888
       },
       "lines": {
         "U2": {
-          "count": 7,
-          "sum": -1.7666666666666668,
-          "sumSquares": 1.6672222222222224
+          "count": 17,
+          "sum": -5.5196969696969695,
+          "sumSquares": 4.579884756657483
         },
         "U4": {
-          "count": 6,
-          "sum": -1.5333333333333332,
-          "sumSquares": 0.8072222222222223
+          "count": 16,
+          "sum": -2.7030303030303022,
+          "sumSquares": 2.005263544536272
         },
         "U6": {
-          "count": 7,
-          "sum": 0.7166666666666666,
-          "sumSquares": 0.2569444444444444
+          "count": 16,
+          "sum": 0.4539393939393938,
+          "sumSquares": 1.0612806244260793
         },
         "U1": {
-          "count": 7,
-          "sum": 0.7166666666666666,
-          "sumSquares": 0.8941666666666664
+          "count": 18,
+          "sum": -1.7433333333333334,
+          "sumSquares": 3.1720898989898987
         },
         "U3": {
-          "count": 4,
-          "sum": -0.4999999999999999,
-          "sumSquares": 0.5655555555555555
+          "count": 9,
+          "sum": -0.6181818181818179,
+          "sumSquares": 1.0689044995408632
         }
       },
       "contexts": {
         "incident": {
-          "count": 20,
-          "sum": -2.583333333333334,
-          "sumSquares": 2.731388888888889
+          "count": 49,
+          "sum": -6.326585149743045,
+          "sumSquares": 6.940862283686671
         },
         "normal": {
-          "count": 11,
-          "sum": 0.21666666666666656,
-          "sumSquares": 1.459722222222222
+          "count": 27,
+          "sum": -2.6201774322169054,
+          "sumSquares": 4.439719994824378
         }
       }
     }
