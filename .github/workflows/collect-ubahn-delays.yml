@@ -2,7 +2,7 @@ name: Collect and validate U-Bahn delay model
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -94,6 +94,7 @@ jobs:
           compression-level: 9
 
       - name: Archive observations to Cloudflare R2
+        id: r2_archive
         continue-on-error: true
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -101,6 +102,21 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET: vienna-rail-archive
         run: node scripts/ml/archive_r2.mjs upload-ubahn
+
+      - name: Record collection health
+        if: always()
+        run: |
+          {
+            echo "## U-Bahn collection health"
+            if [ -f data/ml/collection-health.json ]; then
+              echo '```json'
+              cat data/ml/collection-health.json
+              echo '```'
+            else
+              echo "No collector health report was produced."
+            fi
+            echo "R2 archive step: ${{ steps.r2_archive.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit public model report
         if: steps.publish.outputs.changed == 'true'

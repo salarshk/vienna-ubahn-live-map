@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { persistBrowserArchive, readBrowserArchive } from './browserArchive';
 
 const PUBLIC_API_BASE = String(import.meta.env.VITE_VIENNA_API_BASE || '').replace(/\/$/, '');
 const REFRESH_INTERVAL_MS = 120000;
@@ -6,6 +7,7 @@ const HISTORY_KEY = 'vienna_wiener_linien_incident_history_v1';
 const NEWS_KEY = 'vienna_wiener_linien_news_history_v1';
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
+const LOCAL_HISTORY_CACHE_LIMIT = 500;
 
 const buildTrafficInfoUrl = () => {
   if (Capacitor.isNativePlatform()) {
@@ -58,10 +60,13 @@ const readHistory = (key) => {
 
 const writeHistory = (key, values) => {
   try {
-    if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(values));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify(values.slice(-LOCAL_HISTORY_CACHE_LIMIT)));
+    }
   } catch {
     // A full/private browser store must not stop the live map.
   }
+  void persistBrowserArchive(key, values);
 };
 
 export const parseTrafficInfos = (payload) => {
@@ -135,6 +140,16 @@ class DisruptionStore {
     };
     this.listeners = new Set();
     this.inFlight = null;
+    void Promise.all([readBrowserArchive(HISTORY_KEY), readBrowserArchive(NEWS_KEY)]).then(([incidentHistory, newsHistory]) => {
+      const incidentCount = Array.isArray(incidentHistory) ? incidentHistory.length : this.snapshot.incidentHistorySamples;
+      const newsCount = Array.isArray(newsHistory) ? newsHistory.length : this.snapshot.newsHistorySamples;
+      this.snapshot = {
+        ...this.snapshot,
+        incidentHistorySamples: incidentCount,
+        newsHistorySamples: newsCount,
+      };
+      this.notify();
+    });
   }
 
   subscribe(listener) {

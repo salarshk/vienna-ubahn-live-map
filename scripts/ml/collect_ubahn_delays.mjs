@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { appendFile, mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { incidentFeaturesAt, normaliseLiveTrafficInfos } from './incident_features.mjs';
 import { detectHeadwayEvents, reconcileHeadwayEvents } from './headway_events.mjs';
 
@@ -23,6 +23,10 @@ const HEADWAY_STATE_PATH = resolve(
   ROOT,
   process.env.HEADWAY_STATE_PATH || 'data/ml/headway-state.json',
 );
+const HEALTH_PATH = resolve(
+  ROOT,
+  process.env.COLLECTION_HEALTH_PATH || 'data/ml/collection-health.json',
+);
 const API_BASE = String(
   process.env.VIENNA_API_BASE || 'https://www.wienerlinien.at/ogd_realtime',
 ).replace(/\/$/, '');
@@ -31,6 +35,11 @@ const BATCH_SIZE = 24;
 const RETENTION_DAYS = 30;
 
 const sleep = (milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
+const retryDelay = (response, attempt) => {
+  const retryAfter = Number(response?.headers?.get?.('retry-after'));
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) return Math.min(60000, retryAfter * 1000);
+  return Math.min(30000, 1500 * (2 ** attempt) + Math.round(Math.random() * 750));
+};
 
 const parseTimestamp = (value) => {
   if (!value) return NaN;
@@ -85,7 +94,7 @@ const fetchBatch = async (stations) => {
       throw new Error(`Wiener Linien monitor request returned HTTP ${response.status}`);
     }
     await response.body?.cancel();
-    await sleep(5000 * (attempt + 1));
+    await sleep(retryDelay(response, attempt));
   }
   return { monitors: [], serverTime: null, payload: null };
 };
@@ -102,7 +111,7 @@ const fetchCurrentIncidents = async (observedAt) => {
       });
       if (response.ok) {
         const payload = await response.json();
-        return { records: normaliseLiveTrafficInfos(payload, observedAt), payload };
+        return { records: normaliseLiveTrafficInfos(payload, observedAt), payload, available: true };
       }
       const retryable = response.status === 403 || response.status === 429 || response.status >= 500;
       if (!retryable || attempt === 2) throw new Error(`HTTP ${response.status}`);
@@ -110,12 +119,12 @@ const fetchCurrentIncidents = async (observedAt) => {
     } catch (error) {
       if (attempt === 2) {
         console.warn(`Current incident context unavailable: ${error.message}`);
-        return { records: [], payload: null };
+        return { records: [], payload: null, available: false };
       }
     }
-    await sleep(5000 * (attempt + 1));
+    await sleep(1500 * (2 ** attempt) + Math.round(Math.random() * 750));
   }
-  return { records: [], payload: null };
+  return { records: [], payload: null, available: false };
 };
 
 const fetchNews = async () => {
@@ -152,6 +161,14 @@ const rowsFromMonitors = (monitors, observedAt, incidents, feedServerTime = null
         ? exactGpsCoordinates : null;
       const direction = String(vehicle.direction || line.direction || '').toUpperCase();
       const incidentContext = incidentFeaturesAt(incidents, lineId, observedAt);
+      const feedAgeSeconds = feedServerTime && Number.isFinite(parseTimestamp(feedServerTime))
+        ? Math.max(0, Math.round((observedAt - parseTimestamp(feedServerTime)) / 1000))
+        : null;
+      const positionConfidence = validExactGpsCoordinates
+        ? 1
+        : Number.isFinite(feedAgeSeconds)
+          ? Math.max(0.25, Math.min(0.75, 0.75 - feedAgeSeconds / 900))
+          : 0.35;
       const row = {
         schemaVersion: 3,
         observedAt,
@@ -185,10 +202,9 @@ const rowsFromMonitors = (monitors, observedAt, incidents, feedServerTime = null
         exactGpsCoordinates: validExactGpsCoordinates,
         exactGpsAvailable: Boolean(validExactGpsCoordinates),
         positionSource: validExactGpsCoordinates ? 'official-vehicle-gps' : 'inferred-from-departure-prediction',
+        positionConfidence: Number(positionConfidence.toFixed(3)),
         feedServerTime,
-        feedAgeSeconds: feedServerTime && Number.isFinite(parseTimestamp(feedServerTime))
-          ? Math.max(0, Math.round((observedAt - parseTimestamp(feedServerTime)) / 1000))
-          : null,
+        feedAgeSeconds,
         ...incidentContext,
       };
       row.eventKey = eventKey(row);
@@ -211,16 +227,40 @@ const newsPayload = await fetchNews();
 const observationDate = new Date(observedAt).toISOString().slice(0, 10);
 const outputPath = resolve(OUTPUT_DIR, `${observationDate}.jsonl`);
 const collectedRows = [];
+const failedBatches = [];
 for (let index = 0; index < stations.length; index += BATCH_SIZE) {
   const batch = stations.slice(index, index + BATCH_SIZE);
-  const monitorPayload = await fetchBatch(batch);
-  collectedRows.push(...rowsFromMonitors(
-    monitorPayload.monitors,
-    observedAt,
-    currentIncidents,
-    monitorPayload.serverTime,
-  ));
+  try {
+    const monitorPayload = await fetchBatch(batch);
+    collectedRows.push(...rowsFromMonitors(
+      monitorPayload.monitors,
+      observedAt,
+      currentIncidents,
+      monitorPayload.serverTime,
+    ));
+  } catch (error) {
+    failedBatches.push({
+      stationIds: batch.map((station) => station.id),
+      error: String(error.message || error),
+    });
+    console.warn(`Station batch unavailable (${batch[0]?.id}–${batch.at(-1)?.id}): ${error.message}`);
+  }
   if (index + BATCH_SIZE < stations.length) await sleep(1100);
+}
+
+if (!collectedRows.length && failedBatches.length) {
+  await mkdir(dirname(HEALTH_PATH), { recursive: true });
+  await writeFile(HEALTH_PATH, `${JSON.stringify({
+    schemaVersion: 1,
+    source: 'wiener-linien',
+    observedAt,
+    status: 'failed',
+    stationsRequested: stations.length,
+    stationsSuccessful: 0,
+    batchesFailed: failedBatches.length,
+    failedBatches,
+  }, null, 2)}\n`);
+  throw new Error('All Wiener Linien monitor batches failed; no training rows were collected.');
 }
 
 const cutoff = observedAt - RETENTION_DAYS * 86400000;
@@ -273,6 +313,21 @@ for (const file of await readdir(HEADWAY_EVENT_DIR)) {
 }
 
 const liveRows = collectedRows.filter((row) => row.realtimeSupported).length;
+await mkdir(dirname(HEALTH_PATH), { recursive: true });
+await writeFile(HEALTH_PATH, `${JSON.stringify({
+  schemaVersion: 1,
+  source: 'wiener-linien',
+  observedAt,
+  status: failedBatches.length ? 'degraded' : 'ok',
+  stationsRequested: stations.length,
+  stationsSuccessful: stations.length - failedBatches.reduce((sum, batch) => sum + batch.stationIds.length, 0),
+  batchesFailed: failedBatches.length,
+  failedBatches,
+  rowsCollected: collectedRows.length,
+  liveRows,
+  incidentsAvailable: Boolean(currentIncidentContext.available),
+  newsAvailable: Boolean(newsPayload),
+}, null, 2)}\n`);
 console.log(JSON.stringify({
   observedAt: new Date(observedAt).toISOString(),
   stationsRequested: stations.length,
@@ -280,6 +335,8 @@ console.log(JSON.stringify({
   liveRows,
   activeUbahnIncidentRecords: currentIncidents.length,
   fullStationCoverage: stations.length,
+  batchesFailed: failedBatches.length,
+  healthPath: HEALTH_PATH,
   newsPayloadCollected: Boolean(newsPayload),
   headwayEventsObserved: currentHeadwayEvents.length,
   headwayLifecycleRowsWritten: reconciledHeadway.observations.length,

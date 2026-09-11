@@ -3,7 +3,7 @@
 // Durable archive bridge for Cloudflare R2's S3-compatible API.
 // GitHub Actions artifacts remain a short-lived recovery layer; R2 keeps the
 // dated observations after those artifacts expire.
-import { access, appendFile, mkdir, readdir } from 'node:fs/promises';
+import { access, appendFile, mkdir, readdir, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
@@ -57,6 +57,22 @@ const hasFiles = async (path) => {
   }
 };
 
+const writeArchiveHealth = async (dataset, status = 'ok', details = {}) => {
+  const healthPath = resolve(DATA_DIR, 'r2-health.json');
+  const payload = {
+    schemaVersion: 1,
+    checkedAt: new Date().toISOString(),
+    dataset,
+    status,
+    bucket,
+    prefix,
+    ...details,
+  };
+  await mkdir(DATA_DIR, { recursive: true });
+  await writeFile(healthPath, `${JSON.stringify(payload, null, 2)}\n`);
+  await runAws(['s3', 'cp', healthPath, s3Path('health', `${dataset}.json`)]);
+};
+
 const syncDirectory = async (source, destination) => {
   if (!(await directoryExists(source))) return false;
   await runAws(['s3', 'sync', source, destination]);
@@ -91,9 +107,11 @@ if (mode === 'upload-ubahn') {
   await syncDirectory(resolve(DATA_DIR, 'observations'), s3Path('archive', 'ubahn', 'observations'));
   await syncDirectory(resolve(DATA_DIR, 'raw'), s3Path('archive', 'ubahn', 'raw'));
   await syncDirectory(resolve(DATA_DIR, 'headway-events'), s3Path('archive', 'ubahn', 'headway-events'));
+  await writeArchiveHealth('ubahn');
   console.log('Archived the U-Bahn rolling dataset and dated partitions to Cloudflare R2.');
   process.exit(0);
 }
 
 await syncDirectory(OEBB_DIR, s3Path('archive', 'oebb'));
+await writeArchiveHealth('oebb');
 console.log('Archived the ÖBB dated dataset to Cloudflare R2.');

@@ -159,6 +159,18 @@ export const parseMonitorArrivals = (monitors, fetchTime, feedServerTime = null)
         const reportedDelaySeconds = Number.isFinite(realTimestamp) && Number.isFinite(plannedTimestamp)
           ? Math.round((realTimestamp - plannedTimestamp) / 1000)
           : null;
+        const feedAgeSeconds = Number.isFinite(parsedFeedServerTime)
+          ? Math.max(0, Math.round((fetchTime - parsedFeedServerTime) / 1000))
+          : null;
+        // This is an explicit confidence score, not a claim that inferred
+        // positions are GPS fixes. It lets the UI and models down-weight old
+        // or timetable-only observations instead of treating every marker as
+        // equally precise.
+        const positionConfidence = validExactGpsCoordinates
+          ? 1
+          : Number.isFinite(feedAgeSeconds)
+            ? Math.max(0.25, Math.min(0.75, 0.75 - (feedAgeSeconds / 900)))
+            : 0.35;
 
         return {
           line: lineId,
@@ -195,11 +207,10 @@ export const parseMonitorArrivals = (monitors, fetchTime, feedServerTime = null)
           exactGpsCoordinates: validExactGpsCoordinates,
           exactGpsAvailable: Boolean(validExactGpsCoordinates),
           positionSource: validExactGpsCoordinates ? 'official-vehicle-gps' : 'inferred-from-departure-prediction',
+          positionConfidence: Number(positionConfidence.toFixed(3)),
           realtimeSupported: vehicle.realtimeSupported ?? line.realtimeSupported ?? null,
           feedServerTime: Number.isFinite(parsedFeedServerTime) ? parsedFeedServerTime : null,
-          feedAgeSeconds: Number.isFinite(parsedFeedServerTime)
-            ? Math.max(0, Math.round((fetchTime - parsedFeedServerTime) / 1000))
-            : null,
+          feedAgeSeconds,
           initialSeconds: Math.max(0, Math.round((targetTimestamp - fetchTime) / 1000)),
           isLive: Boolean(timing.timeReal)
             && (vehicle.realtimeSupported ?? line.realtimeSupported) !== false,

@@ -1,5 +1,6 @@
 import arrivalStore from './arrivalStore';
 import trainPositionEngine from './trainPositionEngine';
+import { persistBrowserArchive } from './browserArchive';
 
 const REPLAY_KEY = 'vienna_rail_replay_v1';
 const RELIABILITY_KEY = 'vienna_rail_reliability_v1';
@@ -13,6 +14,7 @@ const HEADWAY_STATE_KEY = 'vienna_headway_event_state_v1';
 const HEADWAY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const HEADWAY_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
 const HEADWAY_RECOVERY_GRACE_MS = 2 * HEADWAY_SAMPLE_INTERVAL_MS;
+const LOCAL_HEADWAY_CACHE_LIMIT = 500;
 
 export const GAP_SECONDS = 7 * 60;
 export const BUNCH_SECONDS = 2 * 60;
@@ -33,6 +35,13 @@ const write = (key, value) => {
   } catch {
     // A private browser or a full storage quota should not break the live map.
   }
+};
+
+const writeHeadwayArchive = (events) => {
+  // The UI only needs a bounded synchronous cache. IndexedDB keeps the full
+  // 30-day browser archive without risking localStorage quota exhaustion.
+  write(HEADWAY_EVENTS_KEY, events.slice(-LOCAL_HEADWAY_CACHE_LIMIT));
+  void persistBrowserArchive(HEADWAY_EVENTS_KEY, events);
 };
 
 const readObject = (key, fallback = {}) => {
@@ -100,9 +109,9 @@ export const recordHeadwayEvents = (issues = [], at = Date.now()) => {
 
   if (observations.length) {
     const cutoff = at - HEADWAY_RETENTION_MS;
-    write(HEADWAY_EVENTS_KEY, [...archive, ...observations]
-      .filter((event) => Number(event.observedAt) >= cutoff)
-      .slice(-10000));
+      writeHeadwayArchive([...archive, ...observations]
+        .filter((event) => Number(event.observedAt) >= cutoff)
+        .slice(-10000));
   }
   write(HEADWAY_STATE_KEY, state);
   return observations;

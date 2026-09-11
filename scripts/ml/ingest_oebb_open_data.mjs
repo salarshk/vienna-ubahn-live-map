@@ -100,6 +100,14 @@ const inspectExtractedFiles = async (source, extractionDir) => {
 };
 
 if (!sources.length) {
+  await mkdir(OUTPUT_DIR, { recursive: true });
+  await writeFile(resolve(OUTPUT_DIR, 'collection-health.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    collectedAt: new Date().toISOString(),
+    status: 'skipped',
+    reason: 'No accepted ÖBB ZIP URL was configured.',
+    sourcePage: 'https://data.oebb.at/de/datensaetze~datenbereitstellung_delegierte_verordnung_eu_2024-490~',
+  }, null, 2)}\n`);
   console.log(JSON.stringify({
     skipped: true,
     reason: 'Set OEBB_ZUGFAHRTEN_URL and/or OEBB_NETEX_URL to the accepted official ZIP URLs.',

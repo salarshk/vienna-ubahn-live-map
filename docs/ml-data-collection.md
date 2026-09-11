@@ -1,6 +1,6 @@
 # Transit data collection
 
-The Wiener Linien collector runs every ten minutes in GitHub Actions. It now
+The Wiener Linien collector runs every five minutes in GitHub Actions. It now
 stores full-station U-Bahn observations with platform, route-direction,
 vehicle, feed-age and incident features. It also archives the current
 `trafficInfoList` and `newsList` payloads under `data/ml/raw/`.
@@ -15,6 +15,13 @@ vehicle-GPS feed. Every headway and position record therefore includes
 `positionSource` and `exactGpsAvailable`. Coordinates are saved only if the
 upstream payload actually supplies them; the current feed normally produces
 `exactGpsAvailable: false` instead of inventing GPS coordinates.
+The collector also writes `positionConfidence`, which lets models down-weight
+stale or inferred positions without presenting them as exact GPS fixes.
+
+The collector retries temporary Wiener Linien failures with exponential
+backoff, honours `Retry-After`, continues with healthy station batches, and
+writes `data/ml/collection-health.json`. Each GitHub Actions run exposes that
+report in its run summary, including whether the R2 archive step succeeded.
 
 The ÖBB MMTIS portal requires accepting its terms before it reveals the ZIP
 download URLs. Once those URLs are available, run:
@@ -38,7 +45,7 @@ historical archive.
 
 The repository also includes a separate weekly GitHub Actions workflow,
 `.github/workflows/collect-oebb-data.yml`, so the large ÖBB ZIPs are not
-downloaded on every ten-minute U-Bahn collection run.
+downloaded on every five-minute U-Bahn collection run.
 
 ## Durable archive (two-level storage)
 
@@ -58,3 +65,7 @@ Add these repository secrets before enabling the durable archive:
 The R2 access key should be scoped to the selected bucket with object read and
 write permissions. If the secrets are absent, the workflows continue using the
 short-lived GitHub artifact fallback and print a clear skip message.
+Successful uploads also publish `health/ubahn.json` and `health/oebb.json`, so
+the archive itself records its last successful write. Browser-side snapshots,
+headway events, and disruption history use IndexedDB for the full local archive
+while retaining only a small localStorage startup cache.

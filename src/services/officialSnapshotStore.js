@@ -5,10 +5,12 @@
 // layers separate makes the history view honest and gives the delay model a
 // compact, user-visible audit trail.
 import arrivalStore from './arrivalStore';
+import { deleteBrowserArchive, persistBrowserArchive, readBrowserArchive } from './browserArchive';
 
 export const OFFICIAL_SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000;
 export const OFFICIAL_SNAPSHOT_RETENTION_MS = 48 * 60 * 60 * 1000;
 export const OFFICIAL_SNAPSHOT_KEY = 'vienna_official_snapshots_v1';
+export const OFFICIAL_LOCAL_CACHE_LIMIT = 24;
 
 const readSnapshots = () => {
   try {
@@ -23,11 +25,14 @@ const readSnapshots = () => {
 const writeSnapshots = (snapshots) => {
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(OFFICIAL_SNAPSHOT_KEY, JSON.stringify(snapshots));
+      // Keep only a small synchronous startup cache; IndexedDB receives the
+      // full 48-hour archive below.
+      localStorage.setItem(OFFICIAL_SNAPSHOT_KEY, JSON.stringify(snapshots.slice(-OFFICIAL_LOCAL_CACHE_LIMIT)));
     }
   } catch {
     // Private browsing or a full quota must not interrupt the live map.
   }
+  void persistBrowserArchive(OFFICIAL_SNAPSHOT_KEY, snapshots);
 };
 
 const roundDelay = (value) => Number.isFinite(Number(value)) ? Math.round(Number(value)) : null;
@@ -160,6 +165,16 @@ class OfficialSnapshotStore {
     this.snapshots = readSnapshots().sort((a, b) => Number(a.at) - Number(b.at));
     this.lastSnapshotAt = this.snapshots.at(-1)?.at || 0;
     this.listeners = new Set();
+    void readBrowserArchive(OFFICIAL_SNAPSHOT_KEY).then((stored) => {
+      if (!Array.isArray(stored)) return;
+      const cutoff = Date.now() - OFFICIAL_SNAPSHOT_RETENTION_MS;
+      const merged = [...this.snapshots, ...stored]
+        .filter((snapshot) => Number(snapshot?.at) >= cutoff && Array.isArray(snapshot?.arrivals))
+        .sort((a, b) => Number(a.at) - Number(b.at));
+      this.snapshots = [...new Map(merged.map((snapshot) => [snapshot.at, snapshot])).values()];
+      this.lastSnapshotAt = this.snapshots.at(-1)?.at || this.lastSnapshotAt;
+      this.notify();
+    });
   }
 
   subscribe(listener) {
@@ -211,6 +226,7 @@ class OfficialSnapshotStore {
     this.snapshots = [];
     this.lastSnapshotAt = 0;
     writeSnapshots([]);
+    void deleteBrowserArchive(OFFICIAL_SNAPSHOT_KEY);
     this.notify();
   }
 }

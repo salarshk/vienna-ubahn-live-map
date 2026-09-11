@@ -27,6 +27,7 @@ jobs:
         run: node scripts/ml/ingest_oebb_open_data.mjs
 
       - name: Archive ÖBB data to Cloudflare R2
+        id: r2_archive
         continue-on-error: true
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -43,3 +44,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           compression-level: 9
+
+      - name: Record ÖBB collection health
+        if: always()
+        run: |
+          {
+            echo "## ÖBB collection health"
+            if [ -f data/ml/oebb/collection-health.json ]; then
+              echo '```json'
+              cat data/ml/oebb/collection-health.json
+              echo '```'
+            else
+              echo "No ÖBB collection health report was produced."
+            fi
+            echo "R2 archive step: ${{ steps.r2_archive.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
