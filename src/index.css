@@ -407,6 +407,17 @@ button:active {
 .vehicle-detail-grid > div { min-width: 0; padding: 11px 14px; background: var(--bg-panel-solid); }
 .vehicle-detail-grid strong { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
 
+.vehicle-predictions { padding: 11px 14px; border-top: 1px solid var(--border-color); background: rgba(0, 180, 216, .035); }
+.vehicle-predictions-title { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.vehicle-predictions-title em { margin-left: auto; color: var(--text-secondary); font-size: .55rem; font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.vehicle-prediction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 8px; }
+.vehicle-prediction-card { min-width: 0; padding: 9px 10px; border: 1px solid var(--border-color); border-radius: 9px; background: var(--bg-panel-solid); }
+.vehicle-prediction-card span, .vehicle-prediction-card small { display: block; color: var(--text-secondary); }
+.vehicle-prediction-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .61rem; text-transform: uppercase; letter-spacing: .04em; }
+.vehicle-prediction-card strong { display: block; margin: 4px 0 2px; color: var(--text-primary); font-size: .94rem; font-variant-numeric: tabular-nums; }
+.vehicle-prediction-card small { font-size: .58rem; line-height: 1.35; }
+.vehicle-predictions > p { margin: 7px 0 0; color: var(--text-secondary); font-size: .58rem; line-height: 1.35; }
+
 .vehicle-upcoming { padding: 11px 14px; border-top: 1px solid var(--border-color); }
 .vehicle-upcoming > div { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 5px; }
 .vehicle-upcoming > div span { display: inline-flex; align-items: center; gap: 2px; font-size: .75rem; font-weight: 700; }

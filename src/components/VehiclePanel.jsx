@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Clock3, Database, MapPin, Radio, Shuffle, X } from 'lucide-react';
+import { Activity, ChevronRight, Clock3, Database, MapPin, Radio, Shuffle, X } from 'lucide-react';
 import trainPositionEngine from '../services/trainPositionEngine';
 import arrivalStore from '../services/arrivalStore';
+import delayModelStore from '../services/delayModel';
+import disruptionStore from '../services/disruptionStore';
 import { estimateConnections } from '../services/networkIntelligence';
+import { predictVehicleDelay, predictVehicleDwell } from '../services/vehiclePredictions';
 import { lineColor } from '../utils/lineColor';
 
 const directionLabel = (bearing) => {
@@ -17,9 +20,22 @@ const dueLabel = (seconds) => {
   return `${Math.round(seconds / 60)} min`;
 };
 
+const delayLabel = (minutes) => {
+  if (!Number.isFinite(minutes)) return 'Not available';
+  if (minutes <= 0.1) return 'On time';
+  return `${minutes > 0 ? '+' : ''}${minutes.toFixed(1)} min`;
+};
+
+const rangeLabel = (low, high) => {
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return 'No range yet';
+  return `${delayLabel(low)} to ${delayLabel(high)}`;
+};
+
 const VehiclePanel = ({ vehicle, onClose }) => {
   const [current, setCurrent] = useState(vehicle);
   const [isPresent, setIsPresent] = useState(true);
+  const [delayModelSnapshot, setDelayModelSnapshot] = useState(() => delayModelStore.getSnapshot());
+  const [disruptions, setDisruptions] = useState(() => disruptionStore.getSnapshot().alerts || []);
 
   useEffect(() => {
     if (vehicle.isReplay) {
@@ -48,6 +64,20 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     });
   }, [current.isLive, current.isReplay, current.line, current.targetStation, current.upcomingStations]);
 
+  useEffect(() => {
+    const unsubscribe = delayModelStore.subscribe(setDelayModelSnapshot);
+    void delayModelStore.load();
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = disruptionStore.subscribe((snapshot) => setDisruptions(snapshot.alerts || []));
+    // The application normally refreshes this store on boot. Refreshing here
+    // also makes a directly opened train panel self-contained.
+    void disruptionStore.refresh();
+    return unsubscribe;
+  }, []);
+
   const source = current.isReplay
     ? { label: 'REPLAY', icon: Clock3, color: '#ffb74d', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
     : current.isLive
@@ -61,6 +91,15 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     [current.upcomingStations, current.targetStation]
   );
   const connections = current.isReplay ? [] : estimateConnections(current, Date.now());
+  const predictionNow = Date.now();
+  const delayPrediction = predictVehicleDelay({
+    vehicle: current,
+    arrivals: arrivalStore.getNetworkArrivals(predictionNow),
+    disruptions,
+    modelSnapshot: delayModelSnapshot,
+    now: predictionNow,
+  });
+  const dwellPrediction = predictVehicleDwell({ vehicle: current });
 
   return (
     <aside className="glass-panel station-panel vehicle-panel" aria-label={`${current.line} train details`}>
@@ -104,6 +143,25 @@ const VehiclePanel = ({ vehicle, onClose }) => {
           </div>
         )}
       </div>
+
+      <section className="vehicle-predictions" aria-label="Per-train predictions">
+        <div className="vehicle-predictions-title"><Activity size={13} /><span>Per-train predictions</span><em>decision support</em></div>
+        <div className="vehicle-prediction-grid">
+          <div className="vehicle-prediction-card">
+            <span>Delay at {delayPrediction.station}</span>
+            <strong>{delayLabel(delayPrediction.predictedMinutes)}</strong>
+            <small>{rangeLabel(delayPrediction.lowMinutes, delayPrediction.highMinutes)} · {delayPrediction.confidence}% confidence</small>
+            <small>{delayPrediction.source}</small>
+          </div>
+          <div className="vehicle-prediction-card">
+            <span>{dwellPrediction?.status || 'Dwell forecast'}</span>
+            <strong>{dwellPrediction ? `${dwellPrediction.predictedMinutes.toFixed(1)} min` : 'Not available'}</strong>
+            <small>{dwellPrediction ? `${dwellPrediction.lowMinutes.toFixed(1)}–${dwellPrediction.highMinutes.toFixed(1)} min · ${dwellPrediction.confidence}% confidence` : 'No position data yet'}</small>
+            <small>{dwellPrediction?.source || 'Awaiting train data'}</small>
+          </div>
+        </div>
+        <p>Forecasts use the train’s official timing where available and the map’s inferred position; they are not operator guarantees.</p>
+      </section>
 
       {futureStops.length > 0 && (
         <div className="vehicle-upcoming">
