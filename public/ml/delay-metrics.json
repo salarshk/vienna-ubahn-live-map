@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 1484,
+  "observationCount": 2347,
   "labelledJourneyCount": 31,
   "dataDays": 1,
-  "coverageHours": 1.7,
+  "coverageHours": 11.6,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-10T12:52:47.236Z",
+  "lastObservation": "2026-09-10T22:47:41.994Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -35,6 +35,19 @@
       "highest incident priority",
       "delay-related incident flag"
     ]
+  },
+  "labelQuality": {
+    "officialDelayField": "officialDelaySeconds",
+    "source": "Wiener Linien timeReal minus timePlanned near departure",
+    "officialLabelledJourneys": 0,
+    "fallbackLabelledJourneys": 31
+  },
+  "monitoring": {
+    "cadence": "Every 10 minutes when the collector workflow runs",
+    "rollbackPolicy": "Disable ML predictions when the candidate is stale, invalid, or does not beat the live-estimate baseline.",
+    "maxAgeHours": 36,
+    "maxMaeMinutes": 10,
+    "maxRmseMinutes": 15
   },
   "status": "collecting",
   "message": "Collecting at least 36 hours across 2 days and 150 labelled journeys before publishing a preliminary score.",
