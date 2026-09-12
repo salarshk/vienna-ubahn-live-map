@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 9893,
+  "observationCount": 11561,
   "labelledJourneyCount": 579,
-  "dataDays": 2,
-  "coverageHours": 26.8,
+  "dataDays": 3,
+  "coverageHours": 37.3,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-11T14:00:09.968Z",
+  "lastObservation": "2026-09-12T00:28:03.121Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -47,11 +47,68 @@
     "rollbackPolicy": "Disable ML predictions when the candidate is stale, invalid, or does not beat the live-estimate baseline.",
     "maxAgeHours": 36,
     "maxMaeMinutes": 10,
-    "maxRmseMinutes": 15
+    "maxRmseMinutes": 15,
+    "evaluatedAt": "2026-09-12T00:28:10.679Z",
+    "beatsBaseline": false,
+    "rollbackActive": true
   },
-  "status": "collecting",
-  "message": "Collecting at least 36 hours across 2 days and 150 labelled journeys before publishing a preliminary score.",
-  "leakageControl": "One early observation per journey; later near-departure observation becomes its label.",
+  "status": "ready",
+  "validationStage": "preliminary",
+  "trainedAt": "2026-09-12T00:28:10.679Z",
+  "algorithm": "Ridge regression",
+  "split": {
+    "method": "Chronological split by whole calendar days; the newest 20% of days are test-only",
+    "trainingExamples": 31,
+    "testExamples": 548,
+    "testPeriodStarts": "2026-09-11T13:34:30.000Z"
+  },
+  "model": {
+    "sampleCount": 548,
+    "maeMinutes": 0.91,
+    "rmseMinutes": 1.2,
+    "rSquared": -0.392,
+    "withinOneMinutePercent": 67.5,
+    "withinTwoMinutesPercent": 89.1,
+    "delayedThreeMinutes": {
+      "accuracyPercent": 97.4,
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "confusionMatrix": {
+        "truePositive": 0,
+        "trueNegative": 534,
+        "falsePositive": 0,
+        "falseNegative": 14
+      }
+    }
+  },
+  "currentEstimateBaseline": {
+    "sampleCount": 548,
+    "maeMinutes": 0.51,
+    "rmseMinutes": 0.71,
+    "rSquared": 0.511,
+    "withinOneMinutePercent": 89.1,
+    "withinTwoMinutesPercent": 98,
+    "delayedThreeMinutes": {
+      "accuracyPercent": 98.5,
+      "precision": 0.875,
+      "recall": 0.5,
+      "f1": 0.636,
+      "confusionMatrix": {
+        "truePositive": 7,
+        "trueNegative": 533,
+        "falsePositive": 1,
+        "falseNegative": 7
+      }
+    }
+  },
+  "deployment": {
+    "deployed": false,
+    "rule": "Publish live predictions only when test MAE beats carrying forward the early operator estimate."
+  },
+  "delayClassificationThresholdMinutes": 3,
+  "labelCaveat": "The target is the official Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.",
+  "promotion": "Preliminary result; it will be replaced automatically after meeting the seven-day safeguards.",
   "onlineCalibration": {
     "status": "ready",
     "experimental": true,

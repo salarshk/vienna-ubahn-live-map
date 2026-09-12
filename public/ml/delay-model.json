@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 9893,
+  "observationCount": 11561,
   "labelledJourneyCount": 579,
-  "dataDays": 2,
-  "coverageHours": 26.8,
+  "dataDays": 3,
+  "coverageHours": 37.3,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-11T14:00:09.968Z",
+  "lastObservation": "2026-09-12T00:28:03.121Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -49,9 +49,124 @@
     "maxMaeMinutes": 10,
     "maxRmseMinutes": 15
   },
-  "status": "collecting",
-  "trainedAt": null,
+  "status": "ready",
+  "validationStage": "preliminary",
+  "algorithm": "ridge-regression",
+  "trainedAt": "2026-09-12T00:28:10.679Z",
   "deployed": false,
+  "trainedThrough": "2026-09-10T12:56:00.000Z",
+  "featureNames": [
+    "intercept",
+    "currentDelayMinutes",
+    "leadMinutes",
+    "hourSin",
+    "hourCos",
+    "weekdaySin",
+    "weekdayCos",
+    "trafficJam",
+    "directionH",
+    "activeIncidentCount",
+    "incidentPriority",
+    "delayRelatedIncident",
+    "line_U1",
+    "line_U2",
+    "line_U3",
+    "line_U4",
+    "line_U6"
+  ],
+  "scaling": [
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0.1188172,
+      "scale": 0.85259189
+    },
+    {
+      "mean": 4.67043011,
+      "scale": 0.50840092
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0.64516129,
+      "scale": 0.47846442
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    }
+  ],
+  "weights": [
+    0.02192693,
+    0.6804539,
+    -0.0744725,
+    0.00301052,
+    -0.00071582,
+    0,
+    0,
+    0,
+    0.02825313,
+    -0.04420154,
+    0,
+    0,
+    0.05781021,
+    0.00011266,
+    -0.03666135,
+    -0.10348175,
+    0.08222022
+  ],
+  "predictionRangeMinutes": [
+    -2,
+    30
+  ],
   "onlineCalibration": {
     "status": "ready",
     "algorithm": "prequential-hierarchical-calibration",
