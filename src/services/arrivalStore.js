@@ -98,9 +98,13 @@ export const POSITION_SOURCE_IDS = new Set(MAJOR_STATIONS.map((station) => stati
 // 18-minute age-out before being replaced. It lives here rather than with the
 // timer that fires it because it is also the cadence a position's confidence is
 // judged against: one interval unheard is healthy, more is not.
-export const NETWORK_SYNC_INTERVAL_MS = 120000;
+// Keep the live map responsive when a train is moving or a user is watching a
+// platform. This is intentionally aggressive; the upstream feed or relay may
+// still apply its own rate limit, in which case the previous cached prediction
+// remains visible rather than making the map fail.
+export const NETWORK_SYNC_INTERVAL_MS = 5000;
 
-const CACHE_TTL_MS = 60000; // 60 seconds strict memory pause per station
+const CACHE_TTL_MS = 5000; // Match the five-second network sync cadence.
 const MIN_REFRESH_COOLDOWN_MS = 30000; // 30 seconds cooldown between manual refreshes
 const MIN_DISPATCH_INTERVAL_MS = 1000; // 1 second minimum delay between outbound API requests
 const DWELL_GRACE_PERIOD_MS = 40000; // 40 seconds dwell before train rolls off
