@@ -59,7 +59,7 @@ const Sidebar = ({
             </div>
             <div>
               <h1 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Vienna Rail</h1>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>U-Bahn live · S-Bahn timetable</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>U-Bahn live timing · predicted position · S-Bahn timetable</div>
             </div>
           </div>
 
@@ -99,7 +99,7 @@ const Sidebar = ({
               })}
             </div>
             <div className="marker-legend" aria-label="Train marker legend">
-              <span><i className="legend-marker live" />Live estimate</span>
+              <span><i className="legend-marker live" />Live timing, predicted position</span>
               <span><i className="legend-marker scheduled" />Scheduled</span>
               <span><i className="legend-marker simulated" />Fallback</span>
             </div>

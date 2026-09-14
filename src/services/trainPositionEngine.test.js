@@ -256,6 +256,34 @@ describe('live vehicle reconstruction', () => {
     expect(vehicles[0].sightingCount).toBe(2);
   });
 
+  it('marks a cross-checked train consistent and fades an old observation', () => {
+    const now = Date.now();
+    const karlsplatz = stationByName('U1', 'Karlsplatz');
+    const stephansplatz = stationByName('U1', 'Stephansplatz');
+    const gap = trainPositionEngine.getSegmentSeconds('U1', karlsplatz, stephansplatz);
+    sighting({ key: 'a', stationName: 'Karlsplatz', vehicleId: 'checked', secondsFromNow: 60, now });
+    sighting({ key: 'b', stationName: 'Stephansplatz', vehicleId: 'checked', secondsFromNow: 60 + gap, now });
+    const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    expect(vehicle.sightingConsistencyStatus).toBe('consistent');
+    expect(vehicle.observationAgeSeconds).toBe(0);
+
+    arrivalStore.memory.clear();
+    sighting({ key: 'old', stationName: 'Karlsplatz', vehicleId: 'old', secondsFromNow: 300, now, fetchedAt: now - 60000 });
+    expect(trainPositionEngine.getLiveVehiclesFromMemory(now)[0].sourceFreshness).toBe('stale');
+  });
+
+  it('flags contradictory station countdowns instead of presenting them as equally precise', () => {
+    const now = Date.now();
+    const karlsplatz = stationByName('U1', 'Karlsplatz');
+    const stephansplatz = stationByName('U1', 'Stephansplatz');
+    const gap = trainPositionEngine.getSegmentSeconds('U1', karlsplatz, stephansplatz);
+    sighting({ key: 'a', stationName: 'Karlsplatz', vehicleId: 'conflict', secondsFromNow: 60, now });
+    sighting({ key: 'b', stationName: 'Stephansplatz', vehicleId: 'conflict', secondsFromNow: 60 + gap + 300, now });
+    const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    expect(vehicle.sightingConsistencyStatus).toBe('inconsistent sightings');
+    expect(vehicle.positionConfidence).toBeLessThanOrEqual(0.55);
+  });
+
   it('keeps consecutive keyless trains separate', () => {
     const now = Date.now();
     sighting({ key: 'a', stationName: 'Karlsplatz', secondsFromNow: 60, now });

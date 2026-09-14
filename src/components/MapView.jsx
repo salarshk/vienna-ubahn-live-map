@@ -477,24 +477,33 @@ const styleFor = (theme) => (OFFLINE_BASEMAP_AVAILABLE
     theme === 'dark' ? 'basemap-dark' : 'basemap-light'
   ));
 
-// The CSS opacity a vehicle marker is drawn at. For a live train that is its
-// Position Confidence; scheduled S-Bahn trains stay visually distinct but no
-// longer fade into the basemap, while generic simulations remain subdued.
-const vehicleOpacity = (v) =>
-  (v.isLive ? (v.positionConfidence ?? 1) : v.isScheduled ? 0.9 : 0.55).toFixed(2);
+// The CSS opacity a vehicle marker is drawn at. Stale feeds and inconsistent
+// multi-station joins remain visible for continuity, but are unmistakably
+// weaker than a fresh, cross-checked observation.
+const vehicleOpacity = (v) => {
+  const base = v.isLive ? (v.positionConfidence ?? 1) : v.isScheduled ? 0.9 : 0.55;
+  const freshness = v.sourceFreshness === 'stale' ? 0.45 : 1;
+  const consistency = v.sightingConsistencyStatus === 'inconsistent sightings' ? 0.65 : 1;
+  return (base * freshness * consistency).toFixed(2);
+};
 
 // Says in the reader's words — not the model's — why a marker is drawn faint,
 // covering both causes: how far the walk had to reach, and how long since the
 // API last confirmed the train.
 const describePositionDoubt = (v) => {
-  if (!v.isLive || v.positionConfidence >= 1) return '';
-  const confirmed = v.secondsUnheard < 60
+  if (!v.isLive) return '';
+  const rawAge = Number(v.observationAgeSeconds ?? v.secondsUnheard);
+  const age = Number.isFinite(rawAge) ? Math.max(0, rawAge) : 0;
+  const confirmed = age < 60
     ? 'just now'
-    : `${Math.round(v.secondsUnheard / 60)} min ago`;
+    : `${Math.round(age / 60)} min ago`;
   const basis = v.isDeadReckoned
     ? 'position estimated past its last prediction'
     : `position estimated ±${v.positionUncertaintyMetres} m`;
-  return ` • ${basis}, last confirmed ${confirmed}`;
+  const stale = v.sourceFreshness === 'stale' ? ' • stale feed' : '';
+  const inconsistent = v.sightingConsistencyStatus === 'inconsistent sightings'
+    ? ' • station sightings disagree' : '';
+  return ` • ${basis}, last confirmed ${confirmed}${stale}${inconsistent}`;
 };
 
 // The expanded Station node's markup. Built as a string because it lives inside
@@ -970,7 +979,7 @@ const MapView = ({
       const isHidden = currentScale < 0.3;
       
       const provenanceBadge = v.isLive
-        ? '<span title="Official Wiener Linien timing; position inferred" aria-hidden="true" style="position:absolute;right:-4px;top:-4px;width:11px;height:11px;border-radius:50%;background:#4caf50;color:#07140a;border:1px solid rgba(255,255,255,.9);font:900 8px/10px system-ui;text-align:center">i</span>'
+        ? '<span title="Wiener Linien live timing; location predicted from station departures, not GPS" aria-hidden="true" style="position:absolute;right:-4px;top:-4px;width:11px;height:11px;border-radius:50%;background:#4caf50;color:#07140a;border:1px solid rgba(255,255,255,.9);font:900 8px/10px system-ui;text-align:center">i</span>'
         : v.isScheduled
           ? '<span title="Scheduled timetable estimate" aria-hidden="true" style="position:absolute;right:-4px;top:-4px;width:11px;height:11px;border-radius:50%;background:#00b4d8;color:#05202a;border:1px dashed rgba(255,255,255,.9);font:900 7px/10px system-ui;text-align:center">s</span>'
           : '';
@@ -1466,7 +1475,7 @@ const MapView = ({
         style={{ width: '100%', height: '100%' }}
       />
       <div className="data-provenance-legend" aria-label="Data provenance">
-        <span><i className="official" /> Official timing · inferred position</span>
+        <span><i className="official" /> Live timing · predicted position (no GPS)</span>
         <span><i className="scheduled" /> Scheduled timetable estimate</span>
       </div>
     </>

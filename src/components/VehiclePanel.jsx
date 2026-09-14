@@ -31,6 +31,14 @@ const rangeLabel = (low, high) => {
   return `${delayLabel(low)} to ${delayLabel(high)}`;
 };
 
+const observationAgeLabel = (seconds) => {
+  if (!Number.isFinite(Number(seconds))) return 'unknown age';
+  const age = Math.max(0, Math.round(Number(seconds)));
+  if (age < 5) return 'just now';
+  if (age < 60) return `${age}s ago`;
+  return `${Math.round(age / 60)} min ago`;
+};
+
 const VehiclePanel = ({ vehicle, onClose }) => {
   const [current, setCurrent] = useState(vehicle);
   const [isPresent, setIsPresent] = useState(true);
@@ -81,9 +89,9 @@ const VehiclePanel = ({ vehicle, onClose }) => {
   const source = current.isReplay
     ? { label: 'REPLAY', icon: Clock3, color: '#ffb74d', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
     : current.isLive
-    ? { label: 'OFFICIAL TIMING · INFERRED POSITION', icon: Radio, color: '#4CAF50', detail: 'Timing is from Wiener Linien timeReal/timePlanned; the map position is inferred, not GPS.' }
+    ? { label: current.sourceFreshness === 'stale' ? 'STALE LIVE TIMING · PREDICTED POSITION' : 'LIVE TIMING · PREDICTED POSITION', icon: Radio, color: current.sourceFreshness === 'stale' ? '#ffb74d' : '#4CAF50', detail: `Wiener Linien timeReal/timePlanned observation ${observationAgeLabel(current.observationAgeSeconds)}; location is inferred from station departures, not GPS.` }
     : current.isScheduled
-      ? { label: 'SCHEDULED', icon: Database, color: '#00B4D8', detail: 'Interpolated from the ÖBB timetable — not live GPS.' }
+      ? { label: 'SCHEDULED TIMETABLE · NO LIVE FEED', icon: Database, color: '#00B4D8', detail: 'Interpolated from the ÖBB timetable — no live S-Bahn delay or GPS feed is connected.' }
       : { label: 'SIMULATED', icon: Database, color: '#ffb74d', detail: 'Fallback movement shown because no usable live prediction is available.' };
   const SourceIcon = source.icon;
   const futureStops = useMemo(
@@ -108,7 +116,7 @@ const VehiclePanel = ({ vehicle, onClose }) => {
         <div className="vehicle-panel-title">
           <div className="vehicle-heading">Towards {current.direction}</div>
           <div className="vehicle-source" style={{ color: source.color }}>
-            <SourceIcon size={11} className={current.isLive ? 'pulse' : ''} /> {source.label}
+            <SourceIcon size={11} className={current.isLive && current.sourceFreshness !== 'stale' ? 'pulse' : ''} /> {source.label}
           </div>
         </div>
         <button className="panel-close-button" onClick={onClose} aria-label="Close train details"><X size={17} /></button>
@@ -134,6 +142,18 @@ const VehiclePanel = ({ vehicle, onClose }) => {
           <div>
             <span>Probable range</span>
             <strong>±{Math.max(0, current.positionUncertaintyMetres || 0)} m on track</strong>
+          </div>
+        )}
+        {current.isLive && (
+          <div>
+            <span>Observation age</span>
+            <strong>{observationAgeLabel(current.observationAgeSeconds)}</strong>
+          </div>
+        )}
+        {current.isLive && (
+          <div>
+            <span>Station cross-check</span>
+            <strong>{current.sightingConsistencyStatus || 'single observation'}</strong>
           </div>
         )}
         {current.isLive && Number.isFinite(Number(current.officialDelaySeconds)) && (

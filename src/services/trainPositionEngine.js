@@ -69,6 +69,10 @@ const U_BAHN_LINE_IDS = LINE_IDS.filter((line) => line.startsWith('U'));
 // this far out has accumulated too much walk error to place with confidence.
 const MAX_SECONDS_PAST = 40;
 const MAX_SECONDS_AHEAD = 1080;
+// A failed upstream refresh should be visible as a stale estimate rather than
+// silently looking live. We keep the marker faint while retaining continuity;
+// the arrival countdown itself still determines when it is dropped.
+export const STALE_POSITION_AFTER_SECONDS = 30;
 
 // A platform must sit close to its line geometry before it participates in the
 // walk. This protects the station order if an upstream geometry ever changes.
@@ -79,6 +83,8 @@ const MAX_STATION_OFFSET_METRES = 250;
 // (90 km/h) is already above normal service speed, so corrections are eased at
 // or below this ceiling rather than teleporting a marker.
 const MAX_RENDER_SPEED_METRES_PER_SECOND = 25;
+const TRUSTED_CORRECTION_MAX_AGE_SECONDS = 10;
+const TRUSTED_CORRECTION_SPEED_METRES_PER_SECOND = 60;
 
 // The API has no vehicle or trip id. Timetabled segment sums and the feed's
 // planned platform times can differ by a few seconds per stop, so the same
@@ -151,6 +157,39 @@ export const confidenceFromUncertainty = (uncertaintyMetres) => {
   const span = LOST_CONFIDENCE_METRES - FULL_CONFIDENCE_METRES;
   const lost = (uncertaintyMetres - FULL_CONFIDENCE_METRES) / span;
   return Math.max(MIN_WALKED_CONFIDENCE, Math.min(1, 1 - lost));
+};
+
+/**
+ * Compare multiple station predictions for the same train. The feed normally
+ * gives future arrival times, so a forward train has a larger countdown at a
+ * station farther along the track; a reverse train has the opposite ordering.
+ * This is a consistency check, not a claim that either observation is GPS.
+ */
+export const assessSightingConsistency = (engine, lineId, sightings = [], isForward = true) => {
+  if (!Array.isArray(sightings) || sightings.length < 2) {
+    return { score: 0.5, status: 'single observation', pairCount: 0, meanErrorSeconds: null };
+  }
+  const ordered = [...sightings].sort((a, b) => a.station.trackDist - b.station.trackDist);
+  const errors = [];
+  for (let index = 1; index < ordered.length; index += 1) {
+    const previous = ordered[index - 1];
+    const next = ordered[index];
+    const expected = engine.getSecondsBetweenStations(lineId, previous.station, next.station);
+    const observed = isForward
+      ? next.secondsRemaining - previous.secondsRemaining
+      : previous.secondsRemaining - next.secondsRemaining;
+    if (!Number.isFinite(expected) || !Number.isFinite(observed)) continue;
+    errors.push(Math.abs(observed - expected));
+  }
+  if (!errors.length) return { score: 0.5, status: 'single observation', pairCount: 0, meanErrorSeconds: null };
+  const meanErrorSeconds = errors.reduce((sum, value) => sum + value, 0) / errors.length;
+  const score = Math.max(0, Math.min(1, 1 - meanErrorSeconds / 180));
+  return {
+    score: Number(score.toFixed(3)),
+    status: score >= 0.65 ? 'consistent' : 'inconsistent sightings',
+    pairCount: errors.length,
+    meanErrorSeconds: Math.round(meanErrorSeconds),
+  };
 };
 
 const normalise = (value) => (value || '').toLowerCase().trim();
@@ -459,7 +498,7 @@ class TrainPositionEngine {
       // Still inside the dwell it was predicted to arrive for: the train is at
       // the platform the API named, which is the best-known position there is.
       if (remaining <= DWELL_SECONDS) {
-        return { trackDist: target.trackDist, status: 'At Platform', nextStation: target, segmentsWalked, isDeadReckoned: false };
+        return { trackDist: target.trackDist, status: 'At Platform', nextStation: target, secondsToNext: 0, segmentsWalked, isDeadReckoned: false };
       }
       remaining -= DWELL_SECONDS;
 
@@ -467,7 +506,7 @@ class TrainPositionEngine {
       while (true) {
         const toIndex = fromIndex - stepBack;
         if (toIndex < 0 || toIndex >= stations.length) {
-          return { trackDist: stations[fromIndex].trackDist, status: 'At Terminus', nextStation: stations[fromIndex], segmentsWalked, isDeadReckoned: true };
+          return { trackDist: stations[fromIndex].trackDist, status: 'At Terminus', nextStation: stations[fromIndex], secondsToNext: 0, segmentsWalked, isDeadReckoned: true };
         }
         const from = stations[fromIndex];
         const to = stations[toIndex];
@@ -479,6 +518,7 @@ class TrainPositionEngine {
             trackDist: from.trackDist + (to.trackDist - from.trackDist) * progress,
             status: 'En Route',
             nextStation: to,
+            secondsToNext: Math.max(0, Math.round(running - remaining)),
             segmentsWalked: segmentsWalked + progress,
             isDeadReckoned: true,
           };
@@ -486,7 +526,7 @@ class TrainPositionEngine {
         remaining -= running;
         segmentsWalked += 1;
         if (remaining <= DWELL_SECONDS) {
-          return { trackDist: to.trackDist, status: 'At Platform', nextStation: to, segmentsWalked, isDeadReckoned: true };
+          return { trackDist: to.trackDist, status: 'At Platform', nextStation: to, secondsToNext: 0, segmentsWalked, isDeadReckoned: true };
         }
         remaining -= DWELL_SECONDS;
         fromIndex = toIndex;
@@ -507,6 +547,7 @@ class TrainPositionEngine {
           trackDist: stations[arrivalIndex].trackDist,
           status: 'At Terminus',
           nextStation: stations[targetIndex],
+          secondsToNext: Math.max(0, Math.round(remaining)),
           segmentsWalked,
           isDeadReckoned: false,
           isPreDeparture: true,
@@ -523,6 +564,7 @@ class TrainPositionEngine {
           trackDist: departure.trackDist + (arrival.trackDist - departure.trackDist) * progress,
           status: remaining <= 60 ? 'Approaching' : 'En Route',
           nextStation: arrival,
+          secondsToNext: Math.max(0, Math.round(remaining)),
           segmentsWalked: segmentsWalked + (1 - progress),
           isDeadReckoned: false,
         };
@@ -531,7 +573,14 @@ class TrainPositionEngine {
       remaining -= running;
       segmentsWalked += 1;
       if (remaining <= DWELL_SECONDS) {
-        return { trackDist: departure.trackDist, status: 'At Platform', nextStation: arrival, segmentsWalked, isDeadReckoned: false };
+        return {
+          trackDist: departure.trackDist,
+          status: 'At Platform',
+          nextStation: arrival,
+          secondsToNext: Math.max(0, Math.round(remaining + running)),
+          segmentsWalked,
+          isDeadReckoned: false,
+        };
       }
       remaining -= DWELL_SECONDS;
       arrivalIndex = departureIndex;
@@ -561,9 +610,9 @@ class TrainPositionEngine {
       distanceAlongTrack: walked.trackDist,
       isForward,
       status: walked.status,
-      targetStation: target.name,
+      targetStation: walked.nextStation ? walked.nextStation.name : target.name,
       nextStation: walked.nextStation ? walked.nextStation.name : target.name,
-      secondsToTarget: Math.round(secondsToTarget),
+      secondsToTarget: Math.max(0, Math.round(walked.secondsToNext ?? secondsToTarget)),
     };
   }
 
@@ -614,6 +663,8 @@ class TrainPositionEngine {
           station,
           secondsRemaining,
           fetchedAt,
+          feedAgeSeconds: Number.isFinite(Number(arrival.feedAgeSeconds))
+            ? Number(arrival.feedAgeSeconds) : 0,
           officialDelaySeconds: Number.isFinite(Number(arrival.reportedDelaySeconds))
             ? Number(arrival.reportedDelaySeconds)
             : null,
@@ -713,6 +764,8 @@ class TrainPositionEngine {
         }
       }
 
+      const consistency = assessSightingConsistency(this, train.lineId, sightings, isForward);
+
       const walked = this.walkFromStation(
         train.lineId, anchor.station, anchor.secondsRemaining, isForward
       );
@@ -723,8 +776,13 @@ class TrainPositionEngine {
       );
 
       const secondsUnheard = Math.max(0, (now - anchor.fetchedAt) / 1000);
+      const feedAgeSeconds = sightings.reduce(
+        (maximum, sighting) => Math.max(maximum, Number(sighting.feedAgeSeconds) || 0),
+        0,
+      );
+      const observationAgeSeconds = Math.max(secondsUnheard, feedAgeSeconds);
       const uncertaintyMetres = estimatePositionUncertainty(
-        walked.segmentsWalked, secondsUnheard, this.getLineTrack(train.lineId).fallbackSpeed
+        walked.segmentsWalked, observationAgeSeconds, this.getLineTrack(train.lineId).fallbackSpeed
       );
       // Dead Reckoning is the sharpest loss of confidence there is, and it is
       // not about age at all — a prediction fetched a second ago can already be
@@ -735,6 +793,13 @@ class TrainPositionEngine {
         .map((sighting) => Number(sighting.officialDelaySeconds))
         .find(Number.isFinite);
       const officialSighting = sightings.find((sighting) => Number.isFinite(Number(sighting.officialDelaySeconds)));
+
+      const baseConfidence = isDeadReckoned
+        ? MIN_POSITION_CONFIDENCE
+        : confidenceFromUncertainty(uncertaintyMetres);
+      const positionConfidence = consistency.status === 'inconsistent sightings'
+        ? Math.min(baseConfidence, 0.55)
+        : baseConfidence;
 
       vehicles.push({
         id: `live-${train.key}`,
@@ -753,13 +818,16 @@ class TrainPositionEngine {
         status: walked.status,
         sightingCount: sightings.length,
         positionUncertaintyMetres: Math.round(uncertaintyMetres),
-        positionConfidence: isDeadReckoned
-          ? MIN_POSITION_CONFIDENCE
-          : confidenceFromUncertainty(uncertaintyMetres),
+        positionConfidence,
         isDeadReckoned,
-        secondsUnheard: Math.round(secondsUnheard),
+        secondsUnheard: Math.round(observationAgeSeconds),
+        observationAgeSeconds: Math.round(observationAgeSeconds),
+        sourceFreshness: observationAgeSeconds > STALE_POSITION_AFTER_SECONDS ? 'stale' : 'fresh',
+        sightingConsistencyScore: consistency.score,
+        sightingConsistencyStatus: consistency.status,
+        sightingConsistencyErrorSeconds: consistency.meanErrorSeconds,
         targetStation: walked.nextStation ? walked.nextStation.name : anchor.station.name,
-        secondsToTarget: Math.max(0, Math.round(anchor.secondsRemaining)),
+        secondsToTarget: Math.max(0, Math.round(walked.secondsToNext ?? anchor.secondsRemaining)),
       });
     }
 
@@ -858,7 +926,15 @@ class TrainPositionEngine {
     // Never render an upstream correction as a train physically reversing.
     // Hold its last position until the corrected estimate catches up.
     const forwardAdvance = Math.max(0, requestedAdvance);
-    const maxAdvance = MAX_RENDER_SPEED_METRES_PER_SECOND * elapsedSeconds;
+    const trustedCorrection = vehicle.sightingCount >= 2
+      && vehicle.sightingConsistencyStatus === 'consistent'
+      && vehicle.sourceFreshness === 'fresh'
+      && (vehicle.observationAgeSeconds ?? Infinity) <= TRUSTED_CORRECTION_MAX_AGE_SECONDS
+      && !vehicle.isDeadReckoned;
+    const maxSpeed = trustedCorrection
+      ? TRUSTED_CORRECTION_SPEED_METRES_PER_SECOND
+      : MAX_RENDER_SPEED_METRES_PER_SECOND;
+    const maxAdvance = maxSpeed * elapsedSeconds;
     const appliedAdvance = Math.min(forwardAdvance, maxAdvance);
     const eased = previous.trackDist + sign * appliedAdvance;
     const { coordinates, bearing } = this.getCoordsAndBearingAtDistance(
