@@ -518,7 +518,7 @@ class ArrivalStore {
   /**
    * Main fetch method with 60s memory pause, rate budgeting, and in-flight deduplication.
    */
-  async getStationArrivals(stationProps, { forceRefresh = false } = {}) {
+  async getStationArrivals(stationProps, { forceRefresh = false, bypassCooldown = false } = {}) {
     if (!stationProps) return [];
     const key = this.getStationKey(stationProps);
     const stationId = this.getStationApiId(stationProps);
@@ -540,7 +540,7 @@ class ArrivalStore {
 
     // 2. Manual Refresh Cooldown:
     // Even if user clicks Refresh, enforce a 30s pause to prevent button spamming.
-    if (entry && forceRefresh && timeSinceFetch < MIN_REFRESH_COOLDOWN_MS) {
+    if (entry && forceRefresh && !bypassCooldown && timeSinceFetch < MIN_REFRESH_COOLDOWN_MS) {
       const projected = this.projectArrivals(entry, now);
       return Object.assign(projected, {
         isFromCache: true,

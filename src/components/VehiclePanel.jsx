@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, ChevronRight, Clock3, Database, MapPin, Radio, Shuffle, X } from 'lucide-react';
-import trainPositionEngine from '../services/trainPositionEngine';
+import trainPositionEngine, { CLICKED_TRAIN_MAX_DATA_AGE_SECONDS } from '../services/trainPositionEngine';
 import arrivalStore from '../services/arrivalStore';
 import delayModelStore from '../services/delayModel';
 import disruptionStore from '../services/disruptionStore';
@@ -31,17 +31,45 @@ const rangeLabel = (low, high) => {
   return `${delayLabel(low)} to ${delayLabel(high)}`;
 };
 
-const observationAgeLabel = (seconds) => {
+const preciseAgeLabel = (seconds) => {
   if (!Number.isFinite(Number(seconds))) return 'unknown age';
-  const age = Math.max(0, Math.round(Number(seconds)));
-  if (age < 5) return 'just now';
-  if (age < 60) return `${age}s ago`;
+  const age = Math.max(0, Number(seconds));
+  if (age < 10) return `${age.toFixed(1)}s ago`;
+  if (age < 60) return `${Math.round(age)}s ago`;
   return `${Math.round(age / 60)} min ago`;
+};
+
+const normalise = (value) => String(value || '').trim().toLowerCase();
+
+// The operator feed does not guarantee a stable vehicle id. Keep the clicked
+// panel attached to the same service when a fresh poll creates a new synthetic
+// id, while preferring an exact id or official vehicle id whenever available.
+const findUpdatedVehicle = (vehicles, reference) => {
+  if (!Array.isArray(vehicles) || !reference) return null;
+  const exact = vehicles.find((candidate) => candidate.id === reference.id);
+  if (exact) return exact;
+  if (reference.vehicleId) {
+    const official = vehicles.find((candidate) => candidate.isLive
+      && candidate.line === reference.line && candidate.vehicleId === reference.vehicleId);
+    if (official) return official;
+  }
+  const target = normalise(reference.targetStation);
+  const direction = normalise(reference.direction);
+  return vehicles
+    .filter((candidate) => candidate.isLive
+      && candidate.line === reference.line
+      && normalise(candidate.direction) === direction)
+    .sort((a, b) => {
+      const targetScore = (normalise(b.targetStation) === target ? 100 : 0)
+        - (normalise(a.targetStation) === target ? 100 : 0);
+      return targetScore || Math.abs(Number(a.secondsToTarget || 0) - Number(reference.secondsToTarget || 0));
+    })[0] || null;
 };
 
 const VehiclePanel = ({ vehicle, onClose }) => {
   const [current, setCurrent] = useState(vehicle);
   const [isPresent, setIsPresent] = useState(true);
+  const [focusedRefresh, setFocusedRefresh] = useState({ status: 'idle', fetchedAt: null, error: null });
   const [delayModelSnapshot, setDelayModelSnapshot] = useState(() => delayModelStore.getSnapshot());
   const [disruptions, setDisruptions] = useState(() => disruptionStore.getSnapshot().alerts || []);
 
@@ -52,8 +80,7 @@ const VehiclePanel = ({ vehicle, onClose }) => {
       return undefined;
     }
     const update = () => {
-      const next = trainPositionEngine.getAllVehicles(Date.now())
-        .find((candidate) => candidate.id === vehicle.id);
+      const next = findUpdatedVehicle(trainPositionEngine.getAllVehicles(Date.now()), vehicle);
       if (next) setCurrent(next);
       setIsPresent(Boolean(next));
     };
@@ -63,14 +90,44 @@ const VehiclePanel = ({ vehicle, onClose }) => {
 
   useEffect(() => {
     if (!current.isLive || current.isReplay) return;
-    const names = [current.targetStation, ...(current.upcomingStations || [])]
-      .filter((name, index, all) => name && all.indexOf(name) === index)
-      .slice(0, 3);
-    names.forEach((name) => {
-      const station = trainPositionEngine.findStation(current.line, name);
-      if (station) arrivalStore.getStationArrivals({ name: station.name, apiId: station.apiId });
-    });
-  }, [current.isLive, current.isReplay, current.line, current.targetStation, current.upcomingStations]);
+    let cancelled = false;
+    let requestInFlight = false;
+    const refreshFocusedStation = async () => {
+      if (requestInFlight) return;
+      const station = [current.targetStation, current.previousStation, ...(current.upcomingStations || [])]
+        .map((name) => trainPositionEngine.findStation(current.line, name))
+        .find((candidate) => candidate?.apiId);
+      if (!station) return;
+
+      requestInFlight = true;
+      if (!cancelled) setFocusedRefresh((previous) => ({ ...previous, status: 'refreshing', error: null }));
+      const result = await arrivalStore.getStationArrivals(
+        { name: station.name, apiId: station.apiId },
+        { forceRefresh: true, bypassCooldown: true },
+      );
+      if (cancelled) return;
+
+      const now = Date.now();
+      const next = findUpdatedVehicle(trainPositionEngine.getAllVehicles(now), vehicle);
+      if (next) {
+        setCurrent(next);
+        setIsPresent(true);
+      }
+      setFocusedRefresh({
+        status: result?.fetchError ? 'unavailable' : 'updated',
+        fetchedAt: Number.isFinite(Number(result?.fetchedAt)) ? Number(result.fetchedAt) : null,
+        error: result?.fetchError || null,
+      });
+      requestInFlight = false;
+    };
+
+    void refreshFocusedStation();
+    const id = setInterval(refreshFocusedStation, CLICKED_TRAIN_MAX_DATA_AGE_SECONDS * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [current.isLive, current.isReplay, current.line, current.targetStation, current.previousStation, vehicle]);
 
   useEffect(() => {
     const unsubscribe = delayModelStore.subscribe(setDelayModelSnapshot);
@@ -86,10 +143,15 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     return unsubscribe;
   }, []);
 
+  const lastDataAgeSeconds = Number(current.lastDataAgeSeconds ?? current.observationAgeSeconds);
+  const dataWithinThreeSeconds = current.isLive
+    && Number.isFinite(lastDataAgeSeconds)
+    && lastDataAgeSeconds <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS;
+  const lastDataAt = Number.isFinite(Number(current.lastDataAt)) ? new Date(Number(current.lastDataAt)) : null;
   const source = current.isReplay
     ? { label: 'REPLAY', icon: Clock3, color: '#ffb74d', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
     : current.isLive
-    ? { label: current.sourceFreshness === 'stale' ? 'STALE LIVE TIMING · PREDICTED POSITION' : 'LIVE TIMING · PREDICTED POSITION', icon: Radio, color: current.sourceFreshness === 'stale' ? '#ffb74d' : '#4CAF50', detail: `Wiener Linien timeReal/timePlanned observation ${observationAgeLabel(current.observationAgeSeconds)}; location is inferred from station departures, not GPS.` }
+    ? { label: current.sourceFreshness === 'stale' ? 'STALE LIVE TIMING · PREDICTED POSITION' : 'LIVE TIMING · PREDICTED POSITION', icon: Radio, color: current.sourceFreshness === 'stale' ? '#ffb74d' : '#4CAF50', detail: `Wiener Linien timeReal/timePlanned; last data ${preciseAgeLabel(lastDataAgeSeconds)}${focusedRefresh.error ? ` (${focusedRefresh.error})` : ''}; location is inferred from station departures, not GPS.` }
     : current.isScheduled
       ? { label: 'SCHEDULED TIMETABLE · NO LIVE FEED', icon: Database, color: '#00B4D8', detail: 'Interpolated from the ÖBB timetable — no live S-Bahn delay or GPS feed is connected.' }
       : { label: 'SIMULATED', icon: Database, color: '#ffb74d', detail: 'Fallback movement shown because no usable live prediction is available.' };
@@ -145,9 +207,10 @@ const VehiclePanel = ({ vehicle, onClose }) => {
           </div>
         )}
         {current.isLive && (
-          <div>
-            <span>Observation age</span>
-            <strong>{observationAgeLabel(current.observationAgeSeconds)}</strong>
+          <div className={`vehicle-last-data ${dataWithinThreeSeconds ? 'fresh' : 'waiting'}`} aria-live="polite">
+            <span>Last data status</span>
+            <strong>{dataWithinThreeSeconds ? 'Within 3 seconds' : `${preciseAgeLabel(lastDataAgeSeconds)} · waiting`}</strong>
+            <small>{lastDataAt ? `Feed time ${lastDataAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Feed timestamp unavailable'}</small>
           </div>
         )}
         {current.isLive && (

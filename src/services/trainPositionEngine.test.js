@@ -266,6 +266,8 @@ describe('live vehicle reconstruction', () => {
     const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
     expect(vehicle.sightingConsistencyStatus).toBe('consistent');
     expect(vehicle.observationAgeSeconds).toBe(0);
+    expect(vehicle.lastDataAgeSeconds).toBe(0);
+    expect(vehicle.dataFreshness).toBe('within-3-seconds');
 
     arrivalStore.memory.clear();
     sighting({ key: 'old', stationName: 'Karlsplatz', vehicleId: 'old', secondsFromNow: 300, now, fetchedAt: now - 60000 });
@@ -315,6 +317,7 @@ describe('live vehicle reconstruction', () => {
     });
     const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
     expect(vehicle.secondsUnheard).toBe(240);
+    expect(vehicle.dataFreshness).toBe('older-than-3-seconds');
     expect(vehicle.positionConfidence).toBeGreaterThanOrEqual(MIN_POSITION_CONFIDENCE);
     expect(vehicle.positionConfidence).toBeLessThanOrEqual(1);
   });

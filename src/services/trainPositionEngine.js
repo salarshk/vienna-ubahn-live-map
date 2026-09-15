@@ -73,6 +73,10 @@ const MAX_SECONDS_AHEAD = 1080;
 // silently looking live. We keep the marker faint while retaining continuity;
 // the arrival countdown itself still determines when it is dropped.
 export const STALE_POSITION_AFTER_SECONDS = 30;
+// A clicked train gets a stricter reader-facing freshness target than the
+// marker continuity policy above. This is a status threshold, not a promise
+// that the upstream operator feed itself is never delayed.
+export const CLICKED_TRAIN_MAX_DATA_AGE_SECONDS = 3;
 
 // A platform must sit close to its line geometry before it participates in the
 // walk. This protects the station order if an upstream geometry ever changes.
@@ -776,11 +780,20 @@ class TrainPositionEngine {
       );
 
       const secondsUnheard = Math.max(0, (now - anchor.fetchedAt) / 1000);
+      const latestFetchedAt = sightings.reduce(
+        (latest, sighting) => Math.max(latest, Number(sighting.fetchedAt) || 0),
+        0,
+      );
       const feedAgeSeconds = sightings.reduce(
         (maximum, sighting) => Math.max(maximum, Number(sighting.feedAgeSeconds) || 0),
         0,
       );
       const observationAgeSeconds = Math.max(secondsUnheard, feedAgeSeconds);
+      const lastDataAgeSeconds = Math.max(
+        0,
+        (now - latestFetchedAt) / 1000,
+        feedAgeSeconds,
+      );
       const uncertaintyMetres = estimatePositionUncertainty(
         walked.segmentsWalked, observationAgeSeconds, this.getLineTrack(train.lineId).fallbackSpeed
       );
@@ -822,6 +835,10 @@ class TrainPositionEngine {
         isDeadReckoned,
         secondsUnheard: Math.round(observationAgeSeconds),
         observationAgeSeconds: Math.round(observationAgeSeconds),
+        lastDataAgeSeconds: Number(lastDataAgeSeconds.toFixed(1)),
+        lastDataAt: latestFetchedAt ? latestFetchedAt - feedAgeSeconds * 1000 : null,
+        dataFreshness: lastDataAgeSeconds <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS
+          ? 'within-3-seconds' : 'older-than-3-seconds',
         sourceFreshness: observationAgeSeconds > STALE_POSITION_AFTER_SECONDS ? 'stale' : 'fresh',
         sightingConsistencyScore: consistency.score,
         sightingConsistencyStatus: consistency.status,

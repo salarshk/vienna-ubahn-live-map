@@ -406,6 +406,9 @@ button:active {
 
 .vehicle-detail-grid > div { min-width: 0; padding: 11px 14px; background: var(--bg-panel-solid); }
 .vehicle-detail-grid strong { display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+.vehicle-last-data.fresh strong { color: #4caf50; }
+.vehicle-last-data.waiting strong { color: #ffb74d; }
+.vehicle-last-data small { display: block; margin-top: 3px; color: var(--text-secondary); font-size: .55rem; }
 
 .vehicle-predictions { padding: 11px 14px; border-top: 1px solid var(--border-color); background: rgba(0, 180, 216, .035); }
 .vehicle-predictions-title { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
