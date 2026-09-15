@@ -55,3 +55,5 @@ data/ml/raw/
 data/ml/oebb/
 data/ml/headway-events/
 data/ml/headway-state.json
+# Large official historical Wiener Linien exports; keep locally or in R2.
+data/ml/archives/
