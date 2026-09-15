@@ -77,6 +77,10 @@ export const STALE_POSITION_AFTER_SECONDS = 30;
 // marker continuity policy above. This is a status threshold, not a promise
 // that the upstream operator feed itself is never delayed.
 export const CLICKED_TRAIN_MAX_DATA_AGE_SECONDS = 3;
+// Poll a focused train before the three-second deadline. The remaining half
+// second is intentional: it covers request and render latency rather than
+// waiting until the displayed value has already crossed the limit.
+export const CLICKED_TRAIN_REFRESH_INTERVAL_MS = 2500;
 
 // A platform must sit close to its line geometry before it participates in the
 // walk. This protects the station order if an upstream geometry ever changes.

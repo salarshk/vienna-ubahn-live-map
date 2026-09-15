@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, ChevronRight, Clock3, Database, MapPin, Radio, Shuffle, X } from 'lucide-react';
-import trainPositionEngine, { CLICKED_TRAIN_MAX_DATA_AGE_SECONDS } from '../services/trainPositionEngine';
-import arrivalStore from '../services/arrivalStore';
+import trainPositionEngine, {
+  CLICKED_TRAIN_MAX_DATA_AGE_SECONDS,
+  CLICKED_TRAIN_REFRESH_INTERVAL_MS,
+} from '../services/trainPositionEngine';
+import arrivalStore, { POSITION_SOURCE_IDS } from '../services/arrivalStore';
 import delayModelStore from '../services/delayModel';
 import disruptionStore from '../services/disruptionStore';
 import { estimateConnections } from '../services/networkIntelligence';
@@ -66,6 +69,22 @@ const findUpdatedVehicle = (vehicles, reference) => {
     })[0] || null;
 };
 
+const findFocusedReferenceStation = (vehicle) => {
+  const named = [vehicle.targetStation, vehicle.previousStation, ...(vehicle.upcomingStations || [])]
+    .map((name) => trainPositionEngine.findStation(vehicle.line, name))
+    .find((station) => station?.apiId && POSITION_SOURCE_IDS.has(Number(station.apiId)));
+  if (named) return named;
+
+  // A clicked train can be between two ordinary stations. Refresh the nearest
+  // approved tracking station so the response actually feeds the position
+  // engine; refreshing an arbitrary display-only station would not guarantee
+  // that the clicked marker's last-data timestamp is updated.
+  const distance = Number(vehicle.distanceAlongTrack);
+  return trainPositionEngine.getLineStations(vehicle.line)
+    .filter((station) => station?.apiId && POSITION_SOURCE_IDS.has(Number(station.apiId)))
+    .sort((a, b) => Math.abs(a.trackDist - distance) - Math.abs(b.trackDist - distance))[0] || null;
+};
+
 const VehiclePanel = ({ vehicle, onClose }) => {
   const [current, setCurrent] = useState(vehicle);
   const [isPresent, setIsPresent] = useState(true);
@@ -94,9 +113,7 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     let requestInFlight = false;
     const refreshFocusedStation = async () => {
       if (requestInFlight) return;
-      const station = [current.targetStation, current.previousStation, ...(current.upcomingStations || [])]
-        .map((name) => trainPositionEngine.findStation(current.line, name))
-        .find((candidate) => candidate?.apiId);
+      const station = findFocusedReferenceStation(current);
       if (!station) return;
 
       requestInFlight = true;
@@ -122,7 +139,7 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     };
 
     void refreshFocusedStation();
-    const id = setInterval(refreshFocusedStation, CLICKED_TRAIN_MAX_DATA_AGE_SECONDS * 1000);
+    const id = setInterval(refreshFocusedStation, CLICKED_TRAIN_REFRESH_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -151,7 +168,12 @@ const VehiclePanel = ({ vehicle, onClose }) => {
   const source = current.isReplay
     ? { label: 'REPLAY', icon: Clock3, color: '#ffb74d', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
     : current.isLive
-    ? { label: current.sourceFreshness === 'stale' ? 'STALE LIVE TIMING · PREDICTED POSITION' : 'LIVE TIMING · PREDICTED POSITION', icon: Radio, color: current.sourceFreshness === 'stale' ? '#ffb74d' : '#4CAF50', detail: `Wiener Linien timeReal/timePlanned; last data ${preciseAgeLabel(lastDataAgeSeconds)}${focusedRefresh.error ? ` (${focusedRefresh.error})` : ''}; location is inferred from station departures, not GPS.` }
+    ? { label: current.sourceFreshness === 'stale'
+      ? 'STALE LIVE TIMING · PREDICTED POSITION'
+      : dataWithinThreeSeconds ? 'LIVE TIMING · PREDICTED POSITION'
+        : 'WAITING FOR ≤3s LIVE DATA', icon: Radio,
+      color: current.sourceFreshness === 'stale' || !dataWithinThreeSeconds ? '#ffb74d' : '#4CAF50',
+      detail: `Wiener Linien timeReal/timePlanned; last data ${preciseAgeLabel(lastDataAgeSeconds)}${focusedRefresh.error ? ` (${focusedRefresh.error})` : ''}; location is inferred from station departures, not GPS.` }
     : current.isScheduled
       ? { label: 'SCHEDULED TIMETABLE · NO LIVE FEED', icon: Database, color: '#00B4D8', detail: 'Interpolated from the ÖBB timetable — no live S-Bahn delay or GPS feed is connected.' }
       : { label: 'SIMULATED', icon: Database, color: '#ffb74d', detail: 'Fallback movement shown because no usable live prediction is available.' };
@@ -178,7 +200,7 @@ const VehiclePanel = ({ vehicle, onClose }) => {
         <div className="vehicle-panel-title">
           <div className="vehicle-heading">Towards {current.direction}</div>
           <div className="vehicle-source" style={{ color: source.color }}>
-            <SourceIcon size={11} className={current.isLive && current.sourceFreshness !== 'stale' ? 'pulse' : ''} /> {source.label}
+            <SourceIcon size={11} className={current.isLive && current.sourceFreshness !== 'stale' && dataWithinThreeSeconds ? 'pulse' : ''} /> {source.label}
           </div>
         </div>
         <button className="panel-close-button" onClick={onClose} aria-label="Close train details"><X size={17} /></button>
