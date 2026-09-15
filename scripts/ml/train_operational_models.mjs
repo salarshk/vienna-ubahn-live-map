@@ -38,14 +38,23 @@ const readJsonlDir = async (directory) => {
 
 const readObservations = async () => {
   const rows = await readJsonlDir(OBSERVATION_DIR);
-  if (rows.length) return rows;
+  let rollingRows = [];
   try {
-    return (await readFile(resolve(ROOT, 'data/ml/observations.jsonl'), 'utf8'))
+    rollingRows = (await readFile(resolve(ROOT, 'data/ml/observations.jsonl'), 'utf8'))
       .split('\n').filter(Boolean).map((line) => JSON.parse(line));
   } catch (error) {
-    if (error.code === 'ENOENT') return [];
-    throw error;
+    if (error.code !== 'ENOENT') throw error;
   }
+  // R2 can contain both the rolling legacy file and dated partitions. Merge
+  // them and deduplicate by the stable event observation key so one archive
+  // layout cannot hide the other.
+  const merged = new Map();
+  for (const row of [...rows, ...rollingRows]) {
+    const key = [row.eventKey || '', row.observedAt || '', row.stationId || '', row.line || '', row.plannedTime || ''].join('|');
+    merged.set(key, row);
+  }
+  if (merged.size) return [...merged.values()];
+  return [];
 };
 
 const unique = (values) => new Set(values.filter(Boolean));
