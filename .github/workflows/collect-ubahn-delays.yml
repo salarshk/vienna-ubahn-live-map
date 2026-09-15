@@ -66,6 +66,11 @@ jobs:
           DELAY_METRICS_PATH: data/ml/candidate-metrics.json
         run: node scripts/ml/train_delay_model.mjs
 
+      - name: Train operational model registry and label-readiness report
+        env:
+          OPERATIONAL_MODELS_PATH: data/ml/operational-models.json
+        run: node scripts/ml/train_operational_models.mjs
+
       - name: Publish daily progress or a new online-model stage
         id: publish
         env:
@@ -79,6 +84,7 @@ jobs:
             mkdir -p public/ml
             cp data/ml/candidate-model.json public/ml/delay-model.json
             cp data/ml/candidate-metrics.json public/ml/delay-metrics.json
+            cp data/ml/operational-models.json public/ml/operational-models.json
             echo "$today" > data/ml/last-published-day.txt
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else

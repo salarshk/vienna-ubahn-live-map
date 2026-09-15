@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-15T11:05:16.356Z",
+  "data": {
+    "observationRows": 372,
+    "labelledDelayRows": 372,
+    "headwayEvents": 0,
+    "recoveredHeadwayEvents": 0,
+    "calendarDays": 1,
+    "coverageDays": 0,
+    "lineCounts": {
+      "U1": 86,
+      "U2": 62,
+      "U3": 55,
+      "U4": 73,
+      "U6": 96
+    }
+  },
+  "summary": {
+    "total": 17,
+    "candidate": 1,
+    "collectingLabels": 15,
+    "blocked": 1
+  },
+  "models": [
+    {
+      "id": "multi-horizon-delay",
+      "name": "Multi-horizon delay",
+      "group": "trainable-now",
+      "algorithm": "horizon-specific ridge/quantile regression",
+      "target": "final operator delay at 2, 5, 10 and 15 minutes",
+      "inputs": [
+        "early reported delay",
+        "lead time",
+        "line",
+        "time of day",
+        "direction",
+        "incidents"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 372,
+      "holdoutExamples": 548,
+      "scores": {
+        "maeMinutes": 0.91,
+        "rmseMinutes": 1.2
+      },
+      "blocker": "Needs at least two days and 150 labelled journeys.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "next-station-eta",
+      "name": "Next-station ETA",
+      "group": "trainable-now",
+      "algorithm": "calibrated ETA regression",
+      "target": "operator-reported arrival countdown",
+      "inputs": [
+        "seconds to real arrival",
+        "line",
+        "station",
+        "direction",
+        "position uncertainty",
+        "observation age"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs repeated vehicle/station observations to measure ETA error.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "dwell-time",
+      "name": "Dwell time",
+      "group": "trainable-now",
+      "algorithm": "platform-stop duration model",
+      "target": "platform arrival-to-departure duration",
+      "inputs": [
+        "on-stop flag",
+        "station",
+        "line",
+        "time of day",
+        "vehicle identity"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs repeated on-stop observations with stable vehicle IDs.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "headway-bunching",
+      "name": "Headway and bunching",
+      "group": "trainable-now",
+      "algorithm": "station-level event classifier",
+      "target": "gap or bunching event in the next 20 minutes",
+      "inputs": [
+        "station",
+        "line",
+        "direction",
+        "departure interval",
+        "recent event history"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs more station-level headway event lifecycles.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "recovery-duration",
+      "name": "Delay recovery duration",
+      "group": "trainable-now",
+      "algorithm": "survival/quantile duration model",
+      "target": "time from incident or headway event to recovery",
+      "inputs": [
+        "event type",
+        "line",
+        "severity",
+        "incident context",
+        "headway duration"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs recovered event labels; current archive has too few.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "disruption-impact",
+      "name": "Disruption impact",
+      "group": "trainable-now",
+      "algorithm": "incident-impact regression",
+      "target": "added delay and affected service",
+      "inputs": [
+        "incident line/stations",
+        "incident severity",
+        "delay observations",
+        "headway events"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 372,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs overlapping incident episodes and final delay labels.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "delay-severity",
+      "name": "Delay severity classifier",
+      "group": "trainable-now",
+      "algorithm": "threshold classifier / gradient model candidate",
+      "target": "on-time, minor, major or severe",
+      "inputs": [
+        "reported delay",
+        "incident flags",
+        "line",
+        "station"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 372,
+      "holdoutExamples": 548,
+      "scores": {
+        "accuracyPercent": 97.4,
+        "f1": 0
+      },
+      "blocker": "Needs labelled delay outcomes.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "delay-bands",
+      "name": "Probabilistic delay bands",
+      "group": "trainable-now",
+      "algorithm": "empirical quantile model",
+      "target": "low, typical and high delay quantiles",
+      "inputs": [
+        "historical delay distribution",
+        "line",
+        "station",
+        "time of day"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 372,
+      "holdoutExamples": 0,
+      "scores": {
+        "withinOneMinutePercent": 67.5
+      },
+      "blocker": "Needs a representative delay distribution.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "route-reliability",
+      "name": "Route reliability",
+      "group": "trainable-now",
+      "algorithm": "line/station reliability estimator",
+      "target": "probability of on-time route completion",
+      "inputs": [
+        "delay labels",
+        "incident episodes",
+        "line and station"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 372,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs historical route outcomes.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "cancellation-risk",
+      "name": "Cancellation and short-turn risk",
+      "group": "trainable-now",
+      "algorithm": "missing-service classifier",
+      "target": "cancelled or short-turned service",
+      "inputs": [
+        "scheduled service",
+        "observed departures",
+        "gaps",
+        "official notices"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "The current archive does not yet retain a complete scheduled-versus-observed service label.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "crowding-forecast",
+      "name": "Crowding forecast",
+      "group": "needs-labels",
+      "algorithm": "demand regression",
+      "target": "passenger load or crowding level",
+      "inputs": [
+        "passenger counts",
+        "service intervals",
+        "time",
+        "events",
+        "weather"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "No validated passenger-count label is available in the current public feed.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "weather-impact",
+      "name": "Weather impact",
+      "group": "needs-labels",
+      "algorithm": "weather-to-delay regression",
+      "target": "additional delay attributable to weather",
+      "inputs": [
+        "weather history",
+        "delay labels",
+        "line",
+        "incident context"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Weather history is not archived alongside the operational labels yet.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "event-demand",
+      "name": "Event-demand forecast",
+      "group": "needs-labels",
+      "algorithm": "event-demand regression",
+      "target": "demand pressure around events",
+      "inputs": [
+        "event calendar",
+        "ridership/load labels",
+        "service intervals"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Event text is available, but attendance or ridership labels are not.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "transfer-success",
+      "name": "Transfer success probability",
+      "group": "needs-labels",
+      "algorithm": "connection survival model",
+      "target": "whether a connection is caught",
+      "inputs": [
+        "actual arrival",
+        "actual departure",
+        "walking margin",
+        "station transfer graph"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "The app has transfer margins but no observed passenger/connection outcome label.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "predictive-anomaly",
+      "name": "Predictive anomaly detection",
+      "group": "trainable-now",
+      "algorithm": "unsupervised robust baseline",
+      "target": "unusual gap, bunching or feed behaviour",
+      "inputs": [
+        "historical interval distributions",
+        "feed freshness",
+        "position confidence"
+      ],
+      "status": "candidate",
+      "trainingExamples": 372,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": null,
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "uncertainty-calibration",
+      "name": "Uncertainty calibration",
+      "group": "trainable-now",
+      "algorithm": "residual/coverage calibration",
+      "target": "prediction interval coverage",
+      "inputs": [
+        "prediction residuals",
+        "feed age",
+        "position uncertainty",
+        "line history"
+      ],
+      "status": "collecting-labels",
+      "trainingExamples": 372,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "Needs enough scored residuals to calibrate coverage.",
+      "evidence": "372 observations across 1 calendar day"
+    },
+    {
+      "id": "sbahn-live",
+      "name": "S-Bahn live prediction",
+      "group": "blocked",
+      "algorithm": "real-time train-run model",
+      "target": "actual S-Bahn delay and vehicle position",
+      "inputs": [
+        "ÖBB real-time train-run positions",
+        "actual arrival/departure labels"
+      ],
+      "status": "blocked",
+      "trainingExamples": 0,
+      "holdoutExamples": 0,
+      "scores": null,
+      "blocker": "The current ÖBB source provides timetable/open-data archives, not a live vehicle-delay feed for this app.",
+      "evidence": "372 observations across 1 calendar day"
+    }
+  ]
+}

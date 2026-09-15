@@ -13,6 +13,7 @@ import arrivalStore from '../services/arrivalStore';
 import delayModelStore, {
   incidentContextForLine, predictFinalDelay, predictOnlineDelay,
 } from '../services/delayModel';
+import operationalModelStore from '../services/operationalModelStore';
 import RailAdvisor from './RailAdvisor';
 import AdvancedSignals from './AdvancedSignals';
 import trainPositionEngine from '../services/trainPositionEngine';
@@ -38,6 +39,7 @@ const RailIntelligence = ({
   const [tab, setTab] = useState('forecast');
   const [explainLineId, setExplainLineId] = useState('U1');
   const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
+  const [operationalModelSnapshot, setOperationalModelSnapshot] = useState(operationalModelStore.getSnapshot());
   const [reports, setReports] = useState(() => getReports(now));
   const [weatherSnapshot, setWeatherSnapshot] = useState(weatherStore.getSnapshot());
   const oldestMinutes = snapshot.replay.first
@@ -86,6 +88,12 @@ const RailIntelligence = ({
     const unsubscribe = delayModelStore.subscribe(setDelaySnapshot);
     delayModelStore.load();
     const refresh = setInterval(() => delayModelStore.load(), 10 * 60 * 1000);
+    return () => { unsubscribe(); clearInterval(refresh); };
+  }, []);
+  useEffect(() => {
+    const unsubscribe = operationalModelStore.subscribe(setOperationalModelSnapshot);
+    operationalModelStore.load();
+    const refresh = setInterval(() => operationalModelStore.load(), 10 * 60 * 1000);
     return () => { unsubscribe(); clearInterval(refresh); };
   }, []);
   useEffect(() => subscribeReports(setReports), []);
@@ -250,6 +258,7 @@ const RailIntelligence = ({
         routeRisk={labRouteRisk}
         delayPredictions={delayPredictions}
         weather={weatherSnapshot.current}
+        operationalModels={operationalModelSnapshot.report}
       />}
 
       {tab === 'signals' && <AdvancedSignals

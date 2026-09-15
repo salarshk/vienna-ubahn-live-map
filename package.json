@@ -16,6 +16,7 @@
     "ml:archive-r2": "node scripts/ml/archive_r2.mjs",
     "ml:incidents": "node scripts/ml/sync_ubahn_incidents.mjs",
     "ml:train": "node scripts/ml/train_delay_model.mjs",
+    "ml:train-operational": "node scripts/ml/train_operational_models.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "ios:sync": "npm run build && npx cap sync ios",

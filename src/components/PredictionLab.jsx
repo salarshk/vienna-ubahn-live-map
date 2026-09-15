@@ -10,7 +10,7 @@ import {
   scoreRouteReliability,
 } from '../services/predictionModels';
 
-const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null }) => {
+const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, operationalModels = null }) => {
   const multiHorizon = useMemo(() => predictMultiHorizonDelay({ arrivals, linePredictions: delayPredictions, disruptions, now }), [arrivals, delayPredictions, disruptions, now]);
   const eta = useMemo(() => predictNextStationEta({ vehicles }), [vehicles]);
   const dwell = useMemo(() => predictDwellForecast({ vehicles }), [vehicles]);
@@ -34,6 +34,12 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
   return <section className="intelligence-section prediction-lab">
     <div className="intelligence-section-title"><Sparkles size={14} /><strong>Prediction lab</strong><em>Experimental</em></div>
     <p className="intelligence-note advanced-intro">These models complement the main delay model. They use public timing, inferred positions and notices; where Wiener Linien or ÖBB do not publish a signal, the card says so instead of pretending it is measured.</p>
+
+    {operationalModels && <div className="advanced-card model-registry-card"><div className="advanced-card-title"><strong>Training registry</strong><span>{operationalModels.summary?.candidate || 0} candidates · {operationalModels.summary?.collectingLabels || 0} collecting</span></div>
+      {explain('This report distinguishes models with trainable labels from transparent baselines. A candidate is not promoted to live use until it passes a chronological holdout against the operator estimate.')}
+      <div className="quality-grid"><span>Observations<strong>{operationalModels.data?.observationRows || 0}</strong></span><span>Delay labels<strong>{operationalModels.data?.labelledDelayRows || 0}</strong></span><span>Headway events<strong>{operationalModels.data?.headwayEvents || 0}</strong></span><span>Calendar days<strong>{operationalModels.data?.calendarDays || 0}</strong></span></div>
+      <div className="advanced-evidence-list">{(operationalModels.models || []).map((item) => <div key={item.id} className="model-registry-row"><strong>{item.name}</strong><span>{item.algorithm} · {item.trainingExamples} examples</span><small className={`model-registry-status ${item.status}`}>{item.status === 'candidate' ? 'candidate' : item.status === 'blocked' ? 'blocked' : 'collecting labels'}</small>{item.blocker && <em>{item.blocker}</em>}</div>)}</div>
+    </div>}
 
     <div className="advanced-card"><div className="advanced-card-title"><strong>Multi-horizon delay model</strong><span>2–15 min ahead</span></div>
       {explain('Forecasts each U-Bahn line at several time horizons from current official delay observations, the published line estimate and active incidents.')}
