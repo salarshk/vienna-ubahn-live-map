@@ -228,6 +228,19 @@ const VehiclePanel = ({ vehicle, onClose }) => {
             <strong>±{Math.max(0, current.positionUncertaintyMetres || 0)} m on track</strong>
           </div>
         )}
+        {current.isScheduled && (
+          <div className="vehicle-last-data waiting">
+            <span>Last data status</span>
+            <strong>No live observation</strong>
+            <small>ÖBB timetable interpolation only; the 3-second live target is unavailable.</small>
+          </div>
+        )}
+        {current.isScheduled && (
+          <div>
+            <span>Position range</span>
+            <strong>Not available without live feed</strong>
+          </div>
+        )}
         {current.isLive && (
           <div className={`vehicle-last-data ${dataWithinThreeSeconds ? 'fresh' : 'waiting'}`} aria-live="polite">
             <span>Last data status</span>

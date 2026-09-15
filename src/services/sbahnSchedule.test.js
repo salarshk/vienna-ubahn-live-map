@@ -32,6 +32,12 @@ describe('Vienna S-Bahn timetable', () => {
       SBAHN_LINES.includes(vehicle.line) && vehicle.isScheduled && !vehicle.isLive &&
       vehicle.coordinates.every(Number.isFinite)
     )).toBe(true);
+    expect(vehicles.every((vehicle) =>
+      vehicle.positionSource === 'scheduled-timetable'
+      && vehicle.dataFreshness === 'timetable-only'
+      && vehicle.lastDataAt === null
+      && vehicle.lastDataAgeSeconds === null
+    )).toBe(true);
   });
 
   it('provides scheduled departures for S-Bahn station panels', () => {
