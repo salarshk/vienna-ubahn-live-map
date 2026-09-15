@@ -5,6 +5,8 @@ const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const round = (value, digits = 0) => Number(Number(value).toFixed(digits));
 const lineOf = (value) => String(value || '').toUpperCase();
+const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+const MODEL_STATUS = 'data-driven baseline · collecting labels';
 
 export const predictDwellTimes = ({ vehicles = [] } = {}) => vehicles
   .filter((vehicle) => vehicle?.isLive && vehicle.status === 'At Platform' && vehicle.targetStation)
@@ -20,6 +22,82 @@ export const predictDwellTimes = ({ vehicles = [] } = {}) => vehicles
     };
   })
   .sort((a, b) => b.risk - a.risk).slice(0, 8);
+
+/**
+ * Model 3: per-station dwell forecast. This keeps the existing transparent
+ * dwell estimate but gives it a stable model contract for later retraining
+ * from observed platform-to-departure intervals.
+ */
+export const predictDwellForecast = ({ vehicles = [] } = {}) => predictDwellTimes({ vehicles })
+  .map((item) => ({ ...item, model: 'dwell-time', trainingStatus: MODEL_STATUS }));
+
+/**
+ * Model 1: delay at several horizons. It combines the current official delay
+ * distribution with the published line estimate and active incident context.
+ * It is deliberately a baseline until enough labelled journeys exist for a
+ * separately validated multi-horizon learner.
+ */
+export const predictMultiHorizonDelay = ({ arrivals = [], linePredictions = [], disruptions = [], now = Date.now() } = {}) => LINES.map((line) => {
+  const observations = arrivals.filter((arrival) => arrival?.isLive && lineOf(arrival.line) === line)
+    .map((arrival) => ({
+      delay: finite(arrival.reportedDelaySeconds) === null ? null : finite(arrival.reportedDelaySeconds) / 60,
+      lead: finite(arrival.secondsToReal ?? arrival.seconds),
+    }))
+    .filter((item) => item.delay !== null);
+  const lineModel = finite(linePredictions.find((item) => lineOf(item.line) === line)?.minutes);
+  const mean = observations.length
+    ? observations.reduce((sum, item) => sum + item.delay, 0) / observations.length : 0;
+  const sorted = observations.filter((item) => item.lead !== null).sort((a, b) => a.lead - b.lead);
+  const trend = sorted.length >= 2
+    ? clamp((sorted.at(-1).delay - sorted[0].delay) / Math.max(1, (sorted.at(-1).lead - sorted[0].lead) / 60), -0.5, 0.5)
+    : 0;
+  const incidentCount = disruptions.filter((item) => item?.lines?.map(lineOf).includes(line)).length;
+  const incidentBoost = Math.min(4, incidentCount * 0.7);
+  const centre = clamp(lineModel ?? mean, -2, 30);
+  const forecasts = [2, 5, 10, 15].map((horizonMinutes) => {
+    const predicted = clamp(centre + trend * horizonMinutes + incidentBoost * (horizonMinutes / 15), -2, 30);
+    const spread = clamp(0.8 + (observations.length ? 1.5 / Math.sqrt(observations.length) : 2.5)
+      + incidentCount * 0.5 + Math.abs(trend) * horizonMinutes, 0.8, 8);
+    return {
+      horizonMinutes,
+      minutes: round(predicted, 1),
+      lowMinutes: round(clamp(predicted - spread, -2, 30), 1),
+      highMinutes: round(clamp(predicted + spread, -2, 30), 1),
+    };
+  });
+  return {
+    line, forecasts, samples: observations.length, incidentCount,
+    confidence: clamp(Math.round(35 + Math.min(45, observations.length * 5) - incidentCount * 4), 15, 85),
+    model: 'multi-horizon delay', trainingStatus: MODEL_STATUS,
+    evidence: observations.length ? `${observations.length} official delay observations` : 'live delay observations not available',
+    generatedAt: now,
+  };
+});
+
+/**
+ * Model 2: next-station ETA for every inferred live train. The range widens
+ * with position uncertainty and old observations, rather than presenting an
+ * inferred countdown as exact GPS truth.
+ */
+export const predictNextStationEta = ({ vehicles = [] } = {}) => vehicles
+  .filter((vehicle) => vehicle?.isLive && vehicle.targetStation && finite(vehicle.secondsToTarget) !== null)
+  .map((vehicle) => {
+    const eta = Math.max(0, finite(vehicle.secondsToTarget) / 60);
+    const uncertainty = Math.max(0.5, (finite(vehicle.positionUncertaintyMetres) || 250) / 180);
+    const age = Math.max(0, finite(vehicle.lastDataAgeSeconds ?? vehicle.observationAgeSeconds) || 0) / 60;
+    const spread = round(clamp(uncertainty + age, 0.5, 8), 1);
+    return {
+      id: vehicle.id, line: lineOf(vehicle.line), destination: vehicle.direction,
+      station: vehicle.targetStation, etaMinutes: round(eta, 1),
+      lowMinutes: round(Math.max(0, eta - spread), 1),
+      highMinutes: round(eta + spread, 1),
+      confidence: clamp(Math.round((finite(vehicle.positionConfidence) ?? 0.45) * 100 - spread * 4), 15, 95),
+      model: 'next-station ETA', trainingStatus: MODEL_STATUS,
+      evidence: vehicle.dataFreshness === 'within-3-seconds' ? 'fresh station observation + inferred position' : 'inferred position + station departure prediction',
+    };
+  })
+  .sort((a, b) => a.etaMinutes - b.etaMinutes)
+  .slice(0, 12);
 
 export const predictHeadwayRisk = ({ issues = [], arrivals = [] } = {}) => {
   const output = [];
@@ -83,6 +161,15 @@ export const predictHeadwayRisk = ({ issues = [], arrivals = [] } = {}) => {
   return output.sort((a, b) => b.risk - a.risk);
 };
 
+/** Model 4: forecast the next headway anomaly and its station location. */
+export const predictHeadwayForecast = ({ issues = [], arrivals = [] } = {}) => predictHeadwayRisk({ issues, arrivals })
+  .map((item) => ({
+    ...item,
+    probability: item.risk,
+    model: 'headway/bunching forecast',
+    trainingStatus: MODEL_STATUS,
+  }));
+
 export const predictDisruptionResolution = ({ disruptions = [], issues = [], reliability = [] } = {}) => {
   if (!disruptions.length) return [{ status: 'clear', window: 'No active official incident', confidence: 30, evidence: 'traffic information feed' }];
   return disruptions.slice(0, 8).map((incident) => {
@@ -98,6 +185,47 @@ export const predictDisruptionResolution = ({ disruptions = [], issues = [], rel
       window: `${minutes}–${minutes + 15} min`,
       confidence: clamp(35 + Math.min(30, reliabilityEvidence), 25, 75),
       evidence: incident.endsAt ? 'official end time published' : 'notice severity + active service pattern',
+    };
+  });
+};
+
+/** Model 5: recovery duration after a gap, bunching event or disruption. */
+export const predictRecoveryForecast = ({ disruptions = [], issues = [], reliability = [] } = {}) => predictDisruptionResolution({ disruptions, issues, reliability })
+  .map((item) => ({
+    ...item,
+    model: 'delay-recovery duration',
+    trainingStatus: MODEL_STATUS,
+  }));
+
+/**
+ * Model 6: incident impact. It joins official notice scope to current delay
+ * observations and headway symptoms, producing an explainable impact estimate
+ * rather than treating every notice as the same severity.
+ */
+export const predictDisruptionImpact = ({ disruptions = [], arrivals = [], issues = [], now = Date.now() } = {}) => {
+  if (!disruptions.length) return [];
+  return disruptions.slice(0, 10).map((incident, index) => {
+    const lines = (incident.lines || []).map(lineOf).filter(Boolean);
+    const delays = arrivals.filter((arrival) => arrival?.isLive && lines.includes(lineOf(arrival.line)))
+      .map((arrival) => finite(arrival.reportedDelaySeconds)).filter((value) => value !== null).map((value) => value / 60);
+    const lineIssues = issues.filter((issue) => lines.includes(lineOf(issue.line)));
+    const meanDelay = delays.length ? delays.reduce((sum, value) => sum + value, 0) / delays.length : 0;
+    const issueBoost = lineIssues.reduce((sum, issue) => sum + (issue.type === 'gap' ? 4 : 2), 0);
+    const wordingBoost = /ausfall|unterbrech|störung|disruption|closed|kein betrieb/i.test(`${incident.title || ''} ${incident.description || incident.reason || ''}`) ? 8 : 3;
+    const impactMinutes = round(clamp(Math.max(2, meanDelay + issueBoost + wordingBoost), 2, 60), 1);
+    const affectedStations = [...new Set([
+      incident.station,
+      ...lineIssues.map((issue) => issue.station),
+    ].filter(Boolean))].slice(0, 4);
+    return {
+      id: incident.id || `impact-${index}`,
+      title: incident.title || 'Official service notice',
+      lines, affectedStations, impactMinutes,
+      level: impactMinutes >= 20 ? 'high' : impactMinutes >= 8 ? 'medium' : 'low',
+      confidence: clamp(Math.round(35 + Math.min(35, delays.length * 5) + Math.min(20, lineIssues.length * 5)), 25, 90),
+      samples: delays.length, model: 'disruption impact', trainingStatus: MODEL_STATUS,
+      evidence: `${delays.length} delay observations + ${lineIssues.length} headway signal${lineIssues.length === 1 ? '' : 's'}`,
+      generatedAt: now,
     };
   });
 };

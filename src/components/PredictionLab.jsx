@@ -3,16 +3,20 @@ import { Activity, CloudRain, GitBranch, ShieldCheck, Sparkles, TrainFront, User
 import { lineColor } from '../utils/lineColor';
 import {
   calibrateUncertainty, classifyDelaySeverity, detectPredictiveAnomalies,
-  forecastCrowding, predictCancellationRisk, predictDelayBands, predictDisruptionResolution,
-  predictDwellTimes, predictEventDemand, predictHeadwayRisk,
+  forecastCrowding, predictCancellationRisk, predictDelayBands,
+  predictDisruptionImpact, predictDwellForecast, predictEventDemand, predictHeadwayForecast,
+  predictMultiHorizonDelay, predictNextStationEta, predictRecoveryForecast,
   predictSbahnConnections, predictTransferSuccess, predictWeatherImpact,
   scoreRouteReliability,
 } from '../services/predictionModels';
 
 const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null }) => {
-  const dwell = useMemo(() => predictDwellTimes({ vehicles }), [vehicles]);
-  const headways = useMemo(() => predictHeadwayRisk({ issues, arrivals }), [issues, arrivals]);
-  const resolution = useMemo(() => predictDisruptionResolution({ disruptions, issues, reliability }), [disruptions, issues, reliability]);
+  const multiHorizon = useMemo(() => predictMultiHorizonDelay({ arrivals, linePredictions: delayPredictions, disruptions, now }), [arrivals, delayPredictions, disruptions, now]);
+  const eta = useMemo(() => predictNextStationEta({ vehicles }), [vehicles]);
+  const dwell = useMemo(() => predictDwellForecast({ vehicles }), [vehicles]);
+  const headways = useMemo(() => predictHeadwayForecast({ issues, arrivals }), [issues, arrivals]);
+  const recovery = useMemo(() => predictRecoveryForecast({ disruptions, issues, reliability }), [disruptions, issues, reliability]);
+  const impact = useMemo(() => predictDisruptionImpact({ disruptions, arrivals, issues, now }), [disruptions, arrivals, issues, now]);
   const severity = useMemo(() => classifyDelaySeverity({ arrivals, disruptions }), [arrivals, disruptions]);
   const delayBands = useMemo(() => predictDelayBands({ arrivals, linePredictions: delayPredictions }), [arrivals, delayPredictions]);
   const transfer = useMemo(() => predictTransferSuccess({ transfers }), [transfers]);
@@ -31,13 +35,29 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     <div className="intelligence-section-title"><Sparkles size={14} /><strong>Prediction lab</strong><em>Experimental</em></div>
     <p className="intelligence-note advanced-intro">These models complement the main delay model. They use public timing, inferred positions and notices; where Wiener Linien or ÖBB do not publish a signal, the card says so instead of pretending it is measured.</p>
 
-    <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Dwell-time forecast</strong><span>station stop risk</span></div>
+    <div className="advanced-card"><div className="advanced-card-title"><strong>Multi-horizon delay model</strong><span>2–15 min ahead</span></div>
+      {explain('Forecasts each U-Bahn line at several time horizons from current official delay observations, the published line estimate and active incidents.')}
+      <div className="advanced-line-grid">{multiHorizon.map((item) => {
+        const near = item.forecasts[0];
+        const far = item.forecasts.at(-1);
+        return <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong>{near.minutes}m → {far.minutes}m</strong><span>2–15 min · {item.confidence}% confidence</span><small>{item.samples} observations · {item.trainingStatus}</small></div>;
+      })}</div>
+      <small className="advanced-caveat">The current implementation is a calibrated baseline; a dedicated multi-horizon learner will be promoted only after enough labelled history.</small>
+    </div>
+
+    <div className="advanced-card"><div className="advanced-card-title"><strong>Next-station ETA model</strong><span>per live train</span></div>
+      {explain('Predicts arrival at the next station and provides a range widened by inferred-position uncertainty and observation age.')}
+      {eta.length ? <div className="advanced-list">{eta.slice(0, 5).map((item) => <div className="advanced-row" key={item.id}><i style={{ background: lineColor(item.line) }}>{item.line}</i><div><strong>{item.station}</strong><span>{item.destination} · {item.evidence}</span></div><b>{item.etaMinutes}m</b><small>{item.lowMinutes}–{item.highMinutes}m</small></div>)}</div> : <p className="advanced-empty">No live train ETA is available.</p>}
+      <small className="advanced-caveat">ETA uses official station departures and inferred position; it is not GPS ground truth.</small>
+    </div>
+
+    <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Dwell-time model</strong><span>station stop risk</span></div>
       {explain('Estimates whether a train will remain at a platform longer than its normal stop, which can delay following services.')}
       {dwell.length ? <div className="advanced-list">{dwell.slice(0, 4).map((item) => <div className="advanced-row" key={`${item.line}-${item.station}`}><i style={{ background: lineColor(item.line) }}>{item.line}</i><div><strong>{item.station}</strong><span>{item.evidence}</span></div><b>{item.predictedMinutes}m</b><small>{item.confidence}%</small></div>)}</div> : <p className="advanced-empty">No prolonged live platform stop detected.</p>}
       <small className="advanced-caveat">Predicts dwell from live platform observations; it is not a door or passenger-count sensor.</small>
     </div>
 
-    <div className="advanced-card"><div className="advanced-card-title"><strong><TrainFront size={13} /> Headway & bunching</strong><span>next 20–30 min</span></div>
+    <div className="advanced-card"><div className="advanced-card-title"><strong><TrainFront size={13} /> Headway & bunching model</strong><span>next 20–30 min</span></div>
       {explain('Predicts service gaps and trains running too close together on each U-Bahn line.')}
       <div className="advanced-line-grid">{headways.map((item) => <div key={item.line}>
         <i style={{ background: lineColor(item.line) }}>{item.line}</i>
@@ -47,10 +67,16 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
       </div>)}</div>
     </div>
 
-    <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Disruption resolution</strong><span>incident clearance</span></div>
+    <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Recovery-duration model</strong><span>incident clearance</span></div>
       {explain('Estimates how long an active official service incident may affect passengers before recovery.')}
-      <div className="advanced-list">{resolution.slice(0, 4).map((item, index) => <div className="advanced-row" key={`${item.title}-${index}`}><i style={{ background: item.line === 'Network' ? '#777' : lineColor(item.line) }}>{item.line}</i><div><strong>{item.title || item.status}</strong><span>{item.evidence}</span></div><b>{item.window}</b><small>{item.confidence}%</small></div>)}</div>
+      <div className="advanced-list">{recovery.slice(0, 4).map((item, index) => <div className="advanced-row" key={`${item.title}-${index}`}><i style={{ background: item.line === 'Network' ? '#777' : lineColor(item.line) }}>{item.line}</i><div><strong>{item.title || item.status}</strong><span>{item.evidence}</span></div><b>{item.window}</b><small>{item.confidence}%</small></div>)}</div>
       <small className="advanced-caveat">A survival-style clearance estimate; an official end time takes precedence.</small>
+    </div>
+
+    <div className="advanced-card"><div className="advanced-card-title"><strong>Disruption-impact model</strong><span>affected service</span></div>
+      {explain('Estimates the delay impact of each official notice by joining its affected lines with current delay and headway evidence.')}
+      {impact.length ? <div className="advanced-list">{impact.slice(0, 5).map((item) => <div className="advanced-row" key={item.id}><i style={{ background: item.level === 'high' ? '#ff6b6b' : item.level === 'medium' ? '#ffb74d' : '#4caf50' }}>!</i><div><strong>{item.title}</strong><span>{item.lines.join(' · ') || 'Network'} · {item.affectedStations.join(', ') || 'station not specified'}</span></div><b>+{item.impactMinutes}m</b><small>{item.confidence}%</small></div>)}</div> : <p className="advanced-empty">No active official disruption to model.</p>}
+      <small className="advanced-caveat">This is an impact estimate, not an official incident end time.</small>
     </div>
 
     <div className="advanced-card"><div className="advanced-card-title"><strong>Delay severity classifier</strong><span>line-level category</span></div>

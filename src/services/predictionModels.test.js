@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   calibrateUncertainty, classifyDelaySeverity, detectPredictiveAnomalies,
   predictCancellationRisk, predictDelayBands, predictDisruptionResolution, predictDwellTimes,
-  predictEventDemand, predictHeadwayRisk, predictWeatherImpact,
+  predictDisruptionImpact, predictDwellForecast, predictEventDemand, predictHeadwayForecast, predictHeadwayRisk,
+  predictMultiHorizonDelay, predictNextStationEta, predictRecoveryForecast, predictWeatherImpact,
 } from './predictionModels';
 
 describe('prediction lab models', () => {
@@ -44,5 +45,26 @@ describe('prediction lab models', () => {
       alerts: [{ title: 'Concert at stadium', lines: ['U1'] }],
     });
     expect(event).toMatchObject({ status: 'high', confidence: 45 });
+  });
+
+  it('produces the six new operational model outputs from available signals', () => {
+    const arrivals = [
+      { line: 'U1', isLive: true, reportedDelaySeconds: 120, secondsToReal: 300 },
+      { line: 'U1', isLive: true, reportedDelaySeconds: 300, secondsToReal: 600 },
+    ];
+    const vehicles = [{
+      id: 'u1-1', line: 'U1', direction: 'Leopoldau', isLive: true,
+      targetStation: 'Karlsplatz', secondsToTarget: 180,
+      positionConfidence: 0.8, positionUncertaintyMetres: 180,
+      dataFreshness: 'within-3-seconds', lastDataAgeSeconds: 1,
+    }];
+    const disruptions = [{ id: 'a1', title: 'Signal disruption', lines: ['U1'], station: 'Karlsplatz' }];
+    expect(predictMultiHorizonDelay({ arrivals, linePredictions: [{ line: 'U1', minutes: 3 }], disruptions })
+      .find((item) => item.line === 'U1').forecasts).toHaveLength(4);
+    expect(predictNextStationEta({ vehicles })[0]).toMatchObject({ station: 'Karlsplatz', model: 'next-station ETA' });
+    expect(predictDwellForecast({ vehicles: [{ ...vehicles[0], status: 'At Platform', secondsUnheard: 120 }] })[0].model).toBe('dwell-time');
+    expect(predictHeadwayForecast({ issues: [{ line: 'U1', type: 'gap', severity: 200, station: 'Karlsplatz' }] })[0].model).toBe('headway/bunching forecast');
+    expect(predictRecoveryForecast({ disruptions, issues: [], reliability: [] })[0].model).toBe('delay-recovery duration');
+    expect(predictDisruptionImpact({ disruptions, arrivals, issues: [] })[0]).toMatchObject({ level: 'medium', model: 'disruption impact' });
   });
 });
