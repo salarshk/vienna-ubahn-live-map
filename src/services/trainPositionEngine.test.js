@@ -274,6 +274,29 @@ describe('live vehicle reconstruction', () => {
     expect(trainPositionEngine.getLiveVehiclesFromMemory(now)[0].sourceFreshness).toBe('stale');
   });
 
+  it('anchors the position and uncertainty range to a fresh focused sighting', () => {
+    const now = Date.now();
+    const karlsplatz = stationByName('U1', 'Karlsplatz');
+    const stephansplatz = stationByName('U1', 'Stephansplatz');
+    const gap = trainPositionEngine.getSegmentSeconds('U1', karlsplatz, stephansplatz);
+    sighting({
+      key: 'old-anchor', stationName: 'Karlsplatz', vehicleId: 'focused',
+      secondsFromNow: 45, now, fetchedAt: now - 20000,
+    });
+    sighting({
+      key: 'fresh-focused', stationName: 'Stephansplatz', vehicleId: 'focused',
+      secondsFromNow: 45 + gap, now, fetchedAt: now,
+    });
+    const [vehicle] = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    const expected = trainPositionEngine.estimatePositionFromArrival(
+      'U1', 'Leopoldau', 'Stephansplatz', 45 + gap, 'H'
+    );
+    expect(vehicle.dataFreshness).toBe('within-3-seconds');
+    expect(vehicle.lastDataAgeSeconds).toBe(0);
+    expect(vehicle.targetStation).toBe(expected.targetStation);
+    expect(vehicle.positionUncertaintyMetres).toBeLessThan(500);
+  });
+
   it('flags contradictory station countdowns instead of presenting them as equally precise', () => {
     const now = Date.now();
     const karlsplatz = stationByName('U1', 'Karlsplatz');

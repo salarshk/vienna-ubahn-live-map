@@ -756,7 +756,22 @@ class TrainPositionEngine {
       const sightings = train.sightings.sort(
         (a, b) => Math.abs(a.secondsRemaining) - Math.abs(b.secondsRemaining)
       );
-      const anchor = sightings[0];
+      // Usually every sighting comes from the same monitor response. When a
+      // clicked train triggers a focused station refresh, however, one station
+      // can be newer than the rest. If that fresh observation is within the
+      // strict reader-facing window, it must anchor the coordinates and range;
+      // otherwise the UI could say "within 3 seconds" while still drawing an
+      // older station prediction.
+      const freshest = sightings.reduce(
+        (latest, sighting) => Number(sighting.fetchedAt) > Number(latest?.fetchedAt || 0)
+          ? sighting : latest,
+        null,
+      );
+      const freshestAgeSeconds = freshest
+        ? Math.max(0, (now - Number(freshest.fetchedAt)) / 1000)
+        : Infinity;
+      const anchor = freshest && freshestAgeSeconds <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS
+        ? freshest : sightings[0];
 
       // The feed's H/R value is authoritative. Older cached entries without it
       // retain the two-sighting inference as a backwards-compatible fallback.
