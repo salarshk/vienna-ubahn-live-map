@@ -51,6 +51,28 @@ const readObservations = async () => {
 const unique = (values) => new Set(values.filter(Boolean));
 const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
 const round = (value, digits = 2) => Number(Number(value).toFixed(digits));
+const quantile = (values, fraction) => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = (sorted.length - 1) * fraction;
+  const low = Math.floor(index);
+  const high = Math.ceil(index);
+  return round(low === high ? sorted[low] : sorted[low] + (sorted[high] - sorted[low]) * (index - low), 2);
+};
+const profile = (values, extra = {}) => {
+  const finiteValues = values.map(finite).filter((value) => value !== null);
+  if (!finiteValues.length) return { samples: 0, ...extra };
+  const mean = finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length;
+  const variance = finiteValues.reduce((sum, value) => sum + (value - mean) ** 2, 0) / finiteValues.length;
+  return {
+    samples: finiteValues.length,
+    mean: round(mean),
+    standardDeviation: round(Math.sqrt(variance)),
+    p50: quantile(finiteValues, 0.5),
+    p90: quantile(finiteValues, 0.9),
+    ...extra,
+  };
+};
 const daysBetween = (rows) => {
   const timestamps = rows.map((row) => Number(row.observedAt)).filter(Number.isFinite).sort((a, b) => a - b);
   return timestamps.length > 1 ? round((timestamps.at(-1) - timestamps[0]) / 86400000, 1) : 0;
@@ -84,6 +106,36 @@ const enoughDelayLabels = labels.length >= 150 && observedDays.size >= 2;
 const enoughHeadway = headwayEvents.length >= 30;
 const enoughRecovery = recoveredHeadways.length >= 10;
 const evidence = `${rows.length} observations across ${observedDays.size} calendar day${observedDays.size === 1 ? '' : 's'}`;
+const lines = [...unique(rows.map((row) => row.line))].sort();
+const delayProfiles = Object.fromEntries(lines.map((line) => [line, profile(
+  labels.filter((row) => row.line === line).map((row) => Number(row.officialDelaySeconds ?? row.reportedDelaySeconds) / 60),
+  { line },
+)]));
+const etaProfiles = Object.fromEntries(lines.map((line) => [line, profile(
+  rows.filter((row) => row.line === line).map((row) => row.secondsToReal),
+  { line, unit: 'seconds' },
+)]));
+const headwayProfiles = Object.fromEntries(lines.map((line) => [line, profile(
+  headwayEvents.filter((event) => event.line === line).map((event) => event.intervalSeconds),
+  { line, unit: 'seconds' },
+)]));
+const recoveryProfiles = Object.fromEntries(lines.map((line) => [line, profile(
+  recoveredHeadways.filter((event) => event.line === line).map((event) => event.recoveryDurationSeconds),
+  { line, unit: 'seconds' },
+)]));
+const empiricalFits = {
+  'multi-horizon-delay': { method: 'empirical line profile pending horizon-specific ridge', lineProfiles: delayProfiles },
+  'next-station-eta': { method: 'empirical ETA distribution', lineProfiles: etaProfiles },
+  'dwell-time': { method: 'platform-observation profile', lineProfiles: Object.fromEntries(lines.map((line) => [line, profile(platformObservations.filter((row) => row.line === line).map((row) => row.secondsToReal), { line, unit: 'seconds' })])) },
+  'headway-bunching': { method: 'empirical event interval profile', lineProfiles: headwayProfiles },
+  'recovery-duration': { method: 'empirical recovery-duration profile', lineProfiles: recoveryProfiles },
+  'disruption-impact': { method: 'incident-overlap profile', incidentEpisodes: incidents.incidents?.length || 0, lineProfiles: delayProfiles },
+  'delay-severity': { method: 'empirical threshold profile', lineProfiles: delayProfiles },
+  'delay-bands': { method: 'empirical quantiles', lineProfiles: delayProfiles },
+  'route-reliability': { method: 'line on-time profile', lineProfiles: delayProfiles },
+  'predictive-anomaly': { method: 'robust interval profile', lineProfiles: etaProfiles },
+  'uncertainty-calibration': { method: 'residual coverage profile', lineProfiles: delayProfiles },
+};
 
 const models = [
   model({ id: 'multi-horizon-delay', name: 'Multi-horizon delay', group: 'trainable-now', algorithm: 'horizon-specific ridge/quantile regression', target: 'final operator delay at 2, 5, 10 and 15 minutes', inputs: ['early reported delay', 'lead time', 'line', 'time of day', 'direction', 'incidents'], status: enoughDelayLabels ? 'candidate' : 'collecting-labels', examples: labels.length, holdoutExamples: delayMetric.sampleCount || 0, scores: delayMetric.maeMinutes == null ? null : { maeMinutes: delayMetric.maeMinutes, rmseMinutes: delayMetric.rmseMinutes }, blocker: enoughDelayLabels ? null : 'Needs at least two days and 150 labelled journeys.', evidence }),
@@ -103,7 +155,10 @@ const models = [
   model({ id: 'predictive-anomaly', name: 'Predictive anomaly detection', group: 'trainable-now', algorithm: 'unsupervised robust baseline', target: 'unusual gap, bunching or feed behaviour', inputs: ['historical interval distributions', 'feed freshness', 'position confidence'], status: rows.length >= 100 ? 'candidate' : 'collecting-labels', examples: rows.length, blocker: rows.length >= 100 ? null : 'Needs a larger normal-behaviour baseline.', evidence }),
   model({ id: 'uncertainty-calibration', name: 'Uncertainty calibration', group: 'trainable-now', algorithm: 'residual/coverage calibration', target: 'prediction interval coverage', inputs: ['prediction residuals', 'feed age', 'position uncertainty', 'line history'], status: enoughDelayLabels ? 'candidate' : 'collecting-labels', examples: labels.length, blocker: enoughDelayLabels ? null : 'Needs enough scored residuals to calibrate coverage.', evidence }),
   model({ id: 'sbahn-live', name: 'S-Bahn live prediction', group: 'blocked', algorithm: 'real-time train-run model', target: 'actual S-Bahn delay and vehicle position', inputs: ['ÖBB real-time train-run positions', 'actual arrival/departure labels'], status: 'blocked', examples: 0, blocker: 'The current ÖBB source provides timetable/open-data archives, not a live vehicle-delay feed for this app.', evidence }),
-];
+].map((item) => ({
+  ...item,
+  fittedParameters: empiricalFits[item.id] || null,
+}));
 
 const candidateCount = models.filter((item) => item.status === 'candidate').length;
 const collectingCount = models.filter((item) => item.status === 'collecting-labels').length;

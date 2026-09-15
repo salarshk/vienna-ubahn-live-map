@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T11:05:16.356Z",
+  "generatedAt": "2026-09-15T11:06:59.904Z",
   "data": {
     "observationRows": 372,
     "labelledDelayRows": 372,
@@ -45,7 +45,52 @@
         "rmseMinutes": 1.2
       },
       "blocker": "Needs at least two days and 150 labelled journeys.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "empirical line profile pending horizon-specific ridge",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": -0.24,
+            "standardDeviation": 0.96,
+            "p50": 0,
+            "p90": 0.88,
+            "line": "U1"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 1.69,
+            "standardDeviation": 2.13,
+            "p50": 0.76,
+            "p90": 4.34,
+            "line": "U2"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 0.28,
+            "standardDeviation": 1.33,
+            "p50": 0,
+            "p90": 2.18,
+            "line": "U3"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 0.08,
+            "standardDeviation": 0.76,
+            "p50": 0,
+            "p90": 1.09,
+            "line": "U4"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": -0.11,
+            "standardDeviation": 0.65,
+            "p50": -0.03,
+            "p90": 0.79,
+            "line": "U6"
+          }
+        }
+      }
     },
     {
       "id": "next-station-eta",
@@ -66,7 +111,57 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs repeated vehicle/station observations to measure ETA error.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "empirical ETA distribution",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": 437.09,
+            "standardDeviation": 272.79,
+            "p50": 430.5,
+            "p90": 829,
+            "line": "U1",
+            "unit": "seconds"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 431.76,
+            "standardDeviation": 266.23,
+            "p50": 464,
+            "p90": 791,
+            "line": "U2",
+            "unit": "seconds"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 454.82,
+            "standardDeviation": 264.41,
+            "p50": 481,
+            "p90": 814.2,
+            "line": "U3",
+            "unit": "seconds"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 437.14,
+            "standardDeviation": 274.78,
+            "p50": 447,
+            "p90": 819.6,
+            "line": "U4",
+            "unit": "seconds"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": 421.47,
+            "standardDeviation": 268.81,
+            "p50": 441,
+            "p90": 776,
+            "line": "U6",
+            "unit": "seconds"
+          }
+        }
+      }
     },
     {
       "id": "dwell-time",
@@ -86,7 +181,37 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs repeated on-stop observations with stable vehicle IDs.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "platform-observation profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 0,
+            "line": "U1",
+            "unit": "seconds"
+          },
+          "U2": {
+            "samples": 0,
+            "line": "U2",
+            "unit": "seconds"
+          },
+          "U3": {
+            "samples": 0,
+            "line": "U3",
+            "unit": "seconds"
+          },
+          "U4": {
+            "samples": 0,
+            "line": "U4",
+            "unit": "seconds"
+          },
+          "U6": {
+            "samples": 0,
+            "line": "U6",
+            "unit": "seconds"
+          }
+        }
+      }
     },
     {
       "id": "headway-bunching",
@@ -106,7 +231,37 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs more station-level headway event lifecycles.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "empirical event interval profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 0,
+            "line": "U1",
+            "unit": "seconds"
+          },
+          "U2": {
+            "samples": 0,
+            "line": "U2",
+            "unit": "seconds"
+          },
+          "U3": {
+            "samples": 0,
+            "line": "U3",
+            "unit": "seconds"
+          },
+          "U4": {
+            "samples": 0,
+            "line": "U4",
+            "unit": "seconds"
+          },
+          "U6": {
+            "samples": 0,
+            "line": "U6",
+            "unit": "seconds"
+          }
+        }
+      }
     },
     {
       "id": "recovery-duration",
@@ -126,7 +281,37 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs recovered event labels; current archive has too few.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "empirical recovery-duration profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 0,
+            "line": "U1",
+            "unit": "seconds"
+          },
+          "U2": {
+            "samples": 0,
+            "line": "U2",
+            "unit": "seconds"
+          },
+          "U3": {
+            "samples": 0,
+            "line": "U3",
+            "unit": "seconds"
+          },
+          "U4": {
+            "samples": 0,
+            "line": "U4",
+            "unit": "seconds"
+          },
+          "U6": {
+            "samples": 0,
+            "line": "U6",
+            "unit": "seconds"
+          }
+        }
+      }
     },
     {
       "id": "disruption-impact",
@@ -145,7 +330,53 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs overlapping incident episodes and final delay labels.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "incident-overlap profile",
+        "incidentEpisodes": 3086,
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": -0.24,
+            "standardDeviation": 0.96,
+            "p50": 0,
+            "p90": 0.88,
+            "line": "U1"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 1.69,
+            "standardDeviation": 2.13,
+            "p50": 0.76,
+            "p90": 4.34,
+            "line": "U2"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 0.28,
+            "standardDeviation": 1.33,
+            "p50": 0,
+            "p90": 2.18,
+            "line": "U3"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 0.08,
+            "standardDeviation": 0.76,
+            "p50": 0,
+            "p90": 1.09,
+            "line": "U4"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": -0.11,
+            "standardDeviation": 0.65,
+            "p50": -0.03,
+            "p90": 0.79,
+            "line": "U6"
+          }
+        }
+      }
     },
     {
       "id": "delay-severity",
@@ -167,7 +398,52 @@
         "f1": 0
       },
       "blocker": "Needs labelled delay outcomes.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "empirical threshold profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": -0.24,
+            "standardDeviation": 0.96,
+            "p50": 0,
+            "p90": 0.88,
+            "line": "U1"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 1.69,
+            "standardDeviation": 2.13,
+            "p50": 0.76,
+            "p90": 4.34,
+            "line": "U2"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 0.28,
+            "standardDeviation": 1.33,
+            "p50": 0,
+            "p90": 2.18,
+            "line": "U3"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 0.08,
+            "standardDeviation": 0.76,
+            "p50": 0,
+            "p90": 1.09,
+            "line": "U4"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": -0.11,
+            "standardDeviation": 0.65,
+            "p50": -0.03,
+            "p90": 0.79,
+            "line": "U6"
+          }
+        }
+      }
     },
     {
       "id": "delay-bands",
@@ -188,7 +464,52 @@
         "withinOneMinutePercent": 67.5
       },
       "blocker": "Needs a representative delay distribution.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "empirical quantiles",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": -0.24,
+            "standardDeviation": 0.96,
+            "p50": 0,
+            "p90": 0.88,
+            "line": "U1"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 1.69,
+            "standardDeviation": 2.13,
+            "p50": 0.76,
+            "p90": 4.34,
+            "line": "U2"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 0.28,
+            "standardDeviation": 1.33,
+            "p50": 0,
+            "p90": 2.18,
+            "line": "U3"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 0.08,
+            "standardDeviation": 0.76,
+            "p50": 0,
+            "p90": 1.09,
+            "line": "U4"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": -0.11,
+            "standardDeviation": 0.65,
+            "p50": -0.03,
+            "p90": 0.79,
+            "line": "U6"
+          }
+        }
+      }
     },
     {
       "id": "route-reliability",
@@ -206,7 +527,52 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs historical route outcomes.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "line on-time profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": -0.24,
+            "standardDeviation": 0.96,
+            "p50": 0,
+            "p90": 0.88,
+            "line": "U1"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 1.69,
+            "standardDeviation": 2.13,
+            "p50": 0.76,
+            "p90": 4.34,
+            "line": "U2"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 0.28,
+            "standardDeviation": 1.33,
+            "p50": 0,
+            "p90": 2.18,
+            "line": "U3"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 0.08,
+            "standardDeviation": 0.76,
+            "p50": 0,
+            "p90": 1.09,
+            "line": "U4"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": -0.11,
+            "standardDeviation": 0.65,
+            "p50": -0.03,
+            "p90": 0.79,
+            "line": "U6"
+          }
+        }
+      }
     },
     {
       "id": "cancellation-risk",
@@ -225,7 +591,8 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "The current archive does not yet retain a complete scheduled-versus-observed service label.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": null
     },
     {
       "id": "crowding-forecast",
@@ -245,7 +612,8 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "No validated passenger-count label is available in the current public feed.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": null
     },
     {
       "id": "weather-impact",
@@ -264,7 +632,8 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Weather history is not archived alongside the operational labels yet.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": null
     },
     {
       "id": "event-demand",
@@ -282,7 +651,8 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Event text is available, but attendance or ridership labels are not.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": null
     },
     {
       "id": "transfer-success",
@@ -301,7 +671,8 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "The app has transfer margins but no observed passenger/connection outcome label.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": null
     },
     {
       "id": "predictive-anomaly",
@@ -319,7 +690,57 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "robust interval profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": 437.09,
+            "standardDeviation": 272.79,
+            "p50": 430.5,
+            "p90": 829,
+            "line": "U1",
+            "unit": "seconds"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 431.76,
+            "standardDeviation": 266.23,
+            "p50": 464,
+            "p90": 791,
+            "line": "U2",
+            "unit": "seconds"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 454.82,
+            "standardDeviation": 264.41,
+            "p50": 481,
+            "p90": 814.2,
+            "line": "U3",
+            "unit": "seconds"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 437.14,
+            "standardDeviation": 274.78,
+            "p50": 447,
+            "p90": 819.6,
+            "line": "U4",
+            "unit": "seconds"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": 421.47,
+            "standardDeviation": 268.81,
+            "p50": 441,
+            "p90": 776,
+            "line": "U6",
+            "unit": "seconds"
+          }
+        }
+      }
     },
     {
       "id": "uncertainty-calibration",
@@ -338,7 +759,52 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Needs enough scored residuals to calibrate coverage.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": {
+        "method": "residual coverage profile",
+        "lineProfiles": {
+          "U1": {
+            "samples": 86,
+            "mean": -0.24,
+            "standardDeviation": 0.96,
+            "p50": 0,
+            "p90": 0.88,
+            "line": "U1"
+          },
+          "U2": {
+            "samples": 62,
+            "mean": 1.69,
+            "standardDeviation": 2.13,
+            "p50": 0.76,
+            "p90": 4.34,
+            "line": "U2"
+          },
+          "U3": {
+            "samples": 55,
+            "mean": 0.28,
+            "standardDeviation": 1.33,
+            "p50": 0,
+            "p90": 2.18,
+            "line": "U3"
+          },
+          "U4": {
+            "samples": 73,
+            "mean": 0.08,
+            "standardDeviation": 0.76,
+            "p50": 0,
+            "p90": 1.09,
+            "line": "U4"
+          },
+          "U6": {
+            "samples": 96,
+            "mean": -0.11,
+            "standardDeviation": 0.65,
+            "p50": -0.03,
+            "p90": 0.79,
+            "line": "U6"
+          }
+        }
+      }
     },
     {
       "id": "sbahn-live",
@@ -355,7 +821,8 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "The current ÖBB source provides timetable/open-data archives, not a live vehicle-delay feed for this app.",
-      "evidence": "372 observations across 1 calendar day"
+      "evidence": "372 observations across 1 calendar day",
+      "fittedParameters": null
     }
   ]
 }
