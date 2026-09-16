@@ -73,6 +73,23 @@ export const predictFinalDelay = (model, arrival, now = Date.now()) => {
     const blend = Number(model.selectedModelParameters.blend) || 1;
     return clamp(vector[1] + blend * (calibrated - vector[1]), ...(model.predictionRangeMinutes || [-2, 30]));
   }
+  if (model.algorithm === 'isotonic-daily-finetuned'
+    && Array.isArray(model.selectedModelParameters?.breakpoints)
+    && Array.isArray(model.selectedModelParameters?.values)) {
+    const parameters = model.selectedModelParameters;
+    let index = parameters.breakpoints.findIndex((breakpoint) => vector[1] <= Number(breakpoint));
+    if (index < 0) index = parameters.values.length - 1;
+    const calibrated = Number(parameters.values[index]);
+    if (!Number.isFinite(calibrated)) return null;
+    const blend = Number(parameters.blend) || 1;
+    const dailyBlend = Number(parameters.dailyBlend) || 0;
+    const lineCorrection = Number(parameters.dailyLineCorrections?.[arrival.line]
+      ?? parameters.dailyGlobalCorrection ?? 0);
+    return clamp(
+      vector[1] + blend * (calibrated - vector[1]) + dailyBlend * lineCorrection,
+      ...(model.predictionRangeMinutes || [-2, 30]),
+    );
+  }
   if (model.algorithm === 'stacked-delay-ensemble'
     && Array.isArray(model.selectedModelParameters?.breakpoints)
     && Array.isArray(model.selectedModelParameters?.values)

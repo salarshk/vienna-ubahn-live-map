@@ -323,6 +323,69 @@ const tuneIsotonic = (training) => {
   ))[0] || { blend: 0.5 };
 };
 
+const exampleDay = (example) => new Date(example.plannedTimestamp).toISOString().slice(0, 10);
+
+/**
+ * Apply labelled journeys one completed calendar day at a time.  Each day's
+ * residuals update a recency-weighted line correction only after that day is
+ * complete; the chronological test days never contribute to this state.
+ */
+const buildDailyFineTuneState = (examples, basePredictor, decay = 0.85) => {
+  const byDay = new Map();
+  for (const example of examples) {
+    const list = byDay.get(exampleDay(example)) || [];
+    list.push(example);
+    byDay.set(exampleDay(example), list);
+  }
+  const state = { decay, globalCorrection: 0, lineCorrections: {}, trainedDays: [] };
+  for (const day of [...byDay.keys()].sort()) {
+    const dayExamples = byDay.get(day);
+    const residuals = dayExamples.map((example) => example.targetDelayMinutes - basePredictor(example));
+    const dayMean = mean(residuals);
+    state.globalCorrection = decay * state.globalCorrection + (1 - decay) * dayMean;
+    for (const line of LINES) {
+      const lineResiduals = dayExamples
+        .filter((example) => example.line === line)
+        .map((example) => example.targetDelayMinutes - basePredictor(example));
+      if (!lineResiduals.length) continue;
+      const previous = Number(state.lineCorrections[line] || 0);
+      state.lineCorrections[line] = decay * previous + (1 - decay) * mean(lineResiduals);
+    }
+    state.trainedDays.push({ day, examples: dayExamples.length, meanResidualMinutes: round(dayMean, 4) });
+  }
+  state.lastLabelDay = state.trainedDays.at(-1)?.day || null;
+  return state;
+};
+
+const fineTunedPrediction = (example, basePredictor, state, blend = 0.5) => {
+  const correction = Number(state.lineCorrections?.[example.line] ?? state.globalCorrection ?? 0);
+  return clamp(basePredictor(example) + blend * correction, -2, 30);
+};
+
+const tuneDailyFineTuning = (training, scaling) => {
+  const dates = [...new Set(training.map(exampleDay))].sort();
+  const calibrationDays = new Set(dates.slice(-Math.max(1, Math.ceil(dates.length * 0.2))));
+  const fit = training.filter((example) => !calibrationDays.has(exampleDay(example)));
+  const calibration = training.filter((example) => calibrationDays.has(exampleDay(example)));
+  if (fit.length < 30 || calibration.length < 15) return { decay: 0.85, blend: 0.5 };
+  const innerIsotonic = fitIsotonic(fit, tuneIsotonic(fit));
+  const actual = calibration.map((example) => example.targetDelayMinutes);
+  const candidates = [];
+  for (const decay of [0.5, 0.7, 0.85, 0.92]) {
+    const state = buildDailyFineTuneState(fit, innerIsotonic, decay);
+    for (const blend of [0.1, 0.25, 0.5, 0.75, 1]) {
+      const score = metricsFor(actual, calibration.map((example) => (
+        fineTunedPrediction(example, innerIsotonic, state, blend)
+      )));
+      candidates.push({ decay, blend, score });
+    }
+  }
+  return candidates.sort((left, right) => (
+    left.score.maeMinutes - right.score.maeMinutes
+      || left.score.rmseMinutes - right.score.rmseMinutes
+  ))[0] || { decay: 0.85, blend: 0.5 };
+};
+
 const tuneStacked = (training, scaling, residualTuning) => {
   const dates = [...new Set(training.map((example) => (
     new Date(example.plannedTimestamp).toISOString().slice(0, 10)
@@ -645,6 +708,23 @@ if (validationStage === 'collecting') {
   const residualPredictor = fitResidualRidge(training, scaling, residualTuning);
   const isotonicTuning = tuneIsotonic(training);
   const isotonicPredictor = fitIsotonic(training, isotonicTuning);
+  const dailyFineTuning = tuneDailyFineTuning(training, scaling);
+  const dailyState = buildDailyFineTuneState(training, isotonicPredictor, dailyFineTuning.decay);
+  const dailyFineTunedPredictor = (example) => fineTunedPrediction(
+    example, isotonicPredictor, dailyState, dailyFineTuning.blend,
+  );
+  dailyFineTunedPredictor.runtime = {
+    algorithm: 'isotonic-daily-finetuned',
+    blend: isotonicTuning.blend,
+    dailyBlend: dailyFineTuning.blend,
+    dailyDecay: dailyFineTuning.decay,
+    dailyGlobalCorrection: round(dailyState.globalCorrection, 8),
+    dailyLineCorrections: Object.fromEntries(Object.entries(dailyState.lineCorrections)
+      .map(([line, value]) => [line, round(value, 8)])),
+    trainedDays: dailyState.trainedDays,
+    breakpoints: isotonicPredictor.breakpoints.map((value) => round(value, 8)),
+    values: isotonicPredictor.values.map((value) => round(value, 8)),
+  };
   const stackedTuning = tuneStacked(training, scaling, residualTuning);
   const stackedPredictor = (example) => stackedTuning.isotonicWeight * isotonicPredictor(example)
     + (1 - stackedTuning.isotonicWeight) * residualPredictor(example);
@@ -683,6 +763,13 @@ if (validationStage === 'collecting') {
       },
     },
     {
+      id: 'isotonic-daily-finetuned',
+      name: 'Isotonic + daily fine-tuning',
+      complexity: `daily recency correction, decay=${dailyFineTuning.decay}, blend=${dailyFineTuning.blend}`,
+      predict: dailyFineTunedPredictor,
+      runtime: dailyFineTunedPredictor.runtime,
+    },
+    {
       id: 'stacked-delay-ensemble',
       name: 'Stacked isotonic + residual ensemble',
       complexity: `calibration + residual blend, isotonic weight=${stackedTuning.isotonicWeight}`,
@@ -712,7 +799,7 @@ if (validationStage === 'collecting') {
   // remain useful research comparisons until their runtime format is added.
   const winningCandidate = modelComparisons.find((candidate) => (
     candidate.beatsLiveBaseline
-      && ['residual-ridge-ensemble', 'isotonic-delay-calibration', 'stacked-delay-ensemble'].includes(candidate.id)
+      && ['residual-ridge-ensemble', 'isotonic-delay-calibration', 'isotonic-daily-finetuned', 'stacked-delay-ensemble'].includes(candidate.id)
   ));
   const selectedCandidate = winningCandidate
     ? alternativePredictors.find((candidate) => candidate.id === winningCandidate.id)
@@ -733,6 +820,12 @@ if (validationStage === 'collecting') {
     weights: (selectedCandidate?.predict.weights || weights).map((weight) => round(weight, 8)),
     selectedModel: selectedCandidate?.id || 'ridge-regression',
     selectedModelParameters: selectedCandidate?.runtime || null,
+    dailyFineTuning: {
+      enabled: true,
+      completedDays: dailyState.trainedDays.length,
+      lastLabelDay: dailyState.lastLabelDay || null,
+      updateCadence: 'once per completed calendar day',
+    },
     predictionRangeMinutes: [-2, 30],
     modelComparisons: modelComparisons.map((candidate) => ({
       ...candidate,
@@ -765,6 +858,15 @@ if (validationStage === 'collecting') {
       rmseMinutes: bestAlternative.metrics.rmseMinutes,
       beatsLiveBaseline: bestAlternative.beatsLiveBaseline,
     } : null,
+    dailyFineTuning: {
+      enabled: true,
+      method: 'recency-weighted line residual correction learned after each completed day',
+      completedDays: dailyState.trainedDays.length,
+      lastLabelDay: dailyState.lastLabelDay || null,
+      updateCadence: 'once per completed calendar day',
+      leakageControl: 'The current test days never update the fine-tuning state.',
+      tuning: { decay: dailyFineTuning.decay, blend: dailyFineTuning.blend },
+    },
     currentEstimateBaseline: baselineMetrics,
     deployment: {
       deployed: Boolean(winningCandidate),

@@ -219,6 +219,9 @@ const RailIntelligence = ({
           {delayMetrics?.labelQuality && (
             <p className="model-label-caveat">Training labels: {delayMetrics.labelQuality.officialLabelledJourneys.toLocaleString('en-GB')} official Wiener Linien delay values{delayMetrics.labelQuality.fallbackLabelledJourneys ? ` · ${delayMetrics.labelQuality.fallbackLabelledJourneys} legacy fallback labels` : ''}.</p>
           )}
+          {delayMetrics?.dailyFineTuning?.enabled && (
+            <p className="model-label-caveat">Daily fine-tuning: {delayMetrics.dailyFineTuning.completedDays} completed day{delayMetrics.dailyFineTuning.completedDays === 1 ? '' : 's'} incorporated{delayMetrics.dailyFineTuning.lastLabelDay ? ` through ${delayMetrics.dailyFineTuning.lastLabelDay}` : ''}; current test days remain isolated.</p>
+          )}
           {delayMetrics?.incidentContext?.archiveImported && (
             <p className="intelligence-note">Incident context includes {delayMetrics.incidentContext.archivedUbahnEpisodes.toLocaleString('en-GB')} official historical U-Bahn episodes plus current service messages.</p>
           )}
