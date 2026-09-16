@@ -96,6 +96,18 @@ These alternatives are comparison candidates first: they are not promoted to
 the browser runtime until their predictor format and safety monitor support
 them, and none can bypass the live-estimate baseline gate.
 
+## Day-by-day fine-tuning
+
+After each completed calendar day, the trainer updates a recency-weighted
+line residual correction using only journeys whose final labels are already
+available. The current test days never update this state. The correction is
+applied on top of the isotonic calibration candidate and is promoted only if
+the same chronological holdout still beats the Wiener Linien baseline. The
+published report records the number of completed label days, the last label
+day, decay/blend parameters and the leakage-control rule. A model-code push
+or the scheduled collector retrains this state automatically; no manual
+retraining step is required.
+
 ## Reproduce locally
 
 Run `npm run ml:incidents` once to import the official incident history, then
