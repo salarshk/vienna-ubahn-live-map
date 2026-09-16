@@ -163,14 +163,14 @@ const solveLinearSystem = (matrix, values) => {
   return augmented.map((row) => row[size]);
 };
 
-const fitRidge = (examples, scaling, lambda = 2) => {
+const fitRidgeTarget = (examples, scaling, lambda = 2, targetFor = (example) => example.targetDelayMinutes) => {
   const size = featureNames.length;
   const matrix = Array.from({ length: size }, () => Array(size).fill(0));
   const values = Array(size).fill(0);
   for (const example of examples) {
     const vector = vectorise(example, scaling);
     for (let row = 0; row < size; row += 1) {
-      values[row] += vector[row] * example.targetDelayMinutes;
+      values[row] += vector[row] * targetFor(example);
       for (let column = 0; column < size; column += 1) {
         matrix[row][column] += vector[row] * vector[column];
       }
@@ -180,11 +180,70 @@ const fitRidge = (examples, scaling, lambda = 2) => {
   return solveLinearSystem(matrix, values);
 };
 
+const fitRidge = (examples, scaling, lambda = 2) => fitRidgeTarget(examples, scaling, lambda);
+
 const predict = (example, scaling, weights) => clamp(
   vectorise(example, scaling).reduce((sum, value, index) => sum + value * weights[index], 0),
   -2,
   30,
 );
+
+/**
+ * The live estimate is already a strong prediction.  Learning the residual
+ * (final delay minus the current official estimate) is therefore a safer and
+ * usually more accurate formulation than predicting the final delay from
+ * scratch.  The blend is tuned on a later slice of the training period only;
+ * the final test days remain completely untouched.
+ */
+const fitResidualRidge = (examples, scaling, { lambda = 2, blend = 1 } = {}) => {
+  const weights = fitRidgeTarget(
+    examples,
+    scaling,
+    lambda,
+    (example) => example.targetDelayMinutes - example.currentDelayMinutes,
+  );
+  const predictor = (example) => clamp(
+    example.currentDelayMinutes + blend * vectorise(example, scaling)
+      .reduce((sum, value, index) => sum + value * weights[index], 0),
+    -2,
+    30,
+  );
+  predictor.weights = weights;
+  return predictor;
+};
+
+const tuneResidualRidge = (training, scaling) => {
+  const dates = [...new Set(training.map((example) => (
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10)
+  )))].sort();
+  const calibrationDays = new Set(dates.slice(-Math.max(1, Math.ceil(dates.length * 0.2))));
+  const fit = training.filter((example) => !calibrationDays.has(
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10),
+  ));
+  const calibration = training.filter((example) => calibrationDays.has(
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10),
+  ));
+  // If the training window is short, retain a conservative default rather
+  // than tuning on the same observations that will be refit and scored.
+  if (fit.length < 30 || calibration.length < 15) {
+    return { lambda: 2, blend: 0.75 };
+  }
+  const candidates = [
+    [0.25, 0.5], [0.5, 0.5], [1, 0.5], [2, 0.5], [5, 0.5], [10, 0.5],
+    [0.25, 0.75], [0.5, 0.75], [1, 0.75], [2, 0.75], [5, 0.75], [10, 0.75],
+    [0.25, 1], [0.5, 1], [1, 1], [2, 1], [5, 1], [10, 1],
+  ];
+  const actual = calibration.map((example) => example.targetDelayMinutes);
+  const scored = candidates.map(([lambda, blend]) => {
+    const predictor = fitResidualRidge(fit, scaling, { lambda, blend });
+    const score = metricsFor(actual, calibration.map(predictor));
+    return { lambda, blend, score };
+  });
+  return scored.sort((left, right) => (
+    left.score.maeMinutes - right.score.maeMinutes
+      || left.score.rmseMinutes - right.score.rmseMinutes
+  ))[0] || { lambda: 2, blend: 0.75 };
+};
 
 const dot = (left, right) => left.reduce((sum, value, index) => sum + value * right[index], 0);
 const softThreshold = (value, amount) => value > amount ? value - amount : value < -amount ? value + amount : 0;
@@ -478,8 +537,21 @@ if (validationStage === 'collecting') {
   const baseline = test.map((example) => example.currentDelayMinutes);
   const modelMetrics = metricsFor(actual, predictions);
   const baselineMetrics = metricsFor(actual, baseline);
+  const residualTuning = tuneResidualRidge(training, scaling);
+  const residualPredictor = fitResidualRidge(training, scaling, residualTuning);
   const alternativePredictors = [
     { id: 'ridge-regression', name: 'Ridge regression', complexity: 'linear regularized', predict: (example) => predict(example, scaling, weights) },
+    {
+      id: 'residual-ridge-ensemble',
+      name: 'Residual ridge ensemble',
+      complexity: `baseline correction, λ=${residualTuning.lambda}, blend=${residualTuning.blend}`,
+      predict: residualPredictor,
+      runtime: {
+        algorithm: 'residual-ridge-ensemble',
+        lambda: residualTuning.lambda,
+        blend: residualTuning.blend,
+      },
+    },
     { id: 'elastic-net', name: 'Elastic net', complexity: 'sparse regularized linear', predict: fitElasticNet(training, scaling) },
     { id: 'random-forest', name: 'Random forest', complexity: '32 bagged depth-3 trees', predict: fitRandomForest(training, scaling) },
     { id: 'gradient-boosting', name: 'Gradient boosting', complexity: '40 residual depth-2 trees', predict: fitGradientBoosting(training, scaling) },
@@ -498,25 +570,36 @@ if (validationStage === 'collecting') {
     };
   });
   const bestAlternative = [...modelComparisons].sort((a, b) => a.metrics.maeMinutes - b.metrics.maeMinutes)[0];
-  // The runtime currently supports the ridge parameter format. Alternatives
-  // are evaluated and displayed first; promotion remains explicit until a
-  // serialised predictor is added to the browser-side safety monitor.
-  const deployed = modelMetrics.maeMinutes < baselineMetrics.maeMinutes;
+  // Only candidates with a serialised browser implementation can be promoted.
+  // At present that is the residual ridge ensemble; the other alternatives
+  // remain useful research comparisons until their runtime format is added.
+  const winningCandidate = modelComparisons.find((candidate) => (
+    candidate.beatsLiveBaseline && candidate.id === 'residual-ridge-ensemble'
+  ));
+  const selectedCandidate = winningCandidate
+    ? alternativePredictors.find((candidate) => candidate.id === winningCandidate.id)
+    : null;
+  const deployed = Boolean(winningCandidate);
   const trainedAt = new Date().toISOString();
   const cutoff = new Date(test[0].plannedTimestamp).toISOString();
   model = {
     ...common,
     status: 'ready',
     validationStage,
-    algorithm: 'ridge-regression',
+    algorithm: selectedCandidate?.runtime?.algorithm || 'ridge-regression',
     trainedAt,
     deployed,
     trainedThrough: new Date(training.at(-1).plannedTimestamp).toISOString(),
     featureNames,
     scaling: scaling.map(({ mean, scale }) => ({ mean: round(mean, 8), scale: round(scale, 8) })),
-    weights: weights.map((weight) => round(weight, 8)),
+    weights: (selectedCandidate?.predict.weights || weights).map((weight) => round(weight, 8)),
+    selectedModel: selectedCandidate?.id || 'ridge-regression',
+    selectedModelParameters: selectedCandidate?.runtime || null,
     predictionRangeMinutes: [-2, 30],
-    modelComparisons,
+    modelComparisons: modelComparisons.map((candidate) => ({
+      ...candidate,
+      deployed: candidate.id === selectedCandidate?.id,
+    })),
     bestAlternative: bestAlternative?.id || null,
     onlineCalibration: onlineCalibrationModel,
   };
@@ -532,8 +615,11 @@ if (validationStage === 'collecting') {
       testExamples: test.length,
       testPeriodStarts: cutoff,
     },
-    model: modelMetrics,
-    modelComparisons,
+    model: winningCandidate ? winningCandidate.metrics : modelMetrics,
+    modelComparisons: modelComparisons.map((candidate) => ({
+      ...candidate,
+      deployed: candidate.id === selectedCandidate?.id,
+    })),
     bestAlternative: bestAlternative ? {
       id: bestAlternative.id,
       name: bestAlternative.name,
@@ -543,14 +629,14 @@ if (validationStage === 'collecting') {
     } : null,
     currentEstimateBaseline: baselineMetrics,
     deployment: {
-      deployed,
+      deployed: Boolean(winningCandidate),
       rule: 'Publish live predictions only when test MAE beats carrying forward the early operator estimate.',
     },
     monitoring: {
       ...common.monitoring,
       evaluatedAt: trainedAt,
-      beatsBaseline: deployed,
-      rollbackActive: !deployed,
+      beatsBaseline: Boolean(winningCandidate),
+      rollbackActive: !winningCandidate,
     },
     delayClassificationThresholdMinutes: DELAY_THRESHOLD_MINUTES,
     labelCaveat: 'The target is the official Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.',

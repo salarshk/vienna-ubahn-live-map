@@ -32,6 +32,18 @@ describe('delay model runtime', () => {
     expect(predictFinalDelay(model, arrival)).toBe(30);
   });
 
+  it('adds a learned correction to the live estimate for the residual model', () => {
+    const model = {
+      status: 'ready', algorithm: 'residual-ridge-ensemble', deployed: true,
+      selectedModelParameters: { blend: 0.5 },
+      weights: Array(17).fill(0),
+      scaling: Array.from({ length: 17 }, () => ({ mean: 0, scale: 1 })),
+      predictionRangeMinutes: [-2, 30],
+    };
+    model.weights[1] = 1;
+    expect(predictFinalDelay(model, arrival)).toBe(3);
+  });
+
   it('builds active incident context for a line', () => {
     const now = Date.parse('2026-09-10T10:00:00Z');
     expect(incidentContextForLine([{

@@ -53,11 +53,14 @@ export const predictFinalDelay = (model, arrival, now = Date.now()) => {
   }
   const vector = featureVector(arrival, now);
   if (!vector || vector.length !== model.weights.length) return null;
-  const value = vector.reduce((sum, feature, index) => {
+  const correction = vector.reduce((sum, feature, index) => {
     const scale = Number(model.scaling[index]?.scale) || 1;
     const mean = Number(model.scaling[index]?.mean) || 0;
     return sum + ((feature - mean) / scale) * model.weights[index];
   }, 0);
+  const value = model.algorithm === 'residual-ridge-ensemble'
+    ? vector[1] + (Number(model.selectedModelParameters?.blend) || 1) * correction
+    : correction;
   const [minimum, maximum] = model.predictionRangeMinutes || [-2, 30];
   return clamp(value, minimum, maximum);
 };
