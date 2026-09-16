@@ -85,6 +85,17 @@ The trained model is used for live predictions only when its held-out MAE beats
 that baseline. Otherwise the result remains visible as an evaluated candidate,
 with an explicit holdback notice.
 
+## Alternative model comparison
+
+When the data reaches a preliminary or validated stage, the trainer evaluates
+the same chronological holdout with elastic net, a bagged random forest, a
+gradient-boosted tree ensemble, and k-nearest-neighbours alongside ridge
+regression. Their MAE, RMSE, classification F1 and baseline comparison are
+published in `public/ml/delay-metrics.json` and shown in the Models panel.
+These alternatives are comparison candidates first: they are not promoted to
+the browser runtime until their predictor format and safety monitor support
+them, and none can bypass the live-estimate baseline gate.
+
 ## Reproduce locally
 
 Run `npm run ml:incidents` once to import the official incident history, then

@@ -186,6 +186,138 @@ const predict = (example, scaling, weights) => clamp(
   30,
 );
 
+const dot = (left, right) => left.reduce((sum, value, index) => sum + value * right[index], 0);
+const softThreshold = (value, amount) => value > amount ? value - amount : value < -amount ? value + amount : 0;
+
+/** Elastic net gives the comparison a sparse, regularised linear alternative. */
+const fitElasticNet = (examples, scaling, { l1 = 0.08, l2 = 1.2, iterations = 80 } = {}) => {
+  const vectors = examples.map((example) => vectorise(example, scaling));
+  const targets = examples.map((example) => example.targetDelayMinutes);
+  const weights = Array(featureNames.length).fill(0);
+  const predictions = Array(targets.length).fill(0);
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    for (let feature = 0; feature < featureNames.length; feature += 1) {
+      let rho = 0;
+      let denominator = feature === 0 ? 0 : l2;
+      for (let row = 0; row < vectors.length; row += 1) {
+        const residual = targets[row] - (predictions[row] - vectors[row][feature] * weights[feature]);
+        rho += vectors[row][feature] * residual;
+        denominator += vectors[row][feature] ** 2;
+      }
+      const next = feature === 0 ? rho / Math.max(1e-9, denominator) : softThreshold(rho, l1) / Math.max(1e-9, denominator);
+      const delta = next - weights[feature];
+      if (!delta) continue;
+      weights[feature] = next;
+      for (let row = 0; row < predictions.length; row += 1) predictions[row] += vectors[row][feature] * delta;
+    }
+  }
+  return (example) => clamp(dot(vectorise(example, scaling), weights), -2, 30);
+};
+
+const seededRandom = (seed = 42) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (1664525 * state + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+};
+
+const mean = (values) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+
+const buildRegressionTree = (vectors, targets, { depth = 0, maxDepth = 3, minLeaf = 8, rng = seededRandom() } = {}) => {
+  const leaf = { value: mean(targets) };
+  if (depth >= maxDepth || vectors.length < minLeaf * 2) return leaf;
+  const parentMean = leaf.value;
+  const parentError = targets.reduce((sum, target) => sum + (target - parentMean) ** 2, 0);
+  if (parentError < 1e-8) return leaf;
+  const featurePool = [...Array(featureNames.length).keys()].filter((feature) => feature !== 0);
+  for (let index = featurePool.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(rng() * (index + 1));
+    [featurePool[index], featurePool[swap]] = [featurePool[swap], featurePool[index]];
+  }
+  const featuresToTry = featurePool.slice(0, Math.max(2, Math.ceil(Math.sqrt(featurePool.length))));
+  let best = null;
+  for (const feature of featuresToTry) {
+    const values = [...new Set(vectors.map((vector) => vector[feature]))].sort((a, b) => a - b);
+    if (values.length < 2) continue;
+    const step = Math.max(1, Math.floor(values.length / 12));
+    for (let index = step; index < values.length; index += step) {
+      const threshold = (values[index - 1] + values[index]) / 2;
+      const left = [];
+      const right = [];
+      for (let row = 0; row < vectors.length; row += 1) {
+        (vectors[row][feature] <= threshold ? left : right).push(row);
+      }
+      if (left.length < minLeaf || right.length < minLeaf) continue;
+      const leftMean = mean(left.map((row) => targets[row]));
+      const rightMean = mean(right.map((row) => targets[row]));
+      const error = left.reduce((sum, row) => sum + (targets[row] - leftMean) ** 2, 0)
+        + right.reduce((sum, row) => sum + (targets[row] - rightMean) ** 2, 0);
+      if (!best || error < best.error) best = { feature, threshold, left, right, error };
+    }
+  }
+  if (!best || best.error >= parentError) return leaf;
+  return {
+    feature: best.feature,
+    threshold: best.threshold,
+    left: buildRegressionTree(best.left.map((row) => vectors[row]), best.left.map((row) => targets[row]), { depth: depth + 1, maxDepth, minLeaf, rng }),
+    right: buildRegressionTree(best.right.map((row) => vectors[row]), best.right.map((row) => targets[row]), { depth: depth + 1, maxDepth, minLeaf, rng }),
+  };
+};
+
+const predictTree = (tree, vector) => {
+  if (Number.isFinite(tree.value)) return tree.value;
+  return predictTree(vector[tree.feature] <= tree.threshold ? tree.left : tree.right, vector);
+};
+
+/** Bagged shallow trees provide a nonlinear alternative without a runtime dependency. */
+const fitRandomForest = (examples, scaling, { trees = 32, maxDepth = 3, minLeaf = 8 } = {}) => {
+  const vectors = examples.map((example) => vectorise(example, scaling));
+  const targets = examples.map((example) => example.targetDelayMinutes);
+  const rng = seededRandom(20260916);
+  const forest = [];
+  for (let tree = 0; tree < trees; tree += 1) {
+    const sampleVectors = [];
+    const sampleTargets = [];
+    for (let row = 0; row < vectors.length; row += 1) {
+      const sampled = Math.floor(rng() * vectors.length);
+      sampleVectors.push(vectors[sampled]);
+      sampleTargets.push(targets[sampled]);
+    }
+    forest.push(buildRegressionTree(sampleVectors, sampleTargets, { maxDepth, minLeaf, rng }));
+  }
+  return (example) => clamp(mean(forest.map((tree) => predictTree(tree, vectorise(example, scaling)))), -2, 30);
+};
+
+/** Gradient boosting fits shallow trees to residuals, capturing nonlinear interactions. */
+const fitGradientBoosting = (examples, scaling, { rounds = 40, learningRate = 0.05, maxDepth = 2, minLeaf = 8 } = {}) => {
+  const vectors = examples.map((example) => vectorise(example, scaling));
+  const targets = examples.map((example) => example.targetDelayMinutes);
+  const base = mean(targets);
+  const current = Array(targets.length).fill(base);
+  const rng = seededRandom(20260917);
+  const trees = [];
+  for (let roundIndex = 0; roundIndex < rounds; roundIndex += 1) {
+    const residual = targets.map((target, index) => target - current[index]);
+    const tree = buildRegressionTree(vectors, residual, { maxDepth, minLeaf, rng });
+    trees.push(tree);
+    for (let row = 0; row < current.length; row += 1) current[row] += learningRate * predictTree(tree, vectors[row]);
+  }
+  return (example) => clamp(base + trees.reduce((sum, tree) => sum + learningRate * predictTree(tree, vectorise(example, scaling)), 0), -2, 30);
+};
+
+const fitKnn = (examples, scaling, { neighbours = 25 } = {}) => {
+  const vectors = examples.map((example) => vectorise(example, scaling));
+  return (example) => {
+    const vector = vectorise(example, scaling);
+    const nearest = vectors.map((candidate, index) => ({
+      distance: candidate.slice(1).reduce((sum, value, feature) => sum + (value - vector[feature + 1]) ** 2, 0),
+      target: examples[index].targetDelayMinutes,
+    })).sort((a, b) => a.distance - b.distance).slice(0, Math.min(neighbours, vectors.length));
+    return clamp(mean(nearest.map((item) => item.target)), -2, 30);
+  };
+};
+
 const metricsFor = (actual, predicted) => {
   const count = actual.length;
   const errors = actual.map((value, index) => predicted[index] - value);
@@ -346,6 +478,29 @@ if (validationStage === 'collecting') {
   const baseline = test.map((example) => example.currentDelayMinutes);
   const modelMetrics = metricsFor(actual, predictions);
   const baselineMetrics = metricsFor(actual, baseline);
+  const alternativePredictors = [
+    { id: 'ridge-regression', name: 'Ridge regression', complexity: 'linear regularized', predict: (example) => predict(example, scaling, weights) },
+    { id: 'elastic-net', name: 'Elastic net', complexity: 'sparse regularized linear', predict: fitElasticNet(training, scaling) },
+    { id: 'random-forest', name: 'Random forest', complexity: '32 bagged depth-3 trees', predict: fitRandomForest(training, scaling) },
+    { id: 'gradient-boosting', name: 'Gradient boosting', complexity: '40 residual depth-2 trees', predict: fitGradientBoosting(training, scaling) },
+    { id: 'knn', name: 'K-nearest neighbours', complexity: '25-neighbour distance model', predict: fitKnn(training, scaling) },
+  ];
+  const modelComparisons = alternativePredictors.map((candidate) => {
+    const candidatePredictions = test.map(candidate.predict);
+    const candidateMetrics = metricsFor(actual, candidatePredictions);
+    return {
+      id: candidate.id,
+      name: candidate.name,
+      complexity: candidate.complexity,
+      metrics: candidateMetrics,
+      beatsLiveBaseline: candidateMetrics.maeMinutes < baselineMetrics.maeMinutes,
+      deployed: false,
+    };
+  });
+  const bestAlternative = [...modelComparisons].sort((a, b) => a.metrics.maeMinutes - b.metrics.maeMinutes)[0];
+  // The runtime currently supports the ridge parameter format. Alternatives
+  // are evaluated and displayed first; promotion remains explicit until a
+  // serialised predictor is added to the browser-side safety monitor.
   const deployed = modelMetrics.maeMinutes < baselineMetrics.maeMinutes;
   const trainedAt = new Date().toISOString();
   const cutoff = new Date(test[0].plannedTimestamp).toISOString();
@@ -361,6 +516,8 @@ if (validationStage === 'collecting') {
     scaling: scaling.map(({ mean, scale }) => ({ mean: round(mean, 8), scale: round(scale, 8) })),
     weights: weights.map((weight) => round(weight, 8)),
     predictionRangeMinutes: [-2, 30],
+    modelComparisons,
+    bestAlternative: bestAlternative?.id || null,
     onlineCalibration: onlineCalibrationModel,
   };
   metrics = {
@@ -376,6 +533,14 @@ if (validationStage === 'collecting') {
       testPeriodStarts: cutoff,
     },
     model: modelMetrics,
+    modelComparisons,
+    bestAlternative: bestAlternative ? {
+      id: bestAlternative.id,
+      name: bestAlternative.name,
+      maeMinutes: bestAlternative.metrics.maeMinutes,
+      rmseMinutes: bestAlternative.metrics.rmseMinutes,
+      beatsLiveBaseline: bestAlternative.beatsLiveBaseline,
+    } : null,
     currentEstimateBaseline: baselineMetrics,
     deployment: {
       deployed,
