@@ -30,10 +30,12 @@ export const featureVector = (arrival, now = Date.now()) => {
   const planned = new Date(plannedTimestamp);
   const hour = planned.getUTCHours() + planned.getUTCMinutes() / 60;
   const weekday = planned.getUTCDay();
+  const currentDelayMinutes = clamp((realTimestamp - plannedTimestamp) / 60000, -2, 30);
+  const leadMinutes = clamp((realTimestamp - now) / 60000, 0, 30);
   return [
     1,
-    clamp((realTimestamp - plannedTimestamp) / 60000, -2, 30),
-    clamp((realTimestamp - now) / 60000, 0, 30),
+    currentDelayMinutes,
+    leadMinutes,
     Math.sin(2 * Math.PI * hour / 24),
     Math.cos(2 * Math.PI * hour / 24),
     Math.sin(2 * Math.PI * weekday / 7),
@@ -44,6 +46,11 @@ export const featureVector = (arrival, now = Date.now()) => {
     clamp(Number(arrival.incidentPriority) || 0, 0, 10),
     arrival.delayRelatedIncident ? 1 : 0,
     ...LINES.map((line) => arrival.line === line ? 1 : 0),
+    currentDelayMinutes ** 2,
+    leadMinutes ** 2,
+    currentDelayMinutes * leadMinutes,
+    Math.max(0, currentDelayMinutes),
+    leadMinutes <= 5 ? 1 : 0,
   ];
 };
 

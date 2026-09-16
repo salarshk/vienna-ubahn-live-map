@@ -101,6 +101,8 @@ const featureNames = [
   'weekdaySin', 'weekdayCos', 'trafficJam', 'directionH',
   'activeIncidentCount', 'incidentPriority', 'delayRelatedIncident',
   ...LINES.map((line) => `line_${line}`),
+  'currentDelaySquared', 'leadSquared', 'delayLeadInteraction',
+  'positiveDelayMinutes', 'shortLeadIndicator',
 ];
 
 const rawFeatures = (example) => {
@@ -121,10 +123,15 @@ const rawFeatures = (example) => {
     clamp(Number(example.incidentPriority) || 0, 0, 10),
     example.delayRelatedIncident ? 1 : 0,
     ...LINES.map((line) => example.line === line ? 1 : 0),
+    example.currentDelayMinutes ** 2,
+    clamp(example.secondsToReal / 60, 0, 30) ** 2,
+    example.currentDelayMinutes * clamp(example.secondsToReal / 60, 0, 30),
+    Math.max(0, example.currentDelayMinutes),
+    clamp(example.secondsToReal / 60, 0, 30) <= 5 ? 1 : 0,
   ];
 };
 
-const standardisedIndices = new Set([1, 2, 9, 10]);
+const standardisedIndices = new Set([1, 2, 9, 10, 17, 18, 19, 20]);
 
 const calculateScaling = (examples) => {
   const vectors = examples.map(rawFeatures);
