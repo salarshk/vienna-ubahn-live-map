@@ -45,6 +45,17 @@ describe('delay model runtime', () => {
     expect(predictFinalDelay(model, arrival)).toBe(3);
   });
 
+  it('supports a serialized isotonic calibration candidate', () => {
+    const model = {
+      status: 'ready', algorithm: 'isotonic-delay-calibration', deployed: true,
+      selectedModelParameters: { blend: 0.5, breakpoints: [1, 3, 30], values: [0.5, 4, 8] },
+      weights: Array(23).fill(0),
+      scaling: Array.from({ length: 23 }, () => ({ mean: 0, scale: 1 })),
+      predictionRangeMinutes: [-2, 30],
+    };
+    expect(predictFinalDelay(model, arrival)).toBe(3);
+  });
+
   it('builds active incident context for a line', () => {
     const now = Date.parse('2026-09-10T10:00:00Z');
     expect(incidentContextForLine([{

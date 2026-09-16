@@ -261,6 +261,68 @@ const tuneResidualRidge = (training, scaling) => {
   ))[0] || { lambda: 2, blend: 0.75 };
 };
 
+/** Isotonic calibration learns a monotone mapping from the early official
+ * delay to the final label, then blends that mapping conservatively with the
+ * original live estimate.  It is a useful non-parametric check against a
+ * linear model when delay propagation has a saturation point. */
+const fitIsotonic = (examples, { blend = 0.5 } = {}) => {
+  const sorted = examples.map((example) => ({
+    x: example.currentDelayMinutes,
+    y: example.targetDelayMinutes,
+  })).sort((left, right) => left.x - right.x);
+  const blocks = [];
+  for (const point of sorted) {
+    blocks.push({ min: point.x, max: point.x, sum: point.y, count: 1 });
+    while (blocks.length > 1) {
+      const previous = blocks.at(-2);
+      const current = blocks.at(-1);
+      if (previous.sum / previous.count <= current.sum / current.count) break;
+      blocks.splice(-2, 2, {
+        min: previous.min,
+        max: current.max,
+        sum: previous.sum + current.sum,
+        count: previous.count + current.count,
+      });
+    }
+  }
+  const breakpoints = blocks.map((block) => block.max);
+  const values = blocks.map((block) => block.sum / block.count);
+  const predictIsotonic = (example) => {
+    const current = example.currentDelayMinutes;
+    let index = breakpoints.findIndex((breakpoint) => current <= breakpoint);
+    if (index < 0) index = values.length - 1;
+    const calibrated = values[index] ?? current;
+    return clamp(current + blend * (calibrated - current), -2, 30);
+  };
+  predictIsotonic.breakpoints = breakpoints;
+  predictIsotonic.values = values;
+  predictIsotonic.blend = blend;
+  return predictIsotonic;
+};
+
+const tuneIsotonic = (training) => {
+  const dates = [...new Set(training.map((example) => (
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10)
+  )))].sort();
+  const calibrationDays = new Set(dates.slice(-Math.max(1, Math.ceil(dates.length * 0.2))));
+  const fit = training.filter((example) => !calibrationDays.has(
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10),
+  ));
+  const calibration = training.filter((example) => calibrationDays.has(
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10),
+  ));
+  if (fit.length < 30 || calibration.length < 15) return { blend: 0.5 };
+  const actual = calibration.map((example) => example.targetDelayMinutes);
+  const candidates = [0.15, 0.25, 0.4, 0.5, 0.65, 0.8, 1];
+  return candidates.map((blend) => {
+    const predictor = fitIsotonic(fit, { blend });
+    return { blend, score: metricsFor(actual, calibration.map(predictor)) };
+  }).sort((left, right) => (
+    left.score.maeMinutes - right.score.maeMinutes
+      || left.score.rmseMinutes - right.score.rmseMinutes
+  ))[0] || { blend: 0.5 };
+};
+
 const dot = (left, right) => left.reduce((sum, value, index) => sum + value * right[index], 0);
 const softThreshold = (value, amount) => value > amount ? value - amount : value < -amount ? value + amount : 0;
 
@@ -555,6 +617,8 @@ if (validationStage === 'collecting') {
   const baselineMetrics = metricsFor(actual, baseline);
   const residualTuning = tuneResidualRidge(training, scaling);
   const residualPredictor = fitResidualRidge(training, scaling, residualTuning);
+  const isotonicTuning = tuneIsotonic(training);
+  const isotonicPredictor = fitIsotonic(training, isotonicTuning);
   const alternativePredictors = [
     { id: 'ridge-regression', name: 'Ridge regression', complexity: 'linear regularized', predict: (example) => predict(example, scaling, weights) },
     {
@@ -566,6 +630,18 @@ if (validationStage === 'collecting') {
         algorithm: 'residual-ridge-ensemble',
         lambda: residualTuning.lambda,
         blend: residualTuning.blend,
+      },
+    },
+    {
+      id: 'isotonic-delay-calibration',
+      name: 'Isotonic delay calibration',
+      complexity: `monotone non-parametric, blend=${isotonicTuning.blend}`,
+      predict: isotonicPredictor,
+      runtime: {
+        algorithm: 'isotonic-delay-calibration',
+        blend: isotonicTuning.blend,
+        breakpoints: isotonicPredictor.breakpoints.map((value) => round(value, 8)),
+        values: isotonicPredictor.values.map((value) => round(value, 8)),
       },
     },
     { id: 'elastic-net', name: 'Elastic net', complexity: 'sparse regularized linear', predict: fitElasticNet(training, scaling) },
@@ -590,7 +666,8 @@ if (validationStage === 'collecting') {
   // At present that is the residual ridge ensemble; the other alternatives
   // remain useful research comparisons until their runtime format is added.
   const winningCandidate = modelComparisons.find((candidate) => (
-    candidate.beatsLiveBaseline && candidate.id === 'residual-ridge-ensemble'
+    candidate.beatsLiveBaseline
+      && ['residual-ridge-ensemble', 'isotonic-delay-calibration'].includes(candidate.id)
   ));
   const selectedCandidate = winningCandidate
     ? alternativePredictors.find((candidate) => candidate.id === winningCandidate.id)

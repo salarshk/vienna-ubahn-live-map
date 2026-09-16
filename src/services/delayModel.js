@@ -61,6 +61,18 @@ export const predictFinalDelay = (model, arrival, now = Date.now()) => {
   }
   const vector = featureVector(arrival, now);
   if (!vector || vector.length !== model.weights.length) return null;
+  if (model.algorithm === 'isotonic-delay-calibration'
+    && Array.isArray(model.selectedModelParameters?.breakpoints)
+    && Array.isArray(model.selectedModelParameters?.values)) {
+    const breakpoints = model.selectedModelParameters.breakpoints;
+    const values = model.selectedModelParameters.values;
+    let index = breakpoints.findIndex((breakpoint) => vector[1] <= Number(breakpoint));
+    if (index < 0) index = values.length - 1;
+    const calibrated = Number(values[index]);
+    if (!Number.isFinite(calibrated)) return null;
+    const blend = Number(model.selectedModelParameters.blend) || 1;
+    return clamp(vector[1] + blend * (calibrated - vector[1]), ...(model.predictionRangeMinutes || [-2, 30]));
+  }
   const correction = vector.reduce((sum, feature, index) => {
     const scale = Number(model.scaling[index]?.scale) || 1;
     const mean = Number(model.scaling[index]?.mean) || 0;
