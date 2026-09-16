@@ -323,6 +323,32 @@ const tuneIsotonic = (training) => {
   ))[0] || { blend: 0.5 };
 };
 
+const tuneStacked = (training, scaling, residualTuning) => {
+  const dates = [...new Set(training.map((example) => (
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10)
+  )))].sort();
+  const calibrationDays = new Set(dates.slice(-Math.max(1, Math.ceil(dates.length * 0.2))));
+  const fit = training.filter((example) => !calibrationDays.has(
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10),
+  ));
+  const calibration = training.filter((example) => calibrationDays.has(
+    new Date(example.plannedTimestamp).toISOString().slice(0, 10),
+  ));
+  if (fit.length < 30 || calibration.length < 15) return { isotonicWeight: 0.75 };
+  const innerResidual = fitResidualRidge(fit, scaling, residualTuning);
+  const innerIsotonic = fitIsotonic(fit, tuneIsotonic(fit));
+  const actual = calibration.map((example) => example.targetDelayMinutes);
+  const weights = [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1];
+  return weights.map((isotonicWeight) => {
+    const predictions = calibration.map((example) => isotonicWeight * innerIsotonic(example)
+      + (1 - isotonicWeight) * innerResidual(example));
+    return { isotonicWeight, score: metricsFor(actual, predictions) };
+  }).sort((left, right) => (
+    left.score.maeMinutes - right.score.maeMinutes
+      || left.score.rmseMinutes - right.score.rmseMinutes
+  ))[0] || { isotonicWeight: 0.75 };
+};
+
 const dot = (left, right) => left.reduce((sum, value, index) => sum + value * right[index], 0);
 const softThreshold = (value, amount) => value > amount ? value - amount : value < -amount ? value + amount : 0;
 
@@ -619,6 +645,18 @@ if (validationStage === 'collecting') {
   const residualPredictor = fitResidualRidge(training, scaling, residualTuning);
   const isotonicTuning = tuneIsotonic(training);
   const isotonicPredictor = fitIsotonic(training, isotonicTuning);
+  const stackedTuning = tuneStacked(training, scaling, residualTuning);
+  const stackedPredictor = (example) => stackedTuning.isotonicWeight * isotonicPredictor(example)
+    + (1 - stackedTuning.isotonicWeight) * residualPredictor(example);
+  stackedPredictor.runtime = {
+    algorithm: 'stacked-delay-ensemble',
+    isotonicWeight: stackedTuning.isotonicWeight,
+    blend: isotonicTuning.blend,
+    residualBlend: residualTuning.blend,
+    residualWeights: residualPredictor.weights.map((weight) => round(weight, 8)),
+    breakpoints: isotonicPredictor.breakpoints.map((value) => round(value, 8)),
+    values: isotonicPredictor.values.map((value) => round(value, 8)),
+  };
   const alternativePredictors = [
     { id: 'ridge-regression', name: 'Ridge regression', complexity: 'linear regularized', predict: (example) => predict(example, scaling, weights) },
     {
@@ -644,6 +682,13 @@ if (validationStage === 'collecting') {
         values: isotonicPredictor.values.map((value) => round(value, 8)),
       },
     },
+    {
+      id: 'stacked-delay-ensemble',
+      name: 'Stacked isotonic + residual ensemble',
+      complexity: `calibration + residual blend, isotonic weight=${stackedTuning.isotonicWeight}`,
+      predict: stackedPredictor,
+      runtime: stackedPredictor.runtime,
+    },
     { id: 'elastic-net', name: 'Elastic net', complexity: 'sparse regularized linear', predict: fitElasticNet(training, scaling) },
     { id: 'random-forest', name: 'Random forest', complexity: '32 bagged depth-3 trees', predict: fitRandomForest(training, scaling) },
     { id: 'gradient-boosting', name: 'Gradient boosting', complexity: '40 residual depth-2 trees', predict: fitGradientBoosting(training, scaling) },
@@ -667,7 +712,7 @@ if (validationStage === 'collecting') {
   // remain useful research comparisons until their runtime format is added.
   const winningCandidate = modelComparisons.find((candidate) => (
     candidate.beatsLiveBaseline
-      && ['residual-ridge-ensemble', 'isotonic-delay-calibration'].includes(candidate.id)
+      && ['residual-ridge-ensemble', 'isotonic-delay-calibration', 'stacked-delay-ensemble'].includes(candidate.id)
   ));
   const selectedCandidate = winningCandidate
     ? alternativePredictors.find((candidate) => candidate.id === winningCandidate.id)
