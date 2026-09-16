@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 26365,
+  "observationCount": 29147,
   "labelledJourneyCount": 579,
-  "dataDays": 6,
-  "coverageHours": 131.3,
+  "dataDays": 7,
+  "coverageHours": 144.6,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-15T22:27:47.118Z",
+  "lastObservation": "2026-09-16T11:48:53.147Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -48,13 +48,13 @@
     "maxAgeHours": 36,
     "maxMaeMinutes": 10,
     "maxRmseMinutes": 15,
-    "evaluatedAt": "2026-09-16T00:39:57.926Z",
+    "evaluatedAt": "2026-09-16T11:49:02.035Z",
     "beatsBaseline": false,
     "rollbackActive": true
   },
   "status": "ready",
-  "validationStage": "preliminary",
-  "trainedAt": "2026-09-16T00:39:57.926Z",
+  "validationStage": "validated",
+  "trainedAt": "2026-09-16T11:49:02.035Z",
   "algorithm": "Ridge regression",
   "split": {
     "method": "Chronological split by whole calendar days; the newest 20% of days are test-only",
@@ -108,7 +108,7 @@
   },
   "delayClassificationThresholdMinutes": 3,
   "labelCaveat": "The target is the official Wiener Linien timeReal minus timePlanned near departure, not an independent GPS ground truth.",
-  "promotion": "Preliminary result; it will be replaced automatically after meeting the seven-day safeguards.",
+  "promotion": "Validated automatically after meeting the seven-day safeguards.",
   "onlineCalibration": {
     "status": "ready",
     "experimental": true,
