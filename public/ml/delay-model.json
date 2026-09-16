@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 29147,
-  "labelledJourneyCount": 579,
+  "observationCount": 30080,
+  "labelledJourneyCount": 749,
   "dataDays": 7,
-  "coverageHours": 144.6,
+  "coverageHours": 144.7,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-16T11:48:53.147Z",
+  "lastObservation": "2026-09-16T11:55:26.079Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 548,
+    "officialLabelledJourneys": 718,
     "fallbackLabelledJourneys": 31
   },
   "monitoring": {
@@ -52,9 +52,9 @@
   "status": "ready",
   "validationStage": "validated",
   "algorithm": "ridge-regression",
-  "trainedAt": "2026-09-16T11:49:02.035Z",
+  "trainedAt": "2026-09-16T11:55:35.394Z",
   "deployed": false,
-  "trainedThrough": "2026-09-10T12:56:00.000Z",
+  "trainedThrough": "2026-09-11T14:02:00.000Z",
   "featureNames": [
     "intercept",
     "currentDelayMinutes",
@@ -80,16 +80,12 @@
       "scale": 1
     },
     {
-      "mean": 0.1188172,
-      "scale": 0.85259189
+      "mean": 0.13439839,
+      "scale": 0.92372632
     },
     {
-      "mean": 4.67043011,
-      "scale": 0.50840092
-    },
-    {
-      "mean": 0,
-      "scale": 1
+      "mean": 7.93802533,
+      "scale": 2.9223826
     },
     {
       "mean": 0,
@@ -112,12 +108,16 @@
       "scale": 1
     },
     {
-      "mean": 0.64516129,
-      "scale": 0.47846442
-    },
-    {
       "mean": 0,
       "scale": 1
+    },
+    {
+      "mean": 0.9775475,
+      "scale": 1.30411076
+    },
+    {
+      "mean": 0.13989637,
+      "scale": 0.34687949
     },
     {
       "mean": 0,
@@ -145,33 +145,171 @@
     }
   ],
   "weights": [
-    0.02192693,
-    0.6804539,
-    -0.0744725,
-    0.00301052,
-    -0.00071582,
+    0.33545678,
+    0.75515133,
+    0.07595752,
+    -0.31770085,
+    0.17912168,
+    -0.08755683,
+    0.10979279,
     0,
-    0,
-    0,
-    0.02825313,
-    -0.04420154,
-    0,
-    0,
-    0.05781021,
-    0.00011266,
-    -0.03666135,
-    -0.10348175,
-    0.08222022
+    -0.01392089,
+    0.06573676,
+    0.02926147,
+    0.0101502,
+    0.01600266,
+    0.11300477,
+    -0.07128006,
+    -0.12432413,
+    0.06659677
   ],
   "predictionRangeMinutes": [
     -2,
     30
   ],
+  "modelComparisons": [
+    {
+      "id": "ridge-regression",
+      "name": "Ridge regression",
+      "complexity": "linear regularized",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.63,
+        "rmseMinutes": 0.85,
+        "rSquared": 0.688,
+        "withinOneMinutePercent": 81.2,
+        "withinTwoMinutesPercent": 97.6,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 91.2,
+          "precision": 1,
+          "recall": 0.318,
+          "f1": 0.483,
+          "confusionMatrix": {
+            "truePositive": 7,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 15
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "elastic-net",
+      "name": "Elastic net",
+      "complexity": "sparse regularized linear",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.6,
+        "rmseMinutes": 0.81,
+        "rSquared": 0.712,
+        "withinOneMinutePercent": 81.8,
+        "withinTwoMinutesPercent": 97.6,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 92.4,
+          "precision": 1,
+          "recall": 0.409,
+          "f1": 0.581,
+          "confusionMatrix": {
+            "truePositive": 9,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 13
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "random-forest",
+      "name": "Random forest",
+      "complexity": "32 bagged depth-3 trees",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.92,
+        "rmseMinutes": 1.28,
+        "rSquared": 0.291,
+        "withinOneMinutePercent": 67.6,
+        "withinTwoMinutesPercent": 86.5,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 87.1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "confusionMatrix": {
+            "truePositive": 0,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 22
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "gradient-boosting",
+      "name": "Gradient boosting",
+      "complexity": "40 residual depth-2 trees",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.82,
+        "rmseMinutes": 1.12,
+        "rSquared": 0.459,
+        "withinOneMinutePercent": 69.4,
+        "withinTwoMinutesPercent": 91.8,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 87.1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "confusionMatrix": {
+            "truePositive": 0,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 22
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "knn",
+      "name": "K-nearest neighbours",
+      "complexity": "25-neighbour distance model",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.71,
+        "rmseMinutes": 0.99,
+        "rSquared": 0.574,
+        "withinOneMinutePercent": 77.6,
+        "withinTwoMinutesPercent": 94.7,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 87.1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "confusionMatrix": {
+            "truePositive": 0,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 22
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    }
+  ],
+  "bestAlternative": "elastic-net",
   "onlineCalibration": {
     "status": "ready",
     "algorithm": "prequential-hierarchical-calibration",
     "experimental": true,
-    "scoredJourneyCount": 579,
+    "scoredJourneyCount": 749,
     "minimumExamples": 30,
     "deployed": false,
     "predictionRangeMinutes": [
@@ -180,47 +318,47 @@
     ],
     "state": {
       "global": {
-        "count": 579,
-        "sum": 134.35,
-        "sumSquares": 279.7147222222223
+        "count": 749,
+        "sum": 181.44999999999985,
+        "sumSquares": 366.99861111111136
       },
       "lines": {
         "U2": {
-          "count": 105,
-          "sum": 22.715423604771516,
-          "sumSquares": 54.727731171876826
+          "count": 134,
+          "sum": 23.904146656181137,
+          "sumSquares": 63.514829112246844
         },
         "U4": {
-          "count": 87,
-          "sum": 14.598939854916097,
-          "sumSquares": 41.61303434443197
+          "count": 115,
+          "sum": 12.977132226392051,
+          "sumSquares": 50.521605137509155
         },
         "U6": {
-          "count": 131,
-          "sum": 39.92776701527181,
-          "sumSquares": 50.5729334440583
+          "count": 172,
+          "sum": 40.92619155921876,
+          "sumSquares": 62.598859363108694
         },
         "U1": {
-          "count": 141,
-          "sum": 27.930115313536866,
-          "sumSquares": 91.9911522482228
+          "count": 184,
+          "sum": 41.79960121735114,
+          "sumSquares": 129.67266065423036
         },
         "U3": {
-          "count": 115,
-          "sum": 12.569947668130743,
-          "sumSquares": 28.937885306802045
+          "count": 144,
+          "sum": 7.358670719540357,
+          "sumSquares": 36.26963498846559
         }
       },
       "contexts": {
         "incident": {
-          "count": 323,
-          "sum": 66.1909146800673,
-          "sumSquares": 140.41530397290958
+          "count": 464,
+          "sum": 51.568967225578774,
+          "sumSquares": 208.54520502900533
         },
         "normal": {
-          "count": 256,
-          "sum": 25.418310375323788,
-          "sumSquares": 121.77720978690606
+          "count": 285,
+          "sum": 17.336730415900398,
+          "sumSquares": 130.42463282048837
         }
       }
     }

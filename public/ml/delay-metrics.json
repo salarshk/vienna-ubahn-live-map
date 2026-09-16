@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 29147,
-  "labelledJourneyCount": 579,
+  "observationCount": 30080,
+  "labelledJourneyCount": 749,
   "dataDays": 7,
-  "coverageHours": 144.6,
+  "coverageHours": 144.7,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-16T11:48:53.147Z",
+  "lastObservation": "2026-09-16T11:55:26.079Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 548,
+    "officialLabelledJourneys": 718,
     "fallbackLabelledJourneys": 31
   },
   "monitoring": {
@@ -48,57 +48,201 @@
     "maxAgeHours": 36,
     "maxMaeMinutes": 10,
     "maxRmseMinutes": 15,
-    "evaluatedAt": "2026-09-16T11:49:02.035Z",
+    "evaluatedAt": "2026-09-16T11:55:35.394Z",
     "beatsBaseline": false,
     "rollbackActive": true
   },
   "status": "ready",
   "validationStage": "validated",
-  "trainedAt": "2026-09-16T11:49:02.035Z",
+  "trainedAt": "2026-09-16T11:55:35.394Z",
   "algorithm": "Ridge regression",
   "split": {
     "method": "Chronological split by whole calendar days; the newest 20% of days are test-only",
-    "trainingExamples": 31,
-    "testExamples": 548,
-    "testPeriodStarts": "2026-09-11T13:34:30.000Z"
+    "trainingExamples": 579,
+    "testExamples": 170,
+    "testPeriodStarts": "2026-09-16T11:50:00.000Z"
   },
   "model": {
-    "sampleCount": 548,
-    "maeMinutes": 0.91,
-    "rmseMinutes": 1.2,
-    "rSquared": -0.392,
-    "withinOneMinutePercent": 67.5,
-    "withinTwoMinutesPercent": 89.1,
+    "sampleCount": 170,
+    "maeMinutes": 0.63,
+    "rmseMinutes": 0.85,
+    "rSquared": 0.688,
+    "withinOneMinutePercent": 81.2,
+    "withinTwoMinutesPercent": 97.6,
     "delayedThreeMinutes": {
-      "accuracyPercent": 97.4,
-      "precision": 0,
-      "recall": 0,
-      "f1": 0,
+      "accuracyPercent": 91.2,
+      "precision": 1,
+      "recall": 0.318,
+      "f1": 0.483,
       "confusionMatrix": {
-        "truePositive": 0,
-        "trueNegative": 534,
+        "truePositive": 7,
+        "trueNegative": 148,
         "falsePositive": 0,
-        "falseNegative": 14
+        "falseNegative": 15
       }
     }
   },
+  "modelComparisons": [
+    {
+      "id": "ridge-regression",
+      "name": "Ridge regression",
+      "complexity": "linear regularized",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.63,
+        "rmseMinutes": 0.85,
+        "rSquared": 0.688,
+        "withinOneMinutePercent": 81.2,
+        "withinTwoMinutesPercent": 97.6,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 91.2,
+          "precision": 1,
+          "recall": 0.318,
+          "f1": 0.483,
+          "confusionMatrix": {
+            "truePositive": 7,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 15
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "elastic-net",
+      "name": "Elastic net",
+      "complexity": "sparse regularized linear",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.6,
+        "rmseMinutes": 0.81,
+        "rSquared": 0.712,
+        "withinOneMinutePercent": 81.8,
+        "withinTwoMinutesPercent": 97.6,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 92.4,
+          "precision": 1,
+          "recall": 0.409,
+          "f1": 0.581,
+          "confusionMatrix": {
+            "truePositive": 9,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 13
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "random-forest",
+      "name": "Random forest",
+      "complexity": "32 bagged depth-3 trees",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.92,
+        "rmseMinutes": 1.28,
+        "rSquared": 0.291,
+        "withinOneMinutePercent": 67.6,
+        "withinTwoMinutesPercent": 86.5,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 87.1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "confusionMatrix": {
+            "truePositive": 0,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 22
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "gradient-boosting",
+      "name": "Gradient boosting",
+      "complexity": "40 residual depth-2 trees",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.82,
+        "rmseMinutes": 1.12,
+        "rSquared": 0.459,
+        "withinOneMinutePercent": 69.4,
+        "withinTwoMinutesPercent": 91.8,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 87.1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "confusionMatrix": {
+            "truePositive": 0,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 22
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    },
+    {
+      "id": "knn",
+      "name": "K-nearest neighbours",
+      "complexity": "25-neighbour distance model",
+      "metrics": {
+        "sampleCount": 170,
+        "maeMinutes": 0.71,
+        "rmseMinutes": 0.99,
+        "rSquared": 0.574,
+        "withinOneMinutePercent": 77.6,
+        "withinTwoMinutesPercent": 94.7,
+        "delayedThreeMinutes": {
+          "accuracyPercent": 87.1,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "confusionMatrix": {
+            "truePositive": 0,
+            "trueNegative": 148,
+            "falsePositive": 0,
+            "falseNegative": 22
+          }
+        }
+      },
+      "beatsLiveBaseline": false,
+      "deployed": false
+    }
+  ],
+  "bestAlternative": {
+    "id": "elastic-net",
+    "name": "Elastic net",
+    "maeMinutes": 0.6,
+    "rmseMinutes": 0.81,
+    "beatsLiveBaseline": false
+  },
   "currentEstimateBaseline": {
-    "sampleCount": 548,
-    "maeMinutes": 0.51,
-    "rmseMinutes": 0.71,
-    "rSquared": 0.511,
-    "withinOneMinutePercent": 89.1,
-    "withinTwoMinutesPercent": 98,
+    "sampleCount": 170,
+    "maeMinutes": 0.5,
+    "rmseMinutes": 0.72,
+    "rSquared": 0.777,
+    "withinOneMinutePercent": 87.6,
+    "withinTwoMinutesPercent": 97.6,
     "delayedThreeMinutes": {
-      "accuracyPercent": 98.5,
-      "precision": 0.875,
-      "recall": 0.5,
-      "f1": 0.636,
+      "accuracyPercent": 94.7,
+      "precision": 0.933,
+      "recall": 0.636,
+      "f1": 0.757,
       "confusionMatrix": {
-        "truePositive": 7,
-        "trueNegative": 533,
+        "truePositive": 14,
+        "trueNegative": 147,
         "falsePositive": 1,
-        "falseNegative": 7
+        "falseNegative": 8
       }
     }
   },
@@ -112,46 +256,46 @@
   "onlineCalibration": {
     "status": "ready",
     "experimental": true,
-    "scoredJourneyCount": 579,
+    "scoredJourneyCount": 749,
     "minimumExamples": 30,
     "evaluationMethod": "Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.",
     "model": {
-      "sampleCount": 579,
-      "maeMinutes": 0.51,
-      "rmseMinutes": 0.69,
-      "rSquared": 0.534,
-      "withinOneMinutePercent": 88.4,
-      "withinTwoMinutesPercent": 98.6,
+      "sampleCount": 749,
+      "maeMinutes": 0.52,
+      "rmseMinutes": 0.7,
+      "rSquared": 0.639,
+      "withinOneMinutePercent": 87.6,
+      "withinTwoMinutesPercent": 98.7,
       "delayedThreeMinutes": {
-        "accuracyPercent": 98.8,
-        "precision": 0.889,
-        "recall": 0.571,
-        "f1": 0.696,
+        "accuracyPercent": 97.6,
+        "precision": 0.8,
+        "recall": 0.667,
+        "f1": 0.727,
         "confusionMatrix": {
-          "truePositive": 8,
-          "trueNegative": 564,
-          "falsePositive": 1,
-          "falseNegative": 6
+          "truePositive": 24,
+          "trueNegative": 707,
+          "falsePositive": 6,
+          "falseNegative": 12
         }
       }
     },
     "currentEstimateBaseline": {
-      "sampleCount": 579,
+      "sampleCount": 749,
       "maeMinutes": 0.5,
       "rmseMinutes": 0.7,
-      "rSquared": 0.521,
-      "withinOneMinutePercent": 89.6,
-      "withinTwoMinutesPercent": 98.1,
+      "rSquared": 0.634,
+      "withinOneMinutePercent": 89.2,
+      "withinTwoMinutesPercent": 98,
       "delayedThreeMinutes": {
-        "accuracyPercent": 98.6,
-        "precision": 0.875,
-        "recall": 0.5,
-        "f1": 0.636,
+        "accuracyPercent": 97.7,
+        "precision": 0.913,
+        "recall": 0.583,
+        "f1": 0.712,
         "confusionMatrix": {
-          "truePositive": 7,
-          "trueNegative": 564,
-          "falsePositive": 1,
-          "falseNegative": 7
+          "truePositive": 21,
+          "trueNegative": 711,
+          "falsePositive": 2,
+          "falseNegative": 15
         }
       }
     },
