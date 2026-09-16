@@ -73,6 +73,26 @@ export const predictFinalDelay = (model, arrival, now = Date.now()) => {
     const blend = Number(model.selectedModelParameters.blend) || 1;
     return clamp(vector[1] + blend * (calibrated - vector[1]), ...(model.predictionRangeMinutes || [-2, 30]));
   }
+  if (model.algorithm === 'stacked-delay-ensemble'
+    && Array.isArray(model.selectedModelParameters?.breakpoints)
+    && Array.isArray(model.selectedModelParameters?.values)
+    && Array.isArray(model.selectedModelParameters?.residualWeights)) {
+    const parameters = model.selectedModelParameters;
+    let index = parameters.breakpoints.findIndex((breakpoint) => vector[1] <= Number(breakpoint));
+    if (index < 0) index = parameters.values.length - 1;
+    const isotonic = Number(parameters.values[index]);
+    if (!Number.isFinite(isotonic)) return null;
+    const residualCorrection = vector.reduce((sum, feature, featureIndex) => {
+      const scale = Number(model.scaling[featureIndex]?.scale) || 1;
+      const mean = Number(model.scaling[featureIndex]?.mean) || 0;
+      return sum + ((feature - mean) / scale) * Number(parameters.residualWeights[featureIndex] || 0);
+    }, 0);
+    const residual = vector[1] + (Number(parameters.residualBlend) || 1) * residualCorrection;
+    const isotonicWeight = Number(parameters.isotonicWeight);
+    const value = isotonicWeight * (vector[1] + (Number(parameters.blend) || 1) * (isotonic - vector[1]))
+      + (1 - isotonicWeight) * residual;
+    return clamp(value, ...(model.predictionRangeMinutes || [-2, 30]));
+  }
   const correction = vector.reduce((sum, feature, index) => {
     const scale = Number(model.scaling[index]?.scale) || 1;
     const mean = Number(model.scaling[index]?.mean) || 0;
