@@ -13,20 +13,20 @@ const arrival = {
 describe('delay model runtime', () => {
   it('builds the same 17 features as the trainer', () => {
     const vector = featureVector(arrival, Date.UTC(2026, 8, 10, 7, 54));
-    expect(vector).toHaveLength(22);
+    expect(vector).toHaveLength(23);
     expect(vector[1]).toBe(2);
     expect(vector[2]).toBe(8);
     expect(vector.slice(9, 12)).toEqual([1, 2, 1]);
     expect(vector.slice(12, 17)).toEqual([1, 0, 0, 0, 0]);
-    expect(vector.slice(-5)).toEqual([4, 64, 16, 2, 0]);
+    expect(vector.slice(-6)).toEqual([4, 64, 16, 2, 0, 0]);
   });
 
   it('applies stored scaling and clamps the result', () => {
     const model = {
       status: 'ready',
       deployed: true,
-      weights: Array(22).fill(0),
-      scaling: Array.from({ length: 22 }, () => ({ mean: 0, scale: 1 })),
+      weights: Array(23).fill(0),
+      scaling: Array.from({ length: 23 }, () => ({ mean: 0, scale: 1 })),
       predictionRangeMinutes: [-2, 30],
     };
     model.weights[0] = 40;
@@ -37,8 +37,8 @@ describe('delay model runtime', () => {
     const model = {
       status: 'ready', algorithm: 'residual-ridge-ensemble', deployed: true,
       selectedModelParameters: { blend: 0.5 },
-      weights: Array(22).fill(0),
-      scaling: Array.from({ length: 22 }, () => ({ mean: 0, scale: 1 })),
+      weights: Array(23).fill(0),
+      scaling: Array.from({ length: 23 }, () => ({ mean: 0, scale: 1 })),
       predictionRangeMinutes: [-2, 30],
     };
     model.weights[1] = 1;

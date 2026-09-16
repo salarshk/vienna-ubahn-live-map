@@ -384,15 +384,35 @@ class ArrivalStore {
       for (const [stationId, stationMonitors] of monitorsByStation) {
         const station = stationById.get(stationId);
         if (!station || stationMonitors.length === 0) continue;
+        const previousEntry = this.memory.get(String(stationId));
+        const previousArrivals = Array.isArray(previousEntry?.arrivals) ? previousEntry.arrivals : [];
+        const nextArrivals = parseMonitorArrivals(
+          stationMonitors,
+          fetchTime,
+          data?.message?.serverTime || data?.data?.message?.serverTime || null,
+        ).map((arrival) => {
+          const previous = previousArrivals.find((candidate) => (
+            candidate.line === arrival.line
+              && candidate.destination === arrival.destination
+              && Math.abs(Number(candidate.plannedTargetTimestamp) - Number(arrival.plannedTargetTimestamp)) < 120000
+              && Number.isFinite(Number(candidate.reportedDelaySeconds))
+              && Number.isFinite(Number(arrival.reportedDelaySeconds))
+          ));
+          const elapsedMinutes = previousEntry && fetchTime > previousEntry.fetchedAt
+            ? (fetchTime - previousEntry.fetchedAt) / 60000 : 0;
+          return {
+            ...arrival,
+            delayTrendMinutes: previous && elapsedMinutes > 0
+              ? Math.max(-5, Math.min(5, (arrival.reportedDelaySeconds - previous.reportedDelaySeconds)
+                / 60 / elapsedMinutes))
+              : 0,
+          };
+        });
         this.memory.set(String(stationId), {
           stationId,
           stationName: station.name,
           fetchedAt: fetchTime,
-          arrivals: parseMonitorArrivals(
-            stationMonitors,
-            fetchTime,
-            data?.message?.serverTime || data?.data?.message?.serverTime || null,
-          ),
+          arrivals: nextArrivals,
           feedServerTime: data?.message?.serverTime || data?.data?.message?.serverTime || null,
           fetchError: null,
         });

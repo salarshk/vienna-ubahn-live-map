@@ -51,6 +51,7 @@ export const featureVector = (arrival, now = Date.now()) => {
     currentDelayMinutes * leadMinutes,
     Math.max(0, currentDelayMinutes),
     leadMinutes <= 5 ? 1 : 0,
+    clamp(Number(arrival.delayTrendMinutes) || 0, -5, 5),
   ];
 };
 

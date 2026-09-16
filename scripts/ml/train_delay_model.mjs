@@ -79,10 +79,18 @@ const makeExamples = (rows) => {
     const featureRow = earlyCandidates.reduce((best, row) => (
       Math.abs(row.secondsToReal - 480) < Math.abs(best.secondsToReal - 480) ? row : best
     ));
+    const previousRows = eventRows.filter((row) => row.observedAt < featureRow.observedAt
+      && officialDelaySeconds(row) !== null);
+    const previousRow = previousRows.at(-1);
+    const trendMinutes = previousRow && featureRow.observedAt > previousRow.observedAt
+      ? (officialDelaySeconds(featureRow) - officialDelaySeconds(previousRow))
+        / ((featureRow.observedAt - previousRow.observedAt) / 60000)
+      : 0;
     examples.push({
       ...featureRow,
       targetDelayMinutes: clamp(officialDelaySeconds(finalRow) / 60, -2, 30),
       currentDelayMinutes: clamp(officialDelaySeconds(featureRow) / 60, -2, 30),
+      delayTrendMinutes: clamp(trendMinutes, -5, 5),
       targetLabelSource: finalRow.delaySource || 'wiener-linien-timeReal-minus-timePlanned',
       officialLabel: finalRow.delaySource === 'wiener-linien-timeReal-minus-timePlanned'
         || Number.isFinite(Number(finalRow.officialDelaySeconds)),
@@ -102,7 +110,7 @@ const featureNames = [
   'activeIncidentCount', 'incidentPriority', 'delayRelatedIncident',
   ...LINES.map((line) => `line_${line}`),
   'currentDelaySquared', 'leadSquared', 'delayLeadInteraction',
-  'positiveDelayMinutes', 'shortLeadIndicator',
+  'positiveDelayMinutes', 'shortLeadIndicator', 'delayTrendMinutes',
 ];
 
 const rawFeatures = (example) => {
@@ -128,10 +136,11 @@ const rawFeatures = (example) => {
     example.currentDelayMinutes * clamp(example.secondsToReal / 60, 0, 30),
     Math.max(0, example.currentDelayMinutes),
     clamp(example.secondsToReal / 60, 0, 30) <= 5 ? 1 : 0,
+    clamp(Number(example.delayTrendMinutes) || 0, -5, 5),
   ];
 };
 
-const standardisedIndices = new Set([1, 2, 9, 10, 17, 18, 19, 20]);
+const standardisedIndices = new Set([1, 2, 9, 10, 17, 18, 19, 20, 22]);
 
 const calculateScaling = (examples) => {
   const vectors = examples.map(rawFeatures);
