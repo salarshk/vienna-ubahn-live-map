@@ -1,6 +1,10 @@
 name: Collect and validate U-Bahn delay model
 
 on:
+  push:
+    paths:
+      - 'scripts/ml/**'
+      - '.github/workflows/collect-ubahn-delays.yml'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
