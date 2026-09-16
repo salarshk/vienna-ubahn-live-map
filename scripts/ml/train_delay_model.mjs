@@ -795,8 +795,8 @@ if (validationStage === 'collecting') {
   });
   const bestAlternative = [...modelComparisons].sort((a, b) => a.metrics.maeMinutes - b.metrics.maeMinutes)[0];
   // Only candidates with a serialised browser implementation can be promoted.
-  // At present that is the residual ridge ensemble; the other alternatives
-  // remain useful research comparisons until their runtime format is added.
+  // Research alternatives remain comparison-only until their runtime format
+  // and safety monitor support are explicitly added.
   const winningCandidate = modelComparisons.find((candidate) => (
     candidate.beatsLiveBaseline
       && ['residual-ridge-ensemble', 'isotonic-delay-calibration', 'isotonic-daily-finetuned', 'stacked-delay-ensemble'].includes(candidate.id)
