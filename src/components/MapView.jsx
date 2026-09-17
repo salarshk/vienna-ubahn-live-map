@@ -487,6 +487,43 @@ const vehicleOpacity = (v) => {
   return (base * freshness * consistency).toFixed(2);
 };
 
+// When a train is at (or just leaving) a platform, its 28px marker otherwise
+// lands directly on the station marker. Keep the geographic coordinate exact,
+// but move only the visual marker a few pixels to the side of the track. The
+// direction chooses opposite sides for opposing trains, so both can remain
+// visible without claiming that either train is off the line.
+const stationClearanceOffset = (vehicle) => {
+  const stations = trainPositionEngine.getLineStations(vehicle.line);
+  if (!stations.length) return [0, 0];
+
+  let nearest = null;
+  let distance = Infinity;
+  if (Number.isFinite(vehicle.distanceAlongTrack)) {
+    for (const station of stations) {
+      const candidate = Math.abs(station.trackDist - vehicle.distanceAlongTrack);
+      if (candidate < distance) {
+        distance = candidate;
+        nearest = station;
+      }
+    }
+  } else if (vehicle.targetStation) {
+    nearest = stations.find((station) => station.name === vehicle.targetStation) || null;
+    if (nearest && Array.isArray(vehicle.coordinates)) {
+      distance = haversineDistance(vehicle.coordinates, nearest.coords);
+    }
+  }
+
+  if (!nearest || distance > 70 || !Number.isFinite(Number(vehicle.bearing))) return [0, 0];
+  const side = vehicle.isForward === false ? -1 : 1;
+  const radians = Number(vehicle.bearing) * (Math.PI / 180);
+  const pixels = 15 * side;
+  return [Math.cos(radians) * pixels, Math.sin(radians) * pixels];
+};
+
+const vehicleVisualScale = (scale) => scale < 1
+  ? 0.72 + scale * 0.16
+  : Math.min(1.1, scale);
+
 // Says in the reader's words — not the model's — why a marker is drawn faint,
 // covering both causes: how far the walk had to reach, and how long since the
 // API last confirmed the train.
@@ -782,7 +819,10 @@ const MapView = ({
       } else {
         el.style.visibility = '';
         el.style.pointerEvents = '';
-        el.style.transform = `scale(${Math.min(1.1, scale).toFixed(3)})`;
+        // At the network overview dozens of trains can occupy the same
+        // interchange. Keep every train present, but make the overview marker
+        // slightly smaller; zooming in restores the full tap-sized marker.
+        el.style.transform = `scale(${vehicleVisualScale(scale).toFixed(3)})`;
       }
     });
   };
@@ -881,7 +921,7 @@ const MapView = ({
       const ring = stationRingBackground(st);
 
       inner.style.cssText = `
-        width:22px; height:22px; border-radius:50%;
+        width:22px; height:22px; border-radius:6px;
         background:${ring};
         box-shadow:0 0 0 3px ${isDark ? '#171722' : '#ffffff'}, 0 3px 10px rgba(0,0,0,.55);
         transition:transform .1s ease;
@@ -1023,7 +1063,7 @@ const MapView = ({
         opacity:${vehicleOpacity(v)};
         ${v.isLive ? 'animation: vehiclePulse 2s ease-in-out infinite;' : ''}
         box-sizing:border-box; position:relative;
-        transform: scale(${Math.min(1.1, currentScale).toFixed(3)});
+        transform: scale(${vehicleVisualScale(currentScale).toFixed(3)});
         visibility: ${isHidden ? 'hidden' : ''};
         pointer-events: ${isHidden ? 'none' : ''};
         transform-origin: center center;
@@ -1047,6 +1087,7 @@ const MapView = ({
       };
 
       const marker = new Marker({ element: wrapper, anchor: 'center' })
+        .setOffset(stationClearanceOffset(v))
         .setLngLat(v.coordinates)
         .addTo(map);
 
@@ -1098,6 +1139,7 @@ const MapView = ({
       currentVisible.forEach((v) => {
         const existing = markerMapRef.current.get(v.id);
         if (existing) {
+          existing.marker.setOffset(stationClearanceOffset(v));
           existing.marker.setLngLat(v.coordinates);
           existing.marker.getElement().title = describeVehicle(v);
           existing.marker.getElement().setAttribute('aria-label', describeVehicle(v));
