@@ -186,17 +186,6 @@ const RailIntelligence = ({
             {delayMetrics.deployment?.deployed === false && (
               <div className="model-holdback">Model held back: its test MAE did not beat the live-estimate baseline.</div>
             )}
-            {delayMetrics.modelComparisons?.length > 0 && <div className="model-comparison">
-              <strong>Model comparison on the same unseen test journeys</strong>
-              <div className="model-comparison-row model-comparison-header"><span>Model</span><span>MAE</span><span>RMSE</span><span>Status</span></div>
-              {delayMetrics.modelComparisons.map((candidate) => <div className="model-comparison-row" key={candidate.id}>
-                <span title={candidate.complexity}>{candidate.name}</span>
-                <span>{candidate.metrics.maeMinutes}m</span>
-                <span>{candidate.metrics.rmseMinutes}m</span>
-                <span className={candidate.beatsLiveBaseline ? 'model-win' : 'model-loss'}>{candidate.beatsLiveBaseline ? 'beats baseline' : 'below baseline'}</span>
-              </div>)}
-              <small>Complex alternatives are evaluated here but are not deployed until their browser runtime and safety gate are ready.</small>
-            </div>}
             {delayPredictions.length > 0 && <div className="delay-line-predictions">
               {delayPredictions.map((prediction) => (
                 <span key={prediction.line}><i style={{ background: lineColor(prediction.line) }}>{prediction.line}</i>
