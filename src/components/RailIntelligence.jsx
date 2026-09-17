@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, Gauge, History, Radar, Sparkles, X } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, Gauge, History, LayoutDashboard, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
   analyseAccessibility,
@@ -29,6 +29,7 @@ import disruptionStore from '../services/disruptionStore';
 import { mobilityContextStore } from '../services/mobilityContextStore';
 import { networkSnapshotStore } from '../services/networkSnapshotStore';
 import { advisorIsEnabled } from '../services/railAdvisor';
+import ModelDashboard from './ModelDashboard';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -53,6 +54,7 @@ const RailIntelligence = ({
   const [weatherSnapshot, setWeatherSnapshot] = useState(weatherStore.getSnapshot());
   const [mobilitySnapshot, setMobilitySnapshot] = useState(mobilityContextStore.getSnapshot());
   const [networkSnapshot, setNetworkSnapshot] = useState(networkSnapshotStore.getSnapshot());
+  const [dashboardOpen, setDashboardOpen] = useState(false);
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
   const officialOldestMinutes = Math.max(0, Number(officialSnapshotState?.oldestMinutes) || 0);
@@ -153,7 +155,7 @@ const RailIntelligence = ({
     event.currentTarget.releasePointerCapture?.(event.pointerId);
   };
 
-  return (
+  return (<>
     <aside
       className={`glass-panel intelligence-panel${sheetExpanded ? ' sheet-expanded' : ''}`}
       aria-label="Rail intelligence"
@@ -173,7 +175,10 @@ const RailIntelligence = ({
           <Activity size={18} />
           <div><strong>Rail intelligence</strong><span>Predictions with their evidence exposed</span></div>
         </div>
-        <button className="panel-close-button" onClick={onClose} aria-label="Close rail intelligence"><X size={17} /></button>
+        <div className="intelligence-header-actions">
+          <button className="intelligence-dashboard-button" onClick={() => setDashboardOpen(true)} aria-label="Open model dashboard" title="Open model dashboard"><LayoutDashboard size={17} /></button>
+          <button className="panel-close-button" onClick={onClose} aria-label="Close rail intelligence"><X size={17} /></button>
+        </div>
       </header>
 
       <nav className={`intelligence-tabs${advisorEnabled ? '' : ' advisor-disabled'}`} aria-label="Rail intelligence views">
@@ -444,7 +449,30 @@ const RailIntelligence = ({
       />}
       </div>
     </aside>
-  );
+    {dashboardOpen && <ModelDashboard
+      now={now}
+      snapshot={snapshot}
+      networkSnapshot={networkSnapshot}
+      delaySnapshot={delaySnapshot}
+      operationalModelSnapshot={operationalModelSnapshot}
+      onlineMetrics={onlineMetrics}
+      delayMetrics={delayMetrics}
+      delayPredictions={delayPredictions}
+      arrivals={arrivalStore.getNetworkArrivals(now)}
+      issues={issues}
+      forecasts={forecasts}
+      crowding={crowding}
+      vehicles={vehicles}
+      entries={entries}
+      labTransfers={labTransfers}
+      labRecovery={labRecovery}
+      labRouteRisk={labRouteRisk}
+      weatherSnapshot={weatherSnapshot}
+      mobilitySnapshot={mobilitySnapshot}
+      disruptions={disruptions}
+      onClose={() => setDashboardOpen(false)}
+    />}
+  </>);
 };
 
 export default RailIntelligence;
