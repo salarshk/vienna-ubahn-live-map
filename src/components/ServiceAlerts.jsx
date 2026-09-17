@@ -7,14 +7,14 @@ const timeLabel = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 };
 
-const ServiceAlerts = ({ snapshot, selectedAlert, onSelectAlert, onRefresh, sidebarOpen, isOpen, onOpenChange, onOpen }) => {
+const ServiceAlerts = ({ snapshot, selectedAlert, onSelectAlert, onRefresh, sidebarOpen, isOpen, onOpenChange, onOpen, embedded = false }) => {
   const alerts = snapshot.alerts || [];
 
   const active = selectedAlert || null;
   const hasAlerts = alerts.length > 0;
 
   return (
-    <section className={`service-alerts ${sidebarOpen ? 'sidebar-open' : ''}`} aria-label="Service information">
+    <section className={`service-alerts ${sidebarOpen ? 'sidebar-open' : ''} ${embedded ? 'embedded' : ''}`} aria-label="Service information">
       {isOpen && (
         <div className="service-alerts-panel glass-panel">
           <header>

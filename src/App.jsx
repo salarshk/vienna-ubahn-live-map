@@ -4,7 +4,6 @@ import Sidebar from './components/Sidebar';
 import SearchBar from './components/SearchBar';
 import StationPanel from './components/StationPanel';
 import VehiclePanel from './components/VehiclePanel';
-import ServiceAlerts from './components/ServiceAlerts';
 import DashboardBoard from './components/DashboardBoard';
 import LocateButton from './components/LocateButton';
 import RailIntelligence from './components/RailIntelligence';
@@ -235,6 +234,7 @@ function App() {
     if (alert) {
       setSelectedStation(null);
       setSelectedVehicle(null);
+      setIsSidebarOpen(true);
       setAlertsOpen(true);
       setIntelligenceOpen(false);
       setReplayOffset(0);
@@ -423,6 +423,18 @@ function App() {
         trainStats={trainStats}
         mapVisibility={mapVisibility}
         onToggleVisibility={(key) => setMapVisibility((previous) => ({ ...previous, [key]: !previous[key] }))}
+        disruptionSnapshot={disruptionSnapshot}
+        selectedAlert={selectedAlert}
+        onSelectAlert={handleSelectAlert}
+        onRefreshAlerts={() => disruptionStore.refresh()}
+        alertsOpen={alertsOpen}
+        onAlertsOpenChange={setAlertsOpen}
+        onOpenAlerts={() => {
+          setSelectedStation(null);
+          setSelectedVehicle(null);
+          setIntelligenceOpen(false);
+          setReplayOffset(0);
+        }}
       />
 
       {/* Top Navigation Bar: Sidebar Toggle Button + Search Bar & Quick Actions */}
@@ -617,21 +629,6 @@ function App() {
         />
       )}
 
-      <ServiceAlerts
-        snapshot={disruptionSnapshot}
-        selectedAlert={selectedAlert}
-        onSelectAlert={handleSelectAlert}
-        onRefresh={() => disruptionStore.refresh()}
-        sidebarOpen={isSidebarOpen}
-        isOpen={alertsOpen}
-        onOpenChange={setAlertsOpen}
-        onOpen={() => {
-          setSelectedStation(null);
-          setSelectedVehicle(null);
-          setIntelligenceOpen(false);
-          setReplayOffset(0);
-        }}
-      />
     </div>
   );
 }

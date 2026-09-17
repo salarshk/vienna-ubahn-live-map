@@ -846,6 +846,37 @@ button:active {
 
 .service-alerts.sidebar-open { left: 360px; }
 
+/* The sidebar owns this version of the alert control. Keeping it in normal
+   flow makes the alert list part of the same scroll surface as map layers and
+   line filters instead of floating over the map. */
+.service-alerts.embedded {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  max-width: none;
+  z-index: auto;
+  transition: none;
+}
+
+.service-alerts.embedded .service-alert-toggle {
+  width: 100%;
+  justify-content: space-between;
+  border-radius: 10px;
+}
+
+.service-alerts.embedded .service-alerts-panel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  margin-top: 8px;
+  box-shadow: none;
+  border-radius: 10px;
+}
+
+.service-alerts.embedded .service-alert-list {
+  max-height: min(300px, 38vh);
+}
+
 .service-alert-toggle {
   min-height: 42px;
   padding: 9px 13px;
@@ -1348,4 +1379,12 @@ button:active {
 .station-focus-node {
   z-index: 1200;
   pointer-events: none;
+}
+
+/* Embedded alerts are regular sidebar content at every breakpoint. */
+.service-alerts.embedded {
+  inset: auto !important;
+}
+.service-alerts.embedded .service-alerts-panel {
+  max-height: none !important;
 }

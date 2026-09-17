@@ -4,6 +4,7 @@ import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
 import { getSbahnFreshness } from '../services/dataFreshness';
+import ServiceAlerts from './ServiceAlerts';
 
 const Sidebar = ({
   isOpen,
@@ -14,6 +15,13 @@ const Sidebar = ({
   trainStats = { live: 0, confirmed: 0, scheduled: 0 },
   mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true, confidenceRanges: true, reliabilityAtlas: false },
   onToggleVisibility,
+  disruptionSnapshot,
+  selectedAlert,
+  onSelectAlert,
+  onRefreshAlerts,
+  alertsOpen,
+  onAlertsOpenChange,
+  onOpenAlerts,
 }) => {
   // Combine line features from bundled metro JSON and GTFS-generated data.
   const allFeatures = [
@@ -177,6 +185,18 @@ const Sidebar = ({
               })}
             </div>
           </div>
+
+          <ServiceAlerts
+            snapshot={disruptionSnapshot}
+            selectedAlert={selectedAlert}
+            onSelectAlert={onSelectAlert}
+            onRefresh={onRefreshAlerts}
+            sidebarOpen={isOpen}
+            isOpen={alertsOpen}
+            onOpenChange={onAlertsOpenChange}
+            onOpen={onOpenAlerts}
+            embedded
+          />
 
           {/* Live Stats & Footer */}
           <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
