@@ -1,3 +1,5 @@
+import { handleNetworkSnapshot } from './networkSnapshot';
+
 const DEFAULT_ORIGINS = [
   'https://salarshk.github.io',
   'http://localhost:5173',
@@ -119,11 +121,30 @@ export const buildOpenAIRequest = ({ audience, goal, evidence }, env) => ({
   max_output_tokens: 1800,
 });
 
-export const handleRequest = async (request, env, fetchImpl = fetch) => {
+const handleCachedNetworkSnapshot = async (request, env, fetchImpl, executionContext) => {
+  const cache = globalThis.caches?.default;
+  const origin = request.headers.get('Origin') || 'http://localhost:5173';
+  const cacheUrl = new URL(request.url);
+  cacheUrl.search = '';
+  cacheUrl.searchParams.set('origin', origin);
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  if (cache) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+  const response = await handleNetworkSnapshot(request, env, fetchImpl, executionContext);
+  if (cache && response?.ok) await cache.put(cacheKey, response.clone());
+  return response;
+};
+
+export const handleRequest = async (request, env, fetchImpl = fetch, executionContext = null) => {
   const origin = request.headers.get('Origin') || 'http://localhost:5173';
   if (!allowedOrigins(env).includes(origin)) return json({ error: 'Origin is not allowed.' }, 403, null);
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (request.method === 'GET' && url.pathname.endsWith('/network-snapshot')) {
+    return handleCachedNetworkSnapshot(request, env, fetchImpl, executionContext);
+  }
   if (request.method === 'GET' && FEED_PATHS.has(url.pathname)) {
     if (!withinFeedRateLimit(request)) return json({ error: 'Too many feed requests. Please wait a minute.' }, 429, origin);
     const upstream = new URL(`https://www.wienerlinien.at/ogd_realtime${url.pathname}`);
@@ -188,4 +209,4 @@ export const handleRequest = async (request, env, fetchImpl = fetch) => {
 // Cloudflare supplies an execution context as the third handler argument. Keep
 // the injected fetch function explicit so production calls use global fetch,
 // while unit tests can still provide a mock.
-export default { fetch: (request, env) => handleRequest(request, env, fetch) };
+export default { fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext) };

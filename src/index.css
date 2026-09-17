@@ -597,6 +597,7 @@ button:active {
 .data-model-decisions { display: grid; gap: 3px; margin-top: 6px; }
 .data-model-decisions span { display: flex; align-items: flex-start; gap: 5px; color: var(--text-secondary); font-size: .5rem; line-height: 1.25; }
 .data-model-decisions i { min-width: 22px; padding: 2px 3px; border-radius: 4px; color: #fff; font-size: .48rem; font-style: normal; font-weight: 900; text-align: center; }
+.shared-model-status { margin: 6px 0; padding: 5px 7px; border-radius: 6px; color: #a7e8ad; background: rgba(64, 170, 85, .12); font-size: .52rem; }
 .model-comparison { margin-top: 9px; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-hover); }
 .model-comparison > strong { display: block; margin-bottom: 5px; color: var(--text-primary); font-size: .6rem; }
 .model-comparison-row { display: grid; grid-template-columns: minmax(0, 1.45fr) .55fr .55fr 1fr; gap: 5px; align-items: center; padding: 4px 0; color: var(--text-secondary); font-size: .55rem; font-variant-numeric: tabular-nums; }

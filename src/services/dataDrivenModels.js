@@ -44,7 +44,7 @@ const averageDelay = (arrivals) => {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 };
 
-export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [], issues = [], disruptions = [], crowding = [], vehicles = [], reliability = [], now = Date.now() } = {}) => {
+export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [], issues = [], disruptions = [], crowding = [], vehicles = [], now = Date.now(), remoteModels = null } = {}) => {
   const weather = context.weatherNowcast || {};
   const holidays = context.holidays || {};
   const air = context.airQuality || {};
@@ -68,7 +68,7 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     return { line, score: round(score), action: score >= 70 ? 'Prioritise incident response and passenger diversions' : score >= 40 ? 'Monitor headway and prepare a short-turn/fallback' : 'Keep normal regulation; watch the next observations' };
   });
 
-  return [
+  const localModels = [
     make('weather-delay', `${riskLabel(weatherScore)} delay pressure · +${round(weatherScore / 20, 1)} min risk`, weatherScore, { confidence: source('geosphere-nowcast') ? 72 : 38 }),
     make('weather-dwell', `${riskLabel(weatherScore * 0.9)} dwell pressure · ${round(1 + weatherScore / 100, 1)}× baseline`, weatherScore * 0.9, { confidence: source('geosphere-nowcast') ? 68 : 35 }),
     make('holiday-demand', `${riskLabel(clamp(50 + peakScore + holidayAdjustment))} demand · ${holidays.isPublicHoliday ? 'public holiday' : holidays.isSchoolHoliday ? 'school holiday' : peak(now) ? 'peak period' : 'working-day baseline'}`, clamp(50 + peakScore + holidayAdjustment), { confidence: source('holidays') ? 80 : 42 }),
@@ -89,4 +89,24 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     make('mobility-flow', context['mobile-movement'] ? 'Aggregated city movement context connected' : 'Awaiting privacy-preserving mobility partner feed', peakScore + incidentScore * 0.2, { confidence: source('mobile-movement') ? 70 : 20 }),
     make('control-room-decisions', decisions.map((item) => `${item.line}: ${item.action}`).join(' · '), Math.max(...decisions.map((item) => item.score), 0), { confidence: 70, decisions }),
   ];
+  const remoteLines = Array.isArray(remoteModels?.lines) ? remoteModels.lines : [];
+  if (!remoteLines.length) return localModels;
+  const lineText = (field, formatter) => remoteLines.map((line) => formatter(line[field], line.line)).join(' · ');
+  return localModels.map((item) => {
+    const shared = {
+      'weather-delay': remoteModels,
+      'station-crowding': remoteModels,
+      'headway-bunching': remoteModels,
+      'disruption-propagation': remoteModels,
+      'control-room-decisions': remoteModels,
+    }[item.id];
+    if (!shared) return item;
+    let output = item.output;
+    if (item.id === 'weather-delay') output = 'Shared Worker model active · ' + lineText('delay', (value, line) => `${line} ${value?.meanDelayMinutes ?? 0}m mean delay`);
+    if (item.id === 'station-crowding') output = 'Shared Worker model active · ' + lineText('crowding', (value, line) => `${line} ${value?.score ?? 0}/100`);
+    if (item.id === 'headway-bunching') output = 'Shared Worker model active · ' + lineText('headway', (value, line) => `${line} ${value?.risk ?? 0}% ${value?.location || ''}`);
+    if (item.id === 'disruption-propagation') output = 'Shared Worker model active · ' + lineText('severity', (value, line) => `${line} ${value || 'on time'}`);
+    if (item.id === 'control-room-decisions') output = 'Shared Worker control-room recommendations active';
+    return { ...item, status: 'live', output, confidence: Math.max(Number(item.confidence) || 0, 72), source: 'cloudflare-worker-shared-inference' };
+  });
 };

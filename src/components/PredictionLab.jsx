@@ -11,7 +11,7 @@ import {
 } from '../services/predictionModels';
 import { buildDataDrivenModels } from '../services/dataDrivenModels';
 
-const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, operationalModels = null }) => {
+const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, networkSnapshot = null, operationalModels = null }) => {
   const multiHorizon = useMemo(() => predictMultiHorizonDelay({ arrivals, linePredictions: delayPredictions, disruptions, now }), [arrivals, delayPredictions, disruptions, now]);
   const eta = useMemo(() => predictNextStationEta({ vehicles }), [vehicles]);
   const dwell = useMemo(() => predictDwellForecast({ vehicles }), [vehicles]);
@@ -39,7 +39,8 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     vehicles,
     reliability,
     now,
-  }), [mobilitySnapshot, arrivals, issues, disruptions, crowding, vehicles, reliability, now]);
+    remoteModels: networkSnapshot?.data?.models,
+  }), [mobilitySnapshot, networkSnapshot, arrivals, issues, disruptions, crowding, vehicles, reliability, now]);
 
   const explain = (text) => <p className="prediction-description">{text}</p>;
 
@@ -56,6 +57,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     <div className="advanced-card data-models-card">
       <div className="advanced-card-title"><strong>New-data model suite</strong><span>{dataDrivenModels.filter((item) => item.status === 'live').length}/{dataDrivenModels.length} live inputs</span></div>
       {explain('These models use the newly connected weather, calendar, air-quality, bike-share and optional partner data. A transparent baseline is shown while labels are collected; a live status means the named feed is currently connected.')}
+      {networkSnapshot?.data?.generatedAt && <div className="shared-model-status">Shared Worker inference · updated {new Date(networkSnapshot.data.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>}
       <div className="data-model-grid">{dataDrivenModels.map((item) => <article className="data-model-tile" key={item.id}>
         <div className="data-model-tile-head"><strong>{item.name}</strong><span className={`data-model-status ${item.status}`}>{item.status}</span></div>
         <p>{item.description}</p>

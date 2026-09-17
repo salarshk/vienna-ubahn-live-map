@@ -25,6 +25,26 @@ describe('advisor worker', () => {
     expect(await response.json()).toEqual({ data: { pois: [] } });
   });
 
+  it('builds a shared network snapshot and model outputs', async () => {
+    const payload = {
+      message: { serverTime: '2026-09-17T12:00:00+0200' },
+      data: { monitors: [{ locationStop: { properties: { name: '60201320', title: 'Stephansplatz' } }, lines: [{ name: 'U1', towards: 'Leopoldau', departures: { departure: [
+        { departureTime: { timePlanned: '2026-09-17T12:01:00+0200', timeReal: '2026-09-17T12:03:00+0200', countdown: '1' }, vehicle: { towards: 'Leopoldau' } },
+        { departureTime: { timePlanned: '2026-09-17T12:05:00+0200', timeReal: '2026-09-17T12:05:00+0200', countdown: '5' }, vehicle: { towards: 'Leopoldau' } },
+      ] } }] }] },
+    };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const response = await handleRequest(new Request('https://worker.example/network-snapshot', {
+      method: 'GET', headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() },
+    }), env, fetchMock);
+    const result = await response.json();
+    expect(response.status).toBe(200);
+    expect(result.source).toBe('wiener-linien-monitor');
+    expect(result.observations).toHaveLength(2);
+    expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('answers an allowed CORS preflight', async () => {
     const response = await handleRequest(new Request('https://worker.example/advice', {
       method: 'OPTIONS', headers: { Origin: origin },
