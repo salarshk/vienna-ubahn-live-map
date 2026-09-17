@@ -165,6 +165,10 @@ class DisruptionStore {
     return this.snapshot;
   }
 
+  getIncidentHistory() {
+    return readHistory(HISTORY_KEY);
+  }
+
   async refresh() {
     if (this.inFlight) return this.inFlight;
     this.snapshot = { ...this.snapshot, status: 'loading', error: null };

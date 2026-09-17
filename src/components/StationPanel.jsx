@@ -65,6 +65,9 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
   const leaveNow = estimateLeaveNow(station.properties, userLocation, now);
   const bestDeparture = leaveNow?.options?.find((option) => option.chance >= 45)
     || leaveNow?.options?.[0];
+  const platformArrivals = focus.arrivals
+    .filter((arrival) => arrival.platform || arrival.gate)
+    .slice(0, 4);
   const scheduledOnly = focus.hasScheduled && !focus.hasRealtime;
   const unheardLabel = focus.secondsUnheard === null
     ? 'never fetched'
@@ -199,6 +202,20 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
             );
           })}
         </div>
+      )}
+
+      {platformArrivals.length > 0 && (
+        <section className="station-platform-guidance" aria-label="Platform and boarding guidance">
+          <div className="station-platform-guidance-title">Platform & boarding guidance</div>
+          {platformArrivals.map((arrival) => (
+            <div className="station-platform-row" key={`${arrival.line}-${arrival.destination}-${arrival.targetTimestamp}`}>
+              <span className="station-platform-line" style={{ background: lineColor(arrival.line) }}>{arrival.line}</span>
+              <div><strong>Platform {arrival.platform || arrival.gate}</strong><span>Towards {arrival.destination} · {countdownLabel(arrival.seconds)}</span></div>
+              <small>{focus.lines.length > 1 ? 'centre for interchange' : 'follow platform signs'}</small>
+            </div>
+          ))}
+          <p>Platform metadata comes from the official monitor feed. Boarding advice is a practical interchange hint, not an operator instruction.</p>
+        </section>
       )}
 
       {userLocation?.status === 'located' && leaveNow && (

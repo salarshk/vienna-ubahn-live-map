@@ -22,8 +22,10 @@ import { getReports, subscribe as subscribeReports } from '../services/community
 import OperationsDashboard from './OperationsDashboard';
 import DelayTimeline from './DelayTimeline';
 import PredictionLab from './PredictionLab';
+import PassengerIntelligence from './PassengerIntelligence';
 import { buildRecoveryForecast, buildRouteRisk, buildTransferHealth } from '../services/advancedIntelligence';
 import { weatherStore } from '../services/contextSignals';
+import disruptionStore from '../services/disruptionStore';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -264,11 +266,22 @@ const RailIntelligence = ({
         operationalModels={operationalModelSnapshot.report}
       />}
 
-      {tab === 'signals' && <AdvancedSignals
-        now={now} issues={issues} forecasts={forecasts} disruptions={disruptions}
-        crowding={crowding} accessibility={accessibility} reliability={snapshot.reliability || []}
-        vehicles={vehicles} entries={entries} modelHealth={delaySnapshot.health}
-      />}
+      {tab === 'signals' && <>
+        <PassengerIntelligence
+          now={now}
+          issues={issues}
+          disruptions={disruptions}
+          history={disruptionStore.getIncidentHistory()}
+          reliability={snapshot.reliability || []}
+          vehicles={vehicles}
+          entries={entries}
+        />
+        <AdvancedSignals
+          now={now} issues={issues} forecasts={forecasts} disruptions={disruptions}
+          crowding={crowding} accessibility={accessibility} reliability={snapshot.reliability || []}
+          vehicles={vehicles} entries={entries} modelHealth={delaySnapshot.health}
+        />
+      </>}
 
       {tab === 'operations' && <OperationsDashboard
         now={now} issues={issues} disruptions={disruptions} crowding={crowding}
