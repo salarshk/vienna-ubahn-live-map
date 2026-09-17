@@ -485,12 +485,15 @@ button:active {
   right: 16px;
   width: min(390px, 36vw);
   max-height: calc(var(--app-height) - 104px);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overscroll-behavior: contain;
   animation: slideUp 380ms cubic-bezier(.16, 1, .3, 1);
 }
 
-.intelligence-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--border-color); }
+.intelligence-drag-handle { display: none; }
+.intelligence-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--border-color); position: relative; z-index: 3; background: var(--bg-panel-solid); }
 .intelligence-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .intelligence-title strong, .intelligence-title span { display: block; }
 .intelligence-title strong { font-size: .88rem; }
@@ -530,9 +533,12 @@ button:active {
 .reliability-grid span { font-size: .63rem; font-weight: 900; }
 .reliability-grid strong { margin-top: 2px; overflow: hidden; font-size: .66rem; }
 
-.intelligence-tabs { display: grid; grid-template-columns: repeat(8, 1fr); padding: 6px; gap: 4px; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 2; background: var(--bg-panel-solid); }
+.intelligence-tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); padding: 6px; gap: 5px; border-bottom: 1px solid var(--border-color); position: relative; z-index: 2; background: var(--bg-panel-solid); }
+.intelligence-tabs.advisor-disabled { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .intelligence-tabs button { min-width: 0; padding: 7px 3px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--text-secondary); font-size: .62rem; font-weight: 800; }
+.intelligence-tabs button[data-tab="operations"], .intelligence-tabs button[data-tab="predictions"] { margin-left: 6px; }
 .intelligence-tabs button.active { background: var(--bg-hover-active); color: var(--text-primary); }
+.intelligence-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; scrollbar-width: thin; }
 .intelligence-section-title em { margin-left: auto; padding: 2px 5px; border-radius: 5px; background: rgba(255, 183, 77, .14); color: #ffb74d; font-size: .54rem; font-style: normal; letter-spacing: .04em; text-transform: uppercase; }
 
 .propagation-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -713,6 +719,7 @@ button:active {
 .advanced-signals > .intelligence-note:last-child { display: flex; align-items: center; gap: 4px; }
 @media (max-width: 430px) {
   .intelligence-tabs { grid-template-columns: repeat(3, 1fr); }
+  .intelligence-tabs.advisor-disabled { grid-template-columns: repeat(3, 1fr); }
   .advanced-line-grid { grid-template-columns: 1fr; }
   .scenario-output { grid-template-columns: 1fr; }
 }
@@ -865,6 +872,29 @@ button:active {
     max-height: min(62dvh, calc(100dvh - 12px));
     border-radius: 18px 18px 0 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    transform: translateY(var(--intelligence-sheet-drag, 0px));
+    transition: max-height .28s cubic-bezier(.16, 1, .3, 1), transform .18s ease-out;
+  }
+  .intelligence-panel.sheet-expanded {
+    max-height: calc(100dvh - 8px - env(safe-area-inset-top, 0px));
+  }
+  .intelligence-drag-handle {
+    flex: 0 0 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    cursor: grab;
+    background: var(--bg-panel-solid);
+  }
+  .intelligence-drag-handle:active { cursor: grabbing; }
+  .intelligence-drag-handle i {
+    display: block;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--text-secondary);
+    opacity: .58;
   }
   .vehicle-panel { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: min(62dvh, calc(100dvh - 12px)); overflow-y: auto; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, Gauge, History, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
@@ -43,6 +43,9 @@ const RailIntelligence = ({
   const now = snapshot.generatedAt || 0;
   const [tab, setTab] = useState('forecast');
   const advisorEnabled = advisorIsEnabled();
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetDragOffset, setSheetDragOffset] = useState(0);
+  const sheetDragRef = useRef(null);
   const [explainLineId, setExplainLineId] = useState('U1');
   const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
   const [operationalModelSnapshot, setOperationalModelSnapshot] = useState(operationalModelStore.getSnapshot());
@@ -122,8 +125,49 @@ const RailIntelligence = ({
     return unsubscribe;
   }, []);
 
+  const startSheetDrag = (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    sheetDragRef.current = { pointerId: event.pointerId, startY: event.clientY };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setSheetDragOffset(0);
+  };
+
+  const moveSheetDrag = (event) => {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const delta = event.clientY - drag.startY;
+    // Follow an upward drag visually, with a small downward resistance. The
+    // snap state is committed on release so normal content scrolling remains
+    // independent from the sheet gesture.
+    setSheetDragOffset(delta < 0 ? delta : delta * 0.25);
+  };
+
+  const endSheetDrag = (event) => {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const delta = event.clientY - drag.startY;
+    if (delta < -48) setSheetExpanded(true);
+    if (delta > 48) setSheetExpanded(false);
+    sheetDragRef.current = null;
+    setSheetDragOffset(0);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
   return (
-    <aside className="glass-panel intelligence-panel" aria-label="Rail intelligence">
+    <aside
+      className={`glass-panel intelligence-panel${sheetExpanded ? ' sheet-expanded' : ''}`}
+      aria-label="Rail intelligence"
+      style={{ '--intelligence-sheet-drag': `${sheetDragOffset}px` }}
+    >
+      <div
+        className="intelligence-drag-handle"
+        role="separator"
+        aria-label="Drag rail intelligence panel up or down"
+        onPointerDown={startSheetDrag}
+        onPointerMove={moveSheetDrag}
+        onPointerUp={endSheetDrag}
+        onPointerCancel={endSheetDrag}
+      ><i /></div>
       <header className="intelligence-header">
         <div className="intelligence-title">
           <Activity size={18} />
@@ -132,18 +176,19 @@ const RailIntelligence = ({
         <button className="panel-close-button" onClick={onClose} aria-label="Close rail intelligence"><X size={17} /></button>
       </header>
 
-      <nav className="intelligence-tabs" aria-label="Rail intelligence views">
+      <nav className={`intelligence-tabs${advisorEnabled ? '' : ' advisor-disabled'}`} aria-label="Rail intelligence views">
         {[
           ['forecast', Radar, 'Forecast'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
           ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'], ['predictions', Sparkles, 'Models'],
         ].filter(([id]) => id !== 'advisor' || advisorEnabled).map(([id, Icon, label]) => (
-          <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)} aria-pressed={tab === id}>
+          <button data-tab={id} key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)} aria-pressed={tab === id}>
             <Icon size={14} />{label}
           </button>
         ))}
       </nav>
 
+      <div className="intelligence-scroll">
       {tab === 'forecast' && <>
         <section className="intelligence-section">
           <div className="intelligence-section-title"><AlertTriangle size={14} /><strong>Gap & bunching radar</strong></div>
@@ -397,6 +442,7 @@ const RailIntelligence = ({
         crowding={crowding} accessibility={accessibility} delayMetrics={delayMetrics}
         delayPredictions={delayPredictions} now={now}
       />}
+      </div>
     </aside>
   );
 };
