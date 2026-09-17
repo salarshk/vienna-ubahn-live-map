@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Activity, BarChart3, BrainCircuit, Clock3, Database, Layers, X,
 } from 'lucide-react';
@@ -41,6 +41,7 @@ const ModelDashboard = ({
   disruptions = [],
   onClose,
 }) => {
+  const [activeSection, setActiveSection] = useState('overview');
   const shared = networkSnapshot?.data;
   const sharedModels = shared?.models?.predictionLab || {};
   const operationalReport = operationalModelSnapshot?.report;
@@ -107,6 +108,19 @@ const ModelDashboard = ({
             <div><Layers size={15} /><span>Prediction families<strong>{Object.keys(sharedModels).length || 'local'}</strong></span></div>
           </section>
 
+          <nav className="dashboard-section-nav" aria-label="Dashboard sections">
+            {[
+              ['overview', 'Overview', 'Live pulse and line figure'],
+              ['models', 'Models', 'Training and model inputs'],
+              ['predictions', 'Predictions', 'Delay, ETA and headways'],
+              ['operations', 'Operations', 'Recovery and passenger risk'],
+              ['context', 'Context', 'Weather and diagnostics'],
+            ].map(([id, label, description]) => <button key={id} className={activeSection === id ? 'active' : ''} onClick={() => setActiveSection(id)} aria-pressed={activeSection === id}>
+              <strong>{label}</strong><span>{description}</span>
+            </button>)}
+          </nav>
+
+          {activeSection === 'overview' && <>
           <section className="dashboard-card">
             <div className="dashboard-card-heading"><div><strong>Model health</strong><span>Training state and latest score signals</span></div><BrainCircuit size={16} /></div>
             <div className="dashboard-model-list">{modelRows.map((model) => <div className="dashboard-model-row" key={model.name}><span className={`dashboard-status ${String(model.status).replaceAll(' ', '-')}`}>{model.status}</span><div><strong>{model.name}</strong><small>{model.detail}</small></div></div>)}</div>
@@ -146,8 +160,9 @@ const ModelDashboard = ({
               <div><span>Route risks</span><strong>{sharedModels.routes?.length || labRouteRisk.length || '—'}</strong><small>alternative recommendations</small></div>
             </div>
           </section>
+          </>}
 
-          <PredictionLab
+          {activeSection !== 'overview' && <PredictionLab
             now={now}
             issues={issues}
             disruptions={disruptions}
@@ -162,7 +177,8 @@ const ModelDashboard = ({
             mobilitySnapshot={mobilitySnapshot}
             networkSnapshot={networkSnapshot}
             operationalModels={operationalReport}
-          />
+            category={activeSection}
+          />}
         </div>
       </section>
     </div>

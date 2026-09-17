@@ -565,6 +565,13 @@ button:active {
 .dashboard-stat-grid span, .dashboard-stat-grid strong { display: block; }
 .dashboard-stat-grid span { min-width: 0; color: var(--text-secondary); font-size: .59rem; }
 .dashboard-stat-grid strong { margin-top: 2px; color: var(--text-primary); font-size: .95rem; font-variant-numeric: tabular-nums; }
+.dashboard-section-nav { position: sticky; top: -16px; z-index: 4; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 2px 0 10px; padding: 8px 0; background: var(--bg-panel-solid); }
+.dashboard-section-nav button { min-width: 0; padding: 8px 7px; border: 1px solid transparent; border-radius: 9px; color: var(--text-secondary); background: var(--bg-hover); text-align: left; }
+.dashboard-section-nav button:hover, .dashboard-section-nav button:focus-visible { border-color: var(--border-color); color: var(--text-primary); }
+.dashboard-section-nav button.active { border-color: rgba(128, 168, 255, .55); color: var(--text-primary); background: rgba(128, 168, 255, .13); box-shadow: inset 0 0 0 1px rgba(128, 168, 255, .12); }
+.dashboard-section-nav strong, .dashboard-section-nav span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-section-nav strong { font-size: .63rem; }
+.dashboard-section-nav span { margin-top: 3px; color: var(--text-secondary); font-size: .52rem; }
 .dashboard-card { margin-top: 10px; padding: 13px; border: 1px solid var(--border-color); border-radius: 11px; background: color-mix(in srgb, var(--bg-panel-solid) 88%, #80a8ff 12%); }
 .dashboard-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; color: #80a8ff; }
 .dashboard-card-heading strong, .dashboard-card-heading span { display: block; }
@@ -930,6 +937,7 @@ button:active {
   .dashboard-hero { align-items: flex-start; flex-direction: column; gap: 10px; }
   .dashboard-updated { align-self: stretch; }
   .dashboard-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-section-nav { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-model-list { grid-template-columns: 1fr; }
   .dashboard-data-grid, .dashboard-pulse-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-line-row { grid-template-columns: 30px minmax(70px, 1fr) 52px; }
