@@ -4,7 +4,6 @@ import Sidebar from './components/Sidebar';
 import SearchBar from './components/SearchBar';
 import StationPanel from './components/StationPanel';
 import VehiclePanel from './components/VehiclePanel';
-import DashboardBoard from './components/DashboardBoard';
 import LocateButton from './components/LocateButton';
 import RailIntelligence from './components/RailIntelligence';
 import NearbyStations from './components/NearbyStations';
@@ -26,20 +25,15 @@ import './index.css';
 // short enough that it is gone before it becomes furniture.
 const LOCATE_NOTICE_MS = 6000;
 
-// Dashboard mode is bookmarkable so an unattended tablet can boot straight into
-// it, and reachable from a button so it is discoverable from the map.
-const readMode = () =>
-  new URLSearchParams(window.location.search).get('mode') === 'dashboard' ? 'dashboard' : 'map';
-
 function App() {
   const [theme, setTheme] = useState('dark');
-  const [mode, setMode] = useState(readMode);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [controlRoomOpen, setControlRoomOpen] = useState(false);
   const [replayOffset, setReplayOffset] = useState(0);
   const [intelligenceSnapshot, setIntelligenceSnapshot] = useState(
     networkIntelligenceStore.getSnapshot()
@@ -354,14 +348,6 @@ function App() {
     return lineColor(lineId);
   };
 
-  const selectMode = (next) => {
-    const url = new URL(window.location.href);
-    if (next === 'dashboard') url.searchParams.set('mode', 'dashboard');
-    else url.searchParams.delete('mode');
-    window.history.replaceState({}, '', url);
-    setMode(next);
-  };
-
   const replaySnapshot = replayOffset > 0
     ? networkIntelligenceStore.getReplaySnapshot(replayOffset)
     : null;
@@ -377,35 +363,32 @@ function App() {
     setIntelligenceOpen((open) => !open);
   };
 
+  const openControlRoom = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setCommuteOpen(false);
+    setReplayOffset(0);
+    setControlRoomOpen(true);
+    setIntelligenceOpen(true);
+  };
+
   const openCommute = () => {
     setSelectedStation(null);
     setSelectedVehicle(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
+    setControlRoomOpen(false);
     setIntelligenceOpen(false);
     setCommuteOpen((open) => !open);
   };
 
   const closeIntelligence = () => {
     setIntelligenceOpen(false);
+    setControlRoomOpen(false);
     setReplayOffset(0);
   };
-
-  // Back and forward have to land on the mode the URL names, or a bookmarked
-  // dashboard stops being a reliable place to return to.
-  useEffect(() => {
-    const onPopState = () => setMode(readMode());
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  if (mode === 'dashboard') {
-    return (
-      <div className="app-container">
-        <DashboardBoard theme={theme} onExit={() => selectMode('map')} />
-      </div>
-    );
-  }
 
   return (
     <div className="app-container">
@@ -472,7 +455,7 @@ function App() {
           />
           <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', flexShrink: 0 }} />
           <button
-            onClick={() => selectMode('dashboard')}
+            onClick={openControlRoom}
             style={{
               padding: '8px',
               borderRadius: '8px',
@@ -482,8 +465,8 @@ function App() {
               justifyContent: 'center',
               flexShrink: 0,
             }}
-            title="Open live station departures"
-            aria-label="Open live station departures"
+            title="Open network control room"
+            aria-label="Open network control room"
           >
             <LayoutDashboard size={18} />
           </button>
@@ -628,6 +611,7 @@ function App() {
 
       {intelligenceOpen && (
         <RailIntelligence
+          key={controlRoomOpen ? 'control-room' : 'rail-intelligence'}
           snapshot={intelligenceSnapshot}
           disruptions={disruptionSnapshot.alerts}
           replayOffset={replayOffset}
@@ -641,6 +625,8 @@ function App() {
             reliabilityAtlas: !previous.reliabilityAtlas,
           }))}
           onClose={closeIntelligence}
+          dashboardInitiallyOpen={controlRoomOpen}
+          onDashboardClose={() => setControlRoomOpen(false)}
         />
       )}
 

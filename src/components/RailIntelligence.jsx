@@ -40,6 +40,7 @@ const ageLabel = (timestamp) => {
 const RailIntelligence = ({
   snapshot, disruptions = [], replayOffset, replaySnapshot, onReplayChange,
   atlasVisible, onToggleAtlas, onClose, officialSnapshotState, officialReplaySnapshot,
+  dashboardInitiallyOpen = false, onDashboardClose,
 }) => {
   const now = snapshot.generatedAt || 0;
   const [tab, setTab] = useState('forecast');
@@ -54,7 +55,7 @@ const RailIntelligence = ({
   const [weatherSnapshot, setWeatherSnapshot] = useState(weatherStore.getSnapshot());
   const [mobilitySnapshot, setMobilitySnapshot] = useState(mobilityContextStore.getSnapshot());
   const [networkSnapshot, setNetworkSnapshot] = useState(networkSnapshotStore.getSnapshot());
-  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [dashboardOpen, setDashboardOpen] = useState(dashboardInitiallyOpen);
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
   const officialOldestMinutes = Math.max(0, Number(officialSnapshotState?.oldestMinutes) || 0);
@@ -470,7 +471,7 @@ const RailIntelligence = ({
       weatherSnapshot={weatherSnapshot}
       mobilitySnapshot={mobilitySnapshot}
       disruptions={disruptions}
-      onClose={() => setDashboardOpen(false)}
+      onClose={() => { setDashboardOpen(false); onDashboardClose?.(); }}
     />}
   </>);
 };
