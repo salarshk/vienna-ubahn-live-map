@@ -271,6 +271,7 @@ const RailIntelligence = ({
         routeRisk={labRouteRisk}
         delayPredictions={delayPredictions}
         weather={weatherSnapshot.current}
+        mobilitySnapshot={mobilitySnapshot}
         operationalModels={operationalModelSnapshot.report}
       />}
 

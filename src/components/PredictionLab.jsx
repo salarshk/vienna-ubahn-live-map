@@ -9,8 +9,9 @@ import {
   predictSbahnConnections, predictTransferSuccess, predictWeatherImpact,
   scoreRouteReliability,
 } from '../services/predictionModels';
+import { buildDataDrivenModels } from '../services/dataDrivenModels';
 
-const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, operationalModels = null }) => {
+const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, operationalModels = null }) => {
   const multiHorizon = useMemo(() => predictMultiHorizonDelay({ arrivals, linePredictions: delayPredictions, disruptions, now }), [arrivals, delayPredictions, disruptions, now]);
   const eta = useMemo(() => predictNextStationEta({ vehicles }), [vehicles]);
   const dwell = useMemo(() => predictDwellForecast({ vehicles }), [vehicles]);
@@ -28,6 +29,17 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
   const sbahn = useMemo(() => predictSbahnConnections({ vehicles, now }), [vehicles, now]);
   const anomalies = useMemo(() => detectPredictiveAnomalies({ vehicles, issues, arrivals }), [vehicles, issues, arrivals]);
   const uncertainty = useMemo(() => calibrateUncertainty({ vehicles, reliability }), [vehicles, reliability]);
+  const dataDrivenModels = useMemo(() => buildDataDrivenModels({
+    context: mobilitySnapshot?.context || {},
+    sources: mobilitySnapshot?.sources || {},
+    arrivals,
+    issues,
+    disruptions,
+    crowding,
+    vehicles,
+    reliability,
+    now,
+  }), [mobilitySnapshot, arrivals, issues, disruptions, crowding, vehicles, reliability, now]);
 
   const explain = (text) => <p className="prediction-description">{text}</p>;
 
@@ -40,6 +52,19 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
       <div className="quality-grid"><span>Observations<strong>{operationalModels.data?.observationRows || 0}</strong></span><span>Delay labels<strong>{operationalModels.data?.labelledDelayRows || 0}</strong></span><span>Headway events<strong>{operationalModels.data?.headwayEvents || 0}</strong></span><span>Calendar days<strong>{operationalModels.data?.calendarDays || 0}</strong></span></div>
       <div className="advanced-evidence-list">{(operationalModels.models || []).map((item) => <div key={item.id} className="model-registry-row"><strong>{item.name}</strong><span>{item.algorithm} · {item.trainingExamples} examples</span><small className={`model-registry-status ${item.status}`}>{item.status === 'candidate' ? 'candidate' : item.status === 'blocked' ? 'blocked' : 'collecting labels'}</small>{item.blocker && <em>{item.blocker}</em>}</div>)}</div>
     </div>}
+
+    <div className="advanced-card data-models-card">
+      <div className="advanced-card-title"><strong>New-data model suite</strong><span>{dataDrivenModels.filter((item) => item.status === 'live').length}/{dataDrivenModels.length} live inputs</span></div>
+      {explain('These models use the newly connected weather, calendar, air-quality, bike-share and optional partner data. A transparent baseline is shown while labels are collected; a live status means the named feed is currently connected.')}
+      <div className="data-model-grid">{dataDrivenModels.map((item) => <article className="data-model-tile" key={item.id}>
+        <div className="data-model-tile-head"><strong>{item.name}</strong><span className={`data-model-status ${item.status}`}>{item.status}</span></div>
+        <p>{item.description}</p>
+        <div className="data-model-output">{item.output}</div>
+        <small>{item.inputs} · confidence {item.confidence}%</small>
+        {item.id === 'control-room-decisions' && <div className="data-model-decisions">{item.decisions?.map((decision) => <span key={decision.line}><i style={{ background: lineColor(decision.line) }}>{decision.line}</i>{decision.action}</span>)}</div>}
+      </article>)}</div>
+      <small className="advanced-caveat">Partner-only models stay explicitly labelled as baselines until licensed data is connected. No model claims private GPS, passenger counts or operator telemetry.</small>
+    </div>
 
     <div className="advanced-card"><div className="advanced-card-title"><strong>Multi-horizon delay model</strong><span>2–15 min ahead</span></div>
       {explain('Forecasts each U-Bahn line at several time horizons from current official delay observations, the published line estimate and active incidents.')}
