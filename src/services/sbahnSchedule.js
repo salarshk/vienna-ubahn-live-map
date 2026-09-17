@@ -105,6 +105,7 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
         .filter(Boolean);
       return {
         id: `scheduled-${tripId}-${serviceDate}`,
+        tripId,
         line,
         direction: destination,
         coordinates: station.geometry.coordinates,
@@ -121,6 +122,8 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
         lastDataAgeSeconds: null,
         positionUncertaintyMetres: null,
         status: 'At Platform',
+        sourceStationName: station.properties.name,
+        secondsToSourceStation: Math.max(0, call[0] - serviceSeconds),
         previousStation: index > 0 ? stations.get(calls[index - 1][2])?.properties.name : null,
         targetStation: station.properties.name,
         upcomingStations,
@@ -141,6 +144,7 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
       .filter(Boolean);
     return {
       id: `scheduled-${tripId}-${serviceDate}`,
+      tripId,
       line,
       direction: destination,
       coordinates: [from[0] + (to[0] - from[0]) * progress, from[1] + (to[1] - from[1]) * progress],
@@ -155,6 +159,8 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
       lastDataAgeSeconds: null,
       positionUncertaintyMetres: null,
       status: nextCall[0] - serviceSeconds <= 60 ? 'Approaching' : 'En Route',
+      sourceStationName: station.properties.name,
+      secondsToSourceStation: Math.max(0, nextCall[0] - serviceSeconds),
       previousStation: station.properties.name,
       targetStation: nextStation.properties.name,
       upcomingStations,

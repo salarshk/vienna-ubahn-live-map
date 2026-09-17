@@ -13,6 +13,7 @@ import CommuteDashboard from './components/CommuteDashboard';
 import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
+import { findVehicleForArrival } from './services/vehicleSelection';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
@@ -209,6 +210,27 @@ function App() {
     setSelectedVehicle(vehicle);
   };
 
+  // A Station panel departure is a timetable object, while the map owns the
+  // live/scheduled vehicle objects. Resolve the tap against the current map
+  // snapshot before opening the vehicle card so the selected marker and its
+  // details always refer to the same train.
+  const handleSelectArrival = (arrival) => {
+    const vehicle = findVehicleForArrival(
+      trainPositionEngine.getAllVehicles(Date.now()),
+      arrival,
+      selectedStation?.properties?.name,
+    );
+    if (vehicle) {
+      handleSelectVehicle(vehicle);
+      return;
+    }
+
+    setLocateNotice({
+      text: 'This departure is not currently visible on the map. Try again after the next live refresh.',
+      _ts: Date.now(),
+    });
+  };
+
   const handleSelectAlert = (alert) => {
     if (alert) {
       setSelectedStation(null);
@@ -386,6 +408,7 @@ function App() {
         disruptions={disruptionSnapshot.alerts}
         onSelectDisruption={handleSelectAlert}
         onSelectVehicle={handleSelectVehicle}
+        selectedVehicleId={selectedVehicle?.id || null}
         replaySnapshot={replaySnapshot}
         reliabilityScores={intelligenceSnapshot.reliability}
       />
@@ -568,6 +591,7 @@ function App() {
           userLocation={userLocation}
           onClose={() => setSelectedStation(null)}
           onCenter={() => handleCenterStation(selectedStation)}
+          onSelectArrival={handleSelectArrival}
         />
       )}
 

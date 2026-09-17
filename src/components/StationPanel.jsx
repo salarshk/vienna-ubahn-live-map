@@ -33,7 +33,7 @@ const useIsLandscape = () => {
   return landscape;
 };
 
-const StationPanel = ({ station, theme, userLocation, onClose, onCenter }) => {
+const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelectArrival }) => {
   const [now, setNow] = useState(Date.now());
   const landscape = useIsLandscape();
 
@@ -61,6 +61,7 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter }) => {
   if (!station) return null;
 
   const focus = getStationFocus(station.properties, now);
+  const selectArrival = (arrival) => onSelectArrival?.(arrival);
   const leaveNow = estimateLeaveNow(station.properties, userLocation, now);
   const bestDeparture = leaveNow?.options?.find((option) => option.chance >= 45)
     || leaveNow?.options?.[0];
@@ -151,12 +152,16 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter }) => {
           {focus.directions.map((d) => {
             const next = d.arrivals[0];
             return (
-              <div
+              <button
+                type="button"
                 key={d.key}
                 title={d.label}
+                onClick={() => next && selectArrival(next)}
                 style={{
                   background: 'var(--bg-panel-solid)', padding: '9px 10px',
                   display: 'flex', alignItems: 'center', gap: 7,
+                  width: '100%', border: 'none', color: 'inherit', textAlign: 'left',
+                  cursor: next ? 'pointer' : 'default',
                 }}
               >
                 {/* Each row is one line in one operational direction. */}
@@ -190,7 +195,7 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter }) => {
                     {next.seconds > 0 && <span style={{ fontSize: '.6rem', fontWeight: 600, marginLeft: 2 }}>min</span>}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -252,7 +257,20 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter }) => {
             </thead>
             <tbody>
               {focus.laterArrivals.map((a, i) => (
-                <tr key={i} style={{ borderTop: '1px solid var(--border-color)' }}>
+                <tr
+                  key={`${a.line}-${a.destination}-${a.targetTimestamp || i}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Show ${a.line} train towards ${a.destination} on the map`}
+                  onClick={() => selectArrival(a)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    selectArrival(a);
+                  }}
+                  style={{ borderTop: '1px solid var(--border-color)', cursor: 'pointer' }}
+                  title="Tap to show this train on the map"
+                >
                   {/* Line identity is a labelled badge, never colour alone */}
                   <td style={{ padding: '7px 8px', width: 1 }}>
                     <span style={{

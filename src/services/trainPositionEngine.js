@@ -862,6 +862,12 @@ class TrainPositionEngine {
         sightingConsistencyScore: consistency.score,
         sightingConsistencyStatus: consistency.status,
         sightingConsistencyErrorSeconds: consistency.meanErrorSeconds,
+        // Keep the observation that anchored this position. The station panel
+        // uses it to map a tapped departure back to the same marker, even when
+        // the feed has no vehicle number.
+        sourceStationName: anchor.station.name,
+        sourceStationTrackDist: anchor.station.trackDist,
+        secondsToSourceStation: Math.max(0, Math.round(anchor.secondsRemaining)),
         targetStation: walked.nextStation ? walked.nextStation.name : anchor.station.name,
         secondsToTarget: Math.max(0, Math.round(walked.secondsToNext ?? anchor.secondsRemaining)),
       });

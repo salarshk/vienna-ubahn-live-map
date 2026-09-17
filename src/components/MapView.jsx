@@ -653,6 +653,7 @@ const MapView = ({
   disruptions = [],
   onSelectDisruption,
   onSelectVehicle,
+  selectedVehicleId = null,
   replaySnapshot = null,
   reliabilityScores = [],
 }) => {
@@ -676,6 +677,7 @@ const MapView = ({
   const selectStRef     = useRef(onSelectStation);
   const selectVehicleRef= useRef(onSelectVehicle);
   const selectAlertRef  = useRef(onSelectDisruption);
+  const selectedVehicleRef = useRef(selectedVehicleId);
   const trainCountRef   = useRef(null);
   const focusMarkerRef  = useRef(null); // the expanded node for the Station in focus
   const zoomScaleRef    = useRef(1); // mutable scale factor updated on every zoom event
@@ -692,6 +694,7 @@ const MapView = ({
   useEffect(() => { selectStRef.current = onSelectStation; }, [onSelectStation]);
   useEffect(() => { selectVehicleRef.current = onSelectVehicle; }, [onSelectVehicle]);
   useEffect(() => { selectAlertRef.current = onSelectDisruption; }, [onSelectDisruption]);
+  useEffect(() => { selectedVehicleRef.current = selectedVehicleId; }, [selectedVehicleId]);
   useEffect(() => { hoverRef.current = hoverLine; }, [hoverLine]);
   useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
   useEffect(() => { replayRef.current = replaySnapshot; }, [replaySnapshot]);
@@ -987,11 +990,14 @@ const MapView = ({
       // Scheduled S-Bahn trains retain a dashed outline, but use a light fill,
       // heavier border and glow so the estimate remains easy to find. Generic
       // headway simulations stay hollow and subdued.
+      const baseBoxShadow = v.isScheduled ? `0 0 10px 2px ${color}88` : `0 0 0 0 ${color}`;
+      const isSelected = selectedVehicleRef.current === v.id;
+      inner.dataset.baseBoxShadow = baseBoxShadow;
       inner.style.cssText = `
         width:28px; height:28px; border-radius:50%;
         background:${v.isLive ? color : v.isScheduled ? `${color}38` : 'transparent'};
         border:${v.isScheduled ? '3px' : '2px'} ${v.isLive ? 'solid rgba(255,255,255,0.9)' : `dashed ${color}`};
-        box-shadow:${v.isScheduled ? `0 0 10px 2px ${color}88` : `0 0 0 0 ${color}`};
+        box-shadow:${isSelected ? `0 0 0 4px rgba(255,255,255,.95), 0 0 18px 7px ${color}cc` : baseBoxShadow};
         display:flex; align-items:center; justify-content:center;
         color:${v.isLive ? '#fff' : color}; font-size:10px; font-weight:800;
         opacity:${vehicleOpacity(v)};
@@ -1285,6 +1291,39 @@ const MapView = ({
       duration: 1200,
     });
   }, [flyTarget]);
+
+  // A departure tapped in the Station panel is the same vehicle the map
+  // renders, not just a second copy of its timetable row. Bring that marker
+  // into view and give it a strong halo so it remains findable among nearby
+  // trains. Marker coordinates are read at the moment of selection, so the
+  // camera follows the current five-second position rather than a stale panel
+  // snapshot.
+  useEffect(() => {
+    selectedVehicleRef.current = selectedVehicleId;
+    const selected = selectedVehicleId;
+    markerMapRef.current.forEach(({ inner, marker, vehicle }) => {
+      const color = lineColorMap[vehicle.line] || '#ffffff';
+      const isSelected = Boolean(selected && vehicle.id === selected);
+      inner.style.boxShadow = isSelected
+        ? `0 0 0 4px rgba(255,255,255,.95), 0 0 18px 7px ${color}cc`
+        : inner.dataset.baseBoxShadow || `0 0 0 0 ${color}`;
+      inner.style.zIndex = isSelected ? '2000' : '';
+      marker.getElement().style.zIndex = isSelected ? '2000' : '1000';
+    });
+
+    const map = mapRef.current;
+    if (!map || !selected) return;
+    const entry = markerMapRef.current.get(selected);
+    if (!entry) return;
+    const { lng, lat } = entry.marker.getLngLat();
+    map.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(map.getZoom(), 14.5),
+      padding: panelAwarePadding(map),
+      duration: 900,
+      essential: true,
+    });
+  }, [selectedVehicleId]);
 
   useEffect(() => {
     const map = mapRef.current;
