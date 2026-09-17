@@ -622,10 +622,8 @@ const normaliseStationName = (value) => String(value || '')
 const STATION_FOCUS_ZOOM = 14.6;
 
 // The radius, in screen pixels, within which a tap counts as meaning a Station.
-// A Station dot is drawn 10 px across, which is a quarter of the 44 px Apple
-// asks for as a minimum touch target and the reason the map had to be zoomed
-// right in before a station could be hit at all. 22 px gives that 44 px target
-// without drawing anything bigger.
+// The visible Station ring is intentionally smaller than its 24px wrapper;
+// 22px still gives a forgiving 44px touch target without adding visual bulk.
 //
 // Enlarging each marker's own hit box would have been the obvious fix and the
 // wrong one: neighbouring Stations are 99 m apart at the closest and 387 m at
@@ -909,9 +907,8 @@ const MapView = ({
 
       const wrapper = document.createElement('div');
       wrapper.className = 'ml-station-marker-wrapper';
-      // Fixed wrapper size; the ring scales via transform so MapLibre's anchor
-      // stays correct. The larger opaque footprint deliberately separates an
-      // interchange from both its linework and trains stopped at the platform.
+      // Keep a 24px wrapper for a forgiving tap target, but draw a smaller ring
+      // inside it so the network remains readable when many stations cluster.
       wrapper.style.cssText = 'width:24px; height:24px; cursor:pointer; z-index:1100; overflow:visible; display:flex; align-items:center; justify-content:center;';
 
       const inner = document.createElement('div');
@@ -921,7 +918,7 @@ const MapView = ({
       const ring = stationRingBackground(st);
 
       inner.style.cssText = `
-        width:22px; height:22px; border-radius:6px;
+        width:16px; height:16px; border-radius:5px;
         background:${ring};
         box-shadow:0 0 0 3px ${isDark ? '#171722' : '#ffffff'}, 0 3px 10px rgba(0,0,0,.55);
         transition:transform .1s ease;
@@ -933,9 +930,9 @@ const MapView = ({
         display:flex; align-items:center; justify-content:center;
       `;
       centre.style.cssText = `
-        width:9px; height:9px; border-radius:50%;
+        width:6px; height:6px; border-radius:50%;
         background:${isDark ? '#1a1a2e' : '#ffffff'};
-        border:2px solid ${isDark ? '#ffffff' : '#111827'};
+        border:1.5px solid ${isDark ? '#ffffff' : '#111827'};
         box-sizing:border-box; pointer-events:none;
       `;
       inner.appendChild(centre);
