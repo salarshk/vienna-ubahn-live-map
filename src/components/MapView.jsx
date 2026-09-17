@@ -1087,9 +1087,14 @@ const MapView = ({
       };
 
       const marker = new Marker({ element: wrapper, anchor: 'center' })
-        .setOffset(stationClearanceOffset(v))
-        .setLngLat(v.coordinates)
-        .addTo(map);
+      // Marker rendering must never depend on the optional declutter offset:
+      // an incomplete timetable record should still produce a visible train.
+      try {
+        if (typeof marker.setOffset === 'function') marker.setOffset(stationClearanceOffset(v));
+      } catch {
+        if (typeof marker.setOffset === 'function') marker.setOffset([0, 0]);
+      }
+      marker.setLngLat(v.coordinates).addTo(map);
 
       markerMapRef.current.set(v.id, { marker, inner, vehicle: v });
     };
@@ -1139,7 +1144,13 @@ const MapView = ({
       currentVisible.forEach((v) => {
         const existing = markerMapRef.current.get(v.id);
         if (existing) {
-          existing.marker.setOffset(stationClearanceOffset(v));
+          try {
+            if (typeof existing.marker.setOffset === 'function') {
+              existing.marker.setOffset(stationClearanceOffset(v));
+            }
+          } catch {
+            if (typeof existing.marker.setOffset === 'function') existing.marker.setOffset([0, 0]);
+          }
           existing.marker.setLngLat(v.coordinates);
           existing.marker.getElement().title = describeVehicle(v);
           existing.marker.getElement().setAttribute('aria-label', describeVehicle(v));
