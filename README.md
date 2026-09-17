@@ -50,9 +50,10 @@ period. It is automatically promoted to validated status only after the
 seven-day safeguards are met. Its methodology is documented in
 [`docs/ml-delay-model.md`](docs/ml-delay-model.md).
 
-The AI advisor uses a separate secure Cloudflare Worker so the OpenAI key never
-enters the public website. Its evidence contract, safeguards and deployment are
-documented in [`docs/llm-rail-advisor.md`](docs/llm-rail-advisor.md).
+The AI advisor is an optional, separately hosted secure service. The public
+website never contains an OpenAI key and does not call the rail-data Worker for
+GPT requests. Its evidence contract and safeguards are documented in
+[`docs/llm-rail-advisor.md`](docs/llm-rail-advisor.md).
 
 ## Run locally
 

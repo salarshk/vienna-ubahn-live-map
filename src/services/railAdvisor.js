@@ -1,6 +1,6 @@
-const DEFAULT_ADVISOR_API_URL = 'https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev/advice';
-const ADVISOR_API_URL = String(import.meta.env.VITE_ADVISOR_API_URL
-  || (import.meta.env.PROD ? DEFAULT_ADVISOR_API_URL : '')).trim();
+// The GPT advisor is intentionally opt-in. Do not fall back to the rail-data
+// Worker: production builds must name a separate secure advisor backend.
+const ADVISOR_API_URL = String(import.meta.env.VITE_ADVISOR_API_URL || '').trim();
 
 const cleanText = (value, maximum = 180) => String(value || '')
   .replace(/\s+/g, ' ')
