@@ -482,7 +482,8 @@ function App() {
               justifyContent: 'center',
               flexShrink: 0,
             }}
-            title="Dashboard mode — a departure board for an ambient display"
+            title="Open live station departures"
+            aria-label="Open live station departures"
           >
             <LayoutDashboard size={18} />
           </button>
