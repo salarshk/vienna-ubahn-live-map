@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 39849,
+  "observationCount": 42898,
   "labelledJourneyCount": 1683,
-  "dataDays": 7,
-  "coverageHours": 154.3,
+  "dataDays": 8,
+  "coverageHours": 170.6,
   "firstObservation": "2026-09-10T11:11:27.406Z",
-  "lastObservation": "2026-09-16T21:31:52.681Z",
+  "lastObservation": "2026-09-17T13:44:50.329Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -48,13 +48,13 @@
     "maxAgeHours": 36,
     "maxMaeMinutes": 10,
     "maxRmseMinutes": 15,
-    "evaluatedAt": "2026-09-17T01:45:08.720Z",
+    "evaluatedAt": "2026-09-17T13:44:59.754Z",
     "beatsBaseline": true,
     "rollbackActive": false
   },
   "status": "ready",
   "validationStage": "validated",
-  "trainedAt": "2026-09-17T01:45:08.720Z",
+  "trainedAt": "2026-09-17T13:44:59.754Z",
   "algorithm": "Ridge regression",
   "split": {
     "method": "Chronological split by whole calendar days; the newest 20% of days are test-only",
