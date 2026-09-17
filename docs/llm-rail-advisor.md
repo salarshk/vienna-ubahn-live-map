@@ -42,7 +42,9 @@ and uses [Structured Outputs](https://developers.openai.com/api/docs/guides/stru
 The website no longer selects the rail-data Worker as its GPT backend. Set the
 GitHub Actions repository variable `EXTERNAL_ADVISOR_API_URL` to a separate
 secure endpoint implementing the documented `POST /advice` contract. The Pages
-workflow passes that value to `VITE_ADVISOR_API_URL`. If it is blank, the AI
+workflow passes that value to `VITE_ADVISOR_API_URL`. The feature must also be
+explicitly enabled with `VITE_ENABLE_AI_ADVISOR=true`; it is currently set to
+`false` in the production workflow. If either setting is missing, the AI
 advisor remains disabled.
 
 The existing Cloudflare Worker continues to provide rail-data snapshots and

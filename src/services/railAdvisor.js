@@ -1,5 +1,6 @@
 // The GPT advisor is intentionally opt-in. Do not fall back to the rail-data
 // Worker: production builds must name a separate secure advisor backend.
+const ADVISOR_ENABLED = String(import.meta.env.VITE_ENABLE_AI_ADVISOR || '').toLowerCase() === 'true';
 const ADVISOR_API_URL = String(import.meta.env.VITE_ADVISOR_API_URL || '').trim();
 
 const cleanText = (value, maximum = 180) => String(value || '')
@@ -38,7 +39,8 @@ const summariseArrivals = (arrivals = []) => {
   }));
 };
 
-export const advisorIsConfigured = () => Boolean(ADVISOR_API_URL);
+export const advisorIsEnabled = () => ADVISOR_ENABLED;
+export const advisorIsConfigured = () => ADVISOR_ENABLED && Boolean(ADVISOR_API_URL);
 
 export const buildRailAdvisorEvidence = ({
   snapshot = {}, disruptions = [], forecasts = [], crowding = [], accessibility = [],

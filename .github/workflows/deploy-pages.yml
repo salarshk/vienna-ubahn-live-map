@@ -32,6 +32,7 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
           VITE_VIENNA_API_BASE: https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev
+          VITE_ENABLE_AI_ADVISOR: 'false'
           VITE_ADVISOR_API_URL: ${{ vars.EXTERNAL_ADVISOR_API_URL }}
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6

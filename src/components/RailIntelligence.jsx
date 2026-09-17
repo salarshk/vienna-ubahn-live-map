@@ -28,6 +28,7 @@ import { weatherStore } from '../services/contextSignals';
 import disruptionStore from '../services/disruptionStore';
 import { mobilityContextStore } from '../services/mobilityContextStore';
 import { networkSnapshotStore } from '../services/networkSnapshotStore';
+import { advisorIsEnabled } from '../services/railAdvisor';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -41,6 +42,7 @@ const RailIntelligence = ({
 }) => {
   const now = snapshot.generatedAt || 0;
   const [tab, setTab] = useState('forecast');
+  const advisorEnabled = advisorIsEnabled();
   const [explainLineId, setExplainLineId] = useState('U1');
   const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
   const [operationalModelSnapshot, setOperationalModelSnapshot] = useState(operationalModelStore.getSnapshot());
@@ -135,7 +137,7 @@ const RailIntelligence = ({
           ['forecast', Radar, 'Forecast'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
           ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'], ['predictions', Sparkles, 'Models'],
-        ].map(([id, Icon, label]) => (
+        ].filter(([id]) => id !== 'advisor' || advisorEnabled).map(([id, Icon, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)} aria-pressed={tab === id}>
             <Icon size={14} />{label}
           </button>
