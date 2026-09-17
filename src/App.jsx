@@ -8,6 +8,7 @@ import LocateButton from './components/LocateButton';
 import RailIntelligence from './components/RailIntelligence';
 import NearbyStations from './components/NearbyStations';
 import CommuteDashboard from './components/CommuteDashboard';
+import FleetTracker from './components/FleetTracker';
 import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
@@ -18,7 +19,7 @@ import officialSnapshotStore from './services/officialSnapshotStore';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, RadioTower, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
+import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -33,7 +34,7 @@ function App() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
-  const [controlRoomOpen, setControlRoomOpen] = useState(false);
+  const [fleetTrackerOpen, setFleetTrackerOpen] = useState(false);
   const [replayOffset, setReplayOffset] = useState(0);
   const [intelligenceSnapshot, setIntelligenceSnapshot] = useState(
     networkIntelligenceStore.getSnapshot()
@@ -206,6 +207,7 @@ function App() {
     setSelectedAlert(null);
     setAlertsOpen(false);
     setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
     setSelectedStation(station);
   };
 
@@ -214,6 +216,7 @@ function App() {
     setSelectedAlert(null);
     setAlertsOpen(false);
     setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
     setSelectedVehicle(vehicle);
   };
 
@@ -360,18 +363,18 @@ function App() {
     setSelectedVehicle(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
+    setFleetTrackerOpen(false);
     setIntelligenceOpen((open) => !open);
   };
 
-  const openControlRoom = () => {
+  const openFleetTracker = () => {
     setSelectedStation(null);
     setSelectedVehicle(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
     setCommuteOpen(false);
     setReplayOffset(0);
-    setControlRoomOpen(true);
-    setIntelligenceOpen(true);
+    setFleetTrackerOpen(true);
   };
 
   const openCommute = () => {
@@ -379,14 +382,14 @@ function App() {
     setSelectedVehicle(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
-    setControlRoomOpen(false);
+    setFleetTrackerOpen(false);
     setIntelligenceOpen(false);
     setCommuteOpen((open) => !open);
   };
 
   const closeIntelligence = () => {
     setIntelligenceOpen(false);
-    setControlRoomOpen(false);
+    setFleetTrackerOpen(false);
     setReplayOffset(0);
   };
 
@@ -455,7 +458,7 @@ function App() {
           />
           <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', flexShrink: 0 }} />
           <button
-            onClick={openControlRoom}
+            onClick={openFleetTracker}
             style={{
               padding: '8px',
               borderRadius: '8px',
@@ -465,10 +468,10 @@ function App() {
               justifyContent: 'center',
               flexShrink: 0,
             }}
-            title="Open network control room"
-            aria-label="Open network control room"
+            title="Open all-trains live tracker"
+            aria-label="Open all-trains live tracker"
           >
-            <RadioTower size={18} />
+            <TrainFront size={18} />
           </button>
           <button
             onClick={openIntelligence}
@@ -609,9 +612,16 @@ function App() {
         <VehiclePanel key={selectedVehicle.id} vehicle={selectedVehicle} onClose={() => setSelectedVehicle(null)} />
       )}
 
+      {fleetTrackerOpen && (
+        <FleetTracker
+          theme={theme}
+          onClose={() => setFleetTrackerOpen(false)}
+          onSelectVehicle={handleSelectVehicle}
+        />
+      )}
+
       {intelligenceOpen && (
         <RailIntelligence
-          key={controlRoomOpen ? 'control-room' : 'rail-intelligence'}
           snapshot={intelligenceSnapshot}
           disruptions={disruptionSnapshot.alerts}
           replayOffset={replayOffset}
@@ -625,8 +635,6 @@ function App() {
             reliabilityAtlas: !previous.reliabilityAtlas,
           }))}
           onClose={closeIntelligence}
-          dashboardInitiallyOpen={controlRoomOpen}
-          onDashboardClose={() => setControlRoomOpen(false)}
         />
       )}
 
