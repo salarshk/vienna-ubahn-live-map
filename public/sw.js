@@ -1,6 +1,6 @@
 // Bump this whenever the app shell changes so an installed PWA cannot keep
 // rendering an older interface after a GitHub Pages deployment.
-const CACHE_NAME = 'vienna-rail-shell-v11';
+const CACHE_NAME = 'vienna-rail-shell-v12';
 
 self.addEventListener('install', (event) => {
   const scope = self.registration.scope;
@@ -11,6 +11,9 @@ self.addEventListener('install', (event) => {
     `${scope}favicon.svg`,
     `${scope}icons/pwa-192.svg`,
     `${scope}icons/pwa-512.svg`,
+    `${scope}icons/vienna-rail-icon.svg`,
+    `${scope}icons/vienna-rail-icon-192.png`,
+    `${scope}icons/vienna-rail-icon-512.png`,
   ])));
   self.skipWaiting();
 });

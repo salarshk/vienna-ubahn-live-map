@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Vienna Rail live map</title>
+  <desc id="desc">A white train inside a red roundel with a yellow neural network and a live signal dot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101d36"/>
+      <stop offset="1" stop-color="#07101f"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#020611" flood-opacity=".42"/>
+    </filter>
+  </defs>
+
+  <g id="icon">
+  <!-- Opaque, rounded background keeps the mark legible on light and dark home screens. -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Vienna-inspired red roundel. -->
+  <circle cx="256" cy="256" r="174" fill="#fff" opacity=".98" filter="url(#shadow)"/>
+  <circle cx="256" cy="256" r="174" fill="none" stroke="#ee4545" stroke-width="42"/>
+
+  <!-- Train silhouette. -->
+  <g fill="#fff" stroke="#ee4545" stroke-linejoin="round">
+    <rect x="178" y="157" width="156" height="198" rx="54" stroke-width="12"/>
+    <path d="M178 261h156v53H178z" fill="#ee4545" stroke-width="12"/>
+    <rect x="203" y="187" width="48" height="47" rx="11" fill="#12213a" stroke="none"/>
+    <rect x="261" y="187" width="48" height="47" rx="11" fill="#12213a" stroke="none"/>
+    <path d="M204 326h29m46 0h29M191 355l-16 22m146-22 16 22" fill="none" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+  <!-- Neural-network overlay: prediction/AI signal without hiding the train. -->
+  <g fill="none" stroke="#ffcc66" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M154 143 104 198l50 48-48 78 57 44"/>
+    <path d="M358 143 408 198l-50 48 48 78-57 44"/>
+    <path d="M104 198h74m230 0h-74M106 324h72m228 0h-72"/>
+  </g>
+  <g fill="#ffcc66" stroke="#101d36" stroke-width="7">
+    <circle cx="104" cy="198" r="14"/><circle cx="106" cy="324" r="14"/>
+    <circle cx="408" cy="198" r="14"/><circle cx="406" cy="324" r="14"/>
+    <circle cx="154" cy="143" r="14"/><circle cx="358" cy="143" r="14"/>
+    <circle cx="163" cy="368" r="14"/><circle cx="349" cy="368" r="14"/>
+  </g>
+
+  <!-- Live now indicator. -->
+  <circle cx="399" cy="106" r="36" fill="#fff" opacity=".98"/>
+  <circle cx="399" cy="106" r="25" fill="#45d483"/>
+  </g>
+</svg>
