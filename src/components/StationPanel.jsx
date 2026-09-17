@@ -88,7 +88,7 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
           // z-index paint over the theme and dashboard-mode buttons, making
           // them unclickable while a station was focused.
           ? { top: 84, right: 16, maxHeight: 'calc(100vh - 100px)', width: 'min(380px, 34vw)' }
-          : { left: 0, right: 0, bottom: 0, paddingBottom: 'env(safe-area-inset-bottom, 0px)', maxHeight: '58vh', borderRadius: '18px 18px 0 0' }),
+          : { left: 0, right: 0, bottom: 0, paddingBottom: 'env(safe-area-inset-bottom, 0px)', maxHeight: '62vh', borderRadius: '18px 18px 0 0' }),
       }}
     >
       {/* Header: which station, and how trustworthy this is */}
@@ -220,7 +220,7 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
           is already the headline above, and repeating it here made a Station
           with two trains due render the same two trains twice, once as rows and
           once as a table. What is left is what the headlines have not said. */}
-      <div style={{ maxHeight: 176, overflowY: 'auto', padding: '4px 8px 8px' }}>
+      <div className="station-arrival-scroll" style={{ maxHeight: 176, overflowY: 'auto', padding: '4px 8px 8px' }}>
         {focus.fetchError && (
           <div role="status" style={{
             margin: '8px', padding: '8px 10px', borderRadius: 8,

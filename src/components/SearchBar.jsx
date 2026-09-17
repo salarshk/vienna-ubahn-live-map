@@ -151,7 +151,7 @@ const SearchBar = ({ onSelectStation, onSelectLine, activeLineFilter }) => {
       {/* Dropdown */}
       {isOpen && allItems.length > 0 && (
         <div
-          className="glass-panel"
+          className="glass-panel search-results-panel"
           style={{
             position: 'absolute',
             top: 'calc(100% + 10px)',
