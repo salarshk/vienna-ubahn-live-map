@@ -593,7 +593,7 @@ button:active {
 .data-model-tile small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: .48rem; line-height: 1.25; }
 .data-model-status { flex: 0 0 auto; padding: 2px 5px; border-radius: 999px; color: #ffd27a; background: rgba(220, 150, 35, .18); font-size: .46rem; font-style: normal; font-weight: 900; text-transform: uppercase; }
 .data-model-status.live { color: #a7e8ad; background: rgba(64, 170, 85, .18); }
-.data-model-status.awaiting\ data { color: #ffb4a8; background: rgba(210, 65, 65, .14); }
+.data-model-status.awaiting { color: #ffb4a8; background: rgba(210, 65, 65, .14); }
 .data-model-decisions { display: grid; gap: 3px; margin-top: 6px; }
 .data-model-decisions span { display: flex; align-items: flex-start; gap: 5px; color: var(--text-secondary); font-size: .5rem; line-height: 1.25; }
 .data-model-decisions i { min-width: 22px; padding: 2px 3px; border-radius: 4px; color: #fff; font-size: .48rem; font-style: normal; font-weight: 900; text-align: center; }

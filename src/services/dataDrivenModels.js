@@ -27,7 +27,7 @@ export const DATA_MODEL_CATALOG = [
   { id: 'multimodal-fallback', name: 'Multimodal fallback', description: 'Suggests resilient bike or multimodal alternatives when rail risk rises.', inputs: 'Bike availability + rail risk', source: 'wienmobil-rad' },
   { id: 'bike-availability', name: 'Bike availability forecast', description: 'Estimates whether nearby bike capacity can absorb a disrupted journey.', inputs: 'GBFS station status', source: 'wienmobil-rad' },
   { id: 'air-quality-comfort', name: 'Air-quality comfort', description: 'Turns pollutant observations into an outdoor transfer comfort signal.', inputs: 'Vienna air-monitoring network', source: 'air-quality' },
-  { id: 'disruption-propagation', name: 'Disruption propagation', description: 'Forecasts which lines and connecting services are likely to inherit an incident.', inputs: 'Alerts + live delay + topology', source: 'wien-events' },
+  { id: 'disruption-propagation', name: 'Disruption propagation', description: 'Forecasts which lines and connecting services are likely to inherit an incident.', inputs: 'Alerts + live delay + topology', source: 'vienna-events' },
   { id: 'headway-bunching', name: 'Headway & bunching forecast', description: 'Predicts the next gap or close pair and identifies its likely station area.', inputs: 'Live departures and inferred positions', source: 'wiener-linien' },
   { id: 'sbahn-delay', name: 'S-Bahn delay model', description: 'Builds a separate S-Bahn delay estimate from timetable and archived ÖBB observations.', inputs: 'ÖBB journey history + schedule', source: 'oebb-train-history' },
   { id: 'connection-risk', name: 'Connection-risk model', description: 'Estimates the probability that a passenger will catch a transfer.', inputs: 'Arrival/departure margins + uncertainty', source: 'vao-routing' },
@@ -90,4 +90,3 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     make('control-room-decisions', decisions.map((item) => `${item.line}: ${item.action}`).join(' · '), Math.max(...decisions.map((item) => item.score), 0), { confidence: 70, decisions }),
   ];
 };
-
