@@ -18,7 +18,7 @@ import officialSnapshotStore from './services/officialSnapshotStore';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, LayoutDashboard, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
+import { Activity, Sun, Moon, X, RadioTower, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -468,7 +468,7 @@ function App() {
             title="Open network control room"
             aria-label="Open network control room"
           >
-            <LayoutDashboard size={18} />
+            <RadioTower size={18} />
           </button>
           <button
             onClick={openIntelligence}
