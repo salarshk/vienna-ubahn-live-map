@@ -22,7 +22,7 @@ import officialSnapshotStore from './services/officialSnapshotStore';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, Bell, MapPin, SlidersHorizontal } from 'lucide-react';
+import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -522,15 +522,8 @@ function App() {
           <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', flexShrink: 0 }} />
           <button
             onClick={openFleetTracker}
-            style={{
-              padding: '8px',
-              borderRadius: '8px',
-              background: 'var(--bg-hover)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
+            className="top-action-button fleet-action"
+            data-label="Trains"
             title="Open all-trains live tracker"
             aria-label="Open all-trains live tracker"
           >
@@ -538,41 +531,38 @@ function App() {
           </button>
           <button
             onClick={openAlertCenter}
-            className={alertCenterOpen ? 'top-action-active' : ''}
-            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            className={`top-action-button alert-action ${alertCenterOpen ? 'top-action-active' : ''}`}
+            data-label="Alerts"
             title="Open service-alert center"
             aria-label="Open service-alert center"
             aria-pressed={alertCenterOpen}
           >
-            <Bell size={18} color={alertCenterOpen ? '#ffb74d' : undefined} />
+            <BellRing size={18} color={alertCenterOpen ? '#ffb74d' : undefined} />
           </button>
           <button
             onClick={openStationHub}
-            className={stationHubOpen ? 'top-action-active' : ''}
-            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            className={`top-action-button station-action ${stationHubOpen ? 'top-action-active' : ''}`}
+            data-label="Stations"
             title="Open station departures hub"
             aria-label="Open station departures hub"
             aria-pressed={stationHubOpen}
           >
-            <MapPin size={18} color={stationHubOpen ? '#00b4d8' : undefined} />
+            <MapPinned size={18} color={stationHubOpen ? '#00b4d8' : undefined} />
           </button>
           <button
             onClick={openScenarioSimulator}
-            className={scenarioSimulatorOpen ? 'top-action-active' : ''}
-            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            className={`top-action-button scenario-action ${scenarioSimulatorOpen ? 'top-action-active' : ''}`}
+            data-label="Scenarios"
             title="Open scenario simulator"
             aria-label="Open scenario simulator"
             aria-pressed={scenarioSimulatorOpen}
           >
-            <SlidersHorizontal size={18} color={scenarioSimulatorOpen ? '#b388ff' : undefined} />
+            <Route size={18} color={scenarioSimulatorOpen ? '#b388ff' : undefined} />
           </button>
           <button
             onClick={openIntelligence}
-            className={intelligenceOpen ? 'top-action-active' : ''}
-            style={{
-              padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
+            className={`top-action-button intelligence-action ${intelligenceOpen ? 'top-action-active' : ''}`}
+            data-label="Intelligence"
             title="Rail intelligence, replay and reliability"
             aria-label="Open rail intelligence"
             aria-pressed={intelligenceOpen}
@@ -581,8 +571,8 @@ function App() {
           </button>
           <button
             onClick={openCommute}
-            className={commuteOpen ? 'top-action-active' : ''}
-            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            className={`top-action-button commute-action ${commuteOpen ? 'top-action-active' : ''}`}
+            data-label="Saved"
             title="My saved commute stations"
             aria-label="Open my commute"
             aria-pressed={commuteOpen}
@@ -591,10 +581,8 @@ function App() {
           </button>
           {installPrompt && <button
             onClick={installApp}
-            style={{
-              padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
+            className="top-action-button"
+            data-label="Install"
             title="Install Vienna Rail as an app"
             aria-label="Install Vienna Rail as an app"
           >
@@ -602,16 +590,10 @@ function App() {
           </button>}
           <button
             onClick={toggleTheme}
-            style={{
-              padding: '8px',
-              borderRadius: '8px',
-              background: 'var(--bg-hover)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
+            className="top-action-button theme-action"
+            data-label="Theme"
             title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
             {theme === 'dark'
               ? <Sun size={18} color="#FFD100" />
@@ -684,7 +666,7 @@ function App() {
       />}
 
       {commuteOpen && <CommuteDashboard
-        now={Date.now()}
+        now={intelligenceSnapshot.generatedAt}
         onClose={() => setCommuteOpen(false)}
         onSelectStation={handleSelectStation}
       />}
