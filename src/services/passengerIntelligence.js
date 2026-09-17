@@ -119,10 +119,17 @@ export const buildRescueOptions = ({ vehicles = [], lineRisks = [], now = Date.n
  * This is a nowcast, not an occupancy sensor: it combines near departures,
  * bunching/gap evidence and peak-hour context.
  */
-export const buildStationCrowdingNowcast = ({ entries = [], issues = [], now = Date.now() } = {}) => {
+export const buildStationCrowdingNowcast = ({ entries = [], issues = [], now = Date.now(), context = {} } = {}) => {
   const hour = new Date(now).getHours() + new Date(now).getMinutes() / 60;
   const peak = [1, 2, 3, 4, 5].includes(new Date(now).getDay())
     && ((hour >= 7 && hour <= 9.5) || (hour >= 16 && hour <= 19));
+  const holiday = context.holidays || {};
+  const weather = context.weatherNowcast || {};
+  const eventSignal = context.viennaEvents || context['vienna-events'] || {};
+  const trafficSignal = context.evisTraffic || context['evis-traffic'] || {};
+  const eventPressure = Number(eventSignal.pressureScore || eventSignal.crowdingScore || trafficSignal.stationPressureScore || 0);
+  const holidayAdjustment = holiday.isPublicHoliday || holiday.isSchoolHoliday ? -8 : 0;
+  const weatherAdjustment = Number(weather.next60MinPrecipitation) >= 2 ? 6 : Number(weather.precipitation) >= 1 ? 3 : 0;
   const byStation = new Map();
   for (const entry of entries) {
     const station = clean(entry?.stationName);
@@ -145,7 +152,7 @@ export const buildStationCrowdingNowcast = ({ entries = [], issues = [], now = D
     const gaps = stationIssues.filter((issue) => issue.type === 'gap').length;
     const score = clamp(Math.round(
       20 + item.nextFive * 9 + item.nextTen * 3 + item.delays * 5
-      + bunches * 13 + gaps * 8 + (peak ? 14 : 0),
+      + bunches * 13 + gaps * 8 + (peak ? 14 : 0) + holidayAdjustment + weatherAdjustment + eventPressure,
     ), 5, 99);
     const level = score >= 70 ? 'high' : score >= 45 ? 'medium' : 'low';
     const evidence = [
@@ -153,6 +160,10 @@ export const buildStationCrowdingNowcast = ({ entries = [], issues = [], now = D
       bunches ? `${bunches} bunching signal${bunches > 1 ? 's' : ''}` : null,
       gaps ? `${gaps} service gap${gaps > 1 ? 's' : ''}` : null,
       peak ? 'weekday peak' : null,
+      holiday.isPublicHoliday ? 'public holiday baseline' : null,
+      holiday.isSchoolHoliday ? 'school holiday baseline' : null,
+      weatherAdjustment ? 'rain nowcast' : null,
+      eventPressure ? 'event/traffic pressure signal' : null,
     ].filter(Boolean).join(' · ') || 'normal service pattern';
     return { station: item.station, lines: [...item.lines].sort(), score, level, evidence };
   }).sort((a, b) => b.score - a.score).slice(0, 8);
@@ -212,4 +223,3 @@ export const getPredictionFeedbackSummary = () => readFeedback().reduce((summary
   if (item.outcome === 'inaccurate') summary[model].inaccurate += 1;
   return summary;
 }, {});
-

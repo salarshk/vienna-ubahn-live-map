@@ -554,6 +554,23 @@ button:active {
 .advanced-signals { padding-bottom: 14px; }
 .advanced-intro { margin-top: -2px; }
 .advanced-card { margin-top: 8px; padding: 9px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-hover); }
+.external-context-card { background: linear-gradient(135deg, var(--bg-hover), rgba(53, 109, 255, .06)); }
+.external-context-card .advanced-card-title span { color: #80a8ff; font-variant-numeric: tabular-nums; }
+.context-summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.context-summary-grid > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 6px; color: var(--text-secondary); background: var(--bg-card, var(--bg-primary)); font-size: .5rem; }
+.context-summary-grid > span svg { color: #80a8ff; }
+.context-summary-grid > span strong { overflow: hidden; color: var(--text-primary); font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; }
+.context-source-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.context-source { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 5px; border-radius: 999px; color: var(--text-secondary); background: var(--bg-card, var(--bg-primary)); font-size: .49rem; }
+.context-source i { width: 5px; height: 5px; flex: 0 0 5px; border-radius: 50%; background: #7d8796; }
+.context-source.live { color: #a7e8ad; }
+.context-source.live i { background: #4caf50; box-shadow: 0 0 0 2px rgba(76, 175, 80, .16); }
+.context-source.awaiting-access i, .context-source.available-in-repository\/workflows i { background: #ffb74d; }
+.context-source.unavailable i { background: #ff6b6b; }
+.context-refresh { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; margin-top: 7px; padding: 4px 7px; border: 1px solid var(--border-color); border-radius: 5px; color: var(--text-primary); background: var(--bg-card, var(--bg-primary)); font-size: .53rem; font-weight: 800; }
+.context-refresh:disabled { opacity: .65; }
+.spin { animation: context-spin .8s linear infinite; }
+@keyframes context-spin { to { transform: rotate(360deg); } }
 .advanced-card-title { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; margin-bottom: 7px; }
 .advanced-card-title strong { font-size: .68rem; }
 .advanced-card-title span { color: var(--text-secondary); font-size: .53rem; }

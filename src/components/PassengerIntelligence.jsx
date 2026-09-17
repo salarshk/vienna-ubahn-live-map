@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { History, LifeBuoy, Route, Signpost, ThumbsDown, ThumbsUp, Users } from 'lucide-react';
+import { CalendarDays, CloudRain, Database, History, LifeBuoy, RefreshCw, Route, Signpost, ThumbsDown, ThumbsUp, Users } from 'lucide-react';
 import {
   JOURNEY_STATIONS,
   buildIncidentSimilarities,
@@ -10,6 +10,7 @@ import {
   recordPredictionFeedback,
 } from '../services/passengerIntelligence';
 import { lineColor } from '../utils/lineColor';
+import { mobilityContextStore } from '../services/mobilityContextStore';
 
 const stationNames = JOURNEY_STATIONS.map((station) => station.name);
 const firstStation = (preferred, fallbackIndex = 0) => stationNames.find((name) => name === preferred) || stationNames[fallbackIndex] || '';
@@ -20,15 +21,18 @@ const formatDue = (seconds) => {
   return value <= 0 ? 'now' : `${Math.ceil(value / 60)} min`;
 };
 
-const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [], reliability = [], vehicles = [], entries = [] }) => {
+const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [], reliability = [], vehicles = [], entries = [], mobilitySnapshot = null }) => {
   const [origin, setOrigin] = useState(() => firstStation('Karlsplatz'));
   const [destination, setDestination] = useState(() => firstStation('Schwedenplatz', 1));
   const [feedbackModel, setFeedbackModel] = useState('U-Bahn delay');
   const [feedbackSaved, setFeedbackSaved] = useState(false);
+  const [contextRefreshing, setContextRefreshing] = useState(false);
+  const context = mobilitySnapshot?.context || {};
+  const sourceStates = mobilitySnapshot?.sources || {};
   const lineRisks = useMemo(() => reliability.map((item) => ({ line: item.line, risk: item.score == null ? 35 : Math.max(0, 100 - item.score) })), [reliability]);
   const journeys = useMemo(() => buildRiskAwareJourneys({ origin, destination, lineRisks }), [origin, destination, lineRisks]);
   const rescues = useMemo(() => buildRescueOptions({ vehicles, lineRisks, now }), [vehicles, lineRisks, now]);
-  const stationCrowding = useMemo(() => buildStationCrowdingNowcast({ entries, issues, now }), [entries, issues, now]);
+  const stationCrowding = useMemo(() => buildStationCrowdingNowcast({ entries, issues, now, context }), [entries, issues, now, context]);
   const similarities = useMemo(() => buildIncidentSimilarities({ alerts: disruptions, history }), [disruptions, history]);
   const feedbackSummary = useMemo(() => getPredictionFeedbackSummary(), [feedbackSaved]);
   const platformRows = useMemo(() => entries.flatMap((entry) => (entry.arrivals || []).map((arrival) => ({ ...arrival, stationName: entry.stationName })))
@@ -43,8 +47,31 @@ const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [
     window.setTimeout(() => setFeedbackSaved(false), 1800);
   };
 
+  const refreshContext = async () => {
+    setContextRefreshing(true);
+    await mobilityContextStore.refresh({ force: true });
+    setContextRefreshing(false);
+  };
+
+  const publicSources = Object.values(sourceStates).filter((item) => item.kind === 'public');
+  const connectedSources = publicSources.filter((item) => item.status === 'live').length;
+  const restrictedSources = Object.values(sourceStates).filter((item) => ['awaiting access', 'unavailable'].includes(item.status));
+
   return <section className="intelligence-section passenger-intelligence">
     <div className="intelligence-section-title"><Route size={14} /><strong>Passenger intelligence</strong><em>Experimental</em></div>
+
+    <div className="advanced-card external-context-card">
+      <div className="advanced-card-title"><strong><Database size={13} /> External data context</strong><span>{connectedSources}/{publicSources.length} public feeds</span></div>
+      <div className="context-summary-grid">
+        <span><CloudRain size={13} />Weather<strong>{context.weatherNowcast?.next60MinPrecipitation == null ? '—' : `${context.weatherNowcast.next60MinPrecipitation.toFixed(1)} mm/60m`}</strong></span>
+        <span><CalendarDays size={13} />Calendar<strong>{context.holidays?.isPublicHoliday ? 'Public holiday' : context.holidays?.isSchoolHoliday ? 'School holiday' : 'Working day'}</strong></span>
+        <span>Air monitor<strong>{context.airQuality?.pm10 == null ? (context.airQuality?.stationCount ? `${context.airQuality.stationCount} stations` : '—') : `PM10 ${context.airQuality.pm10}`}</strong></span>
+        <span>Bike fallback<strong>{context.bikeShare?.availableBikes == null ? '—' : `${context.bikeShare.availableBikes} bikes`}</strong></span>
+      </div>
+      <div className="context-source-list">{Object.values(sourceStates).map((source) => <span key={source.id} className={`context-source ${source.status.replace(/\s+/g, '-')}`} title={source.error || source.models}><i />{source.label}</span>)}</div>
+      <button className="context-refresh" onClick={refreshContext} disabled={contextRefreshing}><RefreshCw size={13} className={contextRefreshing ? 'spin' : ''} />{contextRefreshing ? 'Refreshing…' : 'Refresh external context'}</button>
+      {restrictedSources.length > 0 && <small className="advanced-caveat">Partner-only feeds are represented honestly until a licensed relay is configured; no private endpoint is scraped.</small>}
+    </div>
 
     <div className="advanced-card">
       <div className="advanced-card-title"><strong>Risk-aware journey planner</strong><span>choose the resilient route</span></div>

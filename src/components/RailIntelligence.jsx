@@ -26,6 +26,7 @@ import PassengerIntelligence from './PassengerIntelligence';
 import { buildRecoveryForecast, buildRouteRisk, buildTransferHealth } from '../services/advancedIntelligence';
 import { weatherStore } from '../services/contextSignals';
 import disruptionStore from '../services/disruptionStore';
+import { mobilityContextStore } from '../services/mobilityContextStore';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -44,6 +45,7 @@ const RailIntelligence = ({
   const [operationalModelSnapshot, setOperationalModelSnapshot] = useState(operationalModelStore.getSnapshot());
   const [reports, setReports] = useState(() => getReports(now));
   const [weatherSnapshot, setWeatherSnapshot] = useState(weatherStore.getSnapshot());
+  const [mobilitySnapshot, setMobilitySnapshot] = useState(mobilityContextStore.getSnapshot());
   const oldestMinutes = snapshot.replay.first
     ? Math.min(60, Math.floor((now - snapshot.replay.first) / 60000)) : 0;
   const officialOldestMinutes = Math.max(0, Number(officialSnapshotState?.oldestMinutes) || 0);
@@ -103,6 +105,12 @@ const RailIntelligence = ({
     const unsubscribe = weatherStore.subscribe(setWeatherSnapshot);
     weatherStore.refresh();
     return unsubscribe;
+  }, []);
+  useEffect(() => {
+    const unsubscribe = mobilityContextStore.subscribe(setMobilitySnapshot);
+    mobilityContextStore.refresh();
+    const refresh = setInterval(() => mobilityContextStore.refresh(), 10 * 60 * 1000);
+    return () => { unsubscribe(); clearInterval(refresh); };
   }, []);
 
   return (
@@ -275,6 +283,7 @@ const RailIntelligence = ({
           reliability={snapshot.reliability || []}
           vehicles={vehicles}
           entries={entries}
+          mobilitySnapshot={mobilitySnapshot}
         />
         <AdvancedSignals
           now={now} issues={issues} forecasts={forecasts} disruptions={disruptions}
