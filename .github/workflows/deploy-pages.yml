@@ -31,7 +31,7 @@ jobs:
         run: npx vite build
         env:
           GITHUB_PAGES: 'true'
-          VITE_VIENNA_API_BASE: https://corsproxy.nl/https/www.wienerlinien.at/ogd_realtime
+          VITE_VIENNA_API_BASE: https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev
           VITE_ADVISOR_API_URL: ${{ vars.ADVISOR_API_URL }}
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6

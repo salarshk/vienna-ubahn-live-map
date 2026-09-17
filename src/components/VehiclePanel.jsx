@@ -113,29 +113,41 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     let requestInFlight = false;
     const refreshFocusedStation = async () => {
       if (requestInFlight) return;
-      const station = findFocusedReferenceStation(current);
+      const reference = current;
+      const station = findFocusedReferenceStation(reference);
       if (!station) return;
 
       requestInFlight = true;
       if (!cancelled) setFocusedRefresh((previous) => ({ ...previous, status: 'refreshing', error: null }));
-      const result = await arrivalStore.getStationArrivals(
-        { name: station.name, apiId: station.apiId },
-        { forceRefresh: true, bypassCooldown: true },
-      );
-      if (cancelled) return;
+      try {
+        const result = await arrivalStore.getStationArrivals(
+          { name: station.name, apiId: station.apiId },
+          { forceRefresh: true, bypassCooldown: true },
+        );
+        if (cancelled) return;
 
-      const now = Date.now();
-      const next = findUpdatedVehicle(trainPositionEngine.getAllVehicles(now), vehicle);
-      if (next) {
-        setCurrent(next);
-        setIsPresent(true);
+        const now = Date.now();
+        const next = findUpdatedVehicle(trainPositionEngine.getAllVehicles(now), reference);
+        if (next) {
+          setCurrent(next);
+          setIsPresent(true);
+        }
+        setFocusedRefresh({
+          status: result?.fetchError ? 'unavailable' : 'updated',
+          fetchedAt: Number.isFinite(Number(result?.fetchedAt)) ? Number(result.fetchedAt) : null,
+          error: result?.fetchError || null,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          setFocusedRefresh({
+            status: 'unavailable',
+            fetchedAt: null,
+            error: error?.message || 'The live station refresh failed.',
+          });
+        }
+      } finally {
+        requestInFlight = false;
       }
-      setFocusedRefresh({
-        status: result?.fetchError ? 'unavailable' : 'updated',
-        fetchedAt: Number.isFinite(Number(result?.fetchedAt)) ? Number(result.fetchedAt) : null,
-        error: result?.fetchError || null,
-      });
-      requestInFlight = false;
     };
 
     void refreshFocusedStation();

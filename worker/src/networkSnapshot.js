@@ -216,7 +216,11 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
   };
   if (executionContext?.waitUntil) executionContext.waitUntil(archiveSnapshot(env, snapshot).catch(() => null));
   return json(snapshot, 200, origin, {
-    'Cache-Control': 'public, max-age=0, s-maxage=5, stale-while-revalidate=30',
+    // The map marks observations older than three seconds as waiting. A
+    // two-second edge window keeps normal cache hits below that threshold,
+    // while stale-while-revalidate still protects the UI during short feed
+    // hiccups without manufacturing a fresh timestamp.
+    'Cache-Control': 'public, max-age=0, s-maxage=2, stale-while-revalidate=10',
     ETag: `W/"${generatedAt}"`,
   });
 };
