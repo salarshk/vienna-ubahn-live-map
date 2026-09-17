@@ -12,6 +12,13 @@ const MONITOR_STATIONS = [
 const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
 const round = (value, digits = 1) => Number((Number(value) || 0).toFixed(digits));
 const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+// Wiener Linien normally returns arrays, but a one-item result is sometimes
+// encoded as a plain object. Treat both wire shapes identically so one unusual
+// station response cannot crash the whole shared snapshot.
+const asArray = (value) => {
+  if (Array.isArray(value)) return value;
+  return value == null ? [] : [value];
+};
 
 const parseTimestamp = (value) => {
   if (!value) return null;
@@ -33,16 +40,16 @@ const json = (body, status, origin, extraHeaders = {}) => new Response(JSON.stri
 export const monitorStationIds = MONITOR_STATIONS;
 
 export const parseMonitorPayload = (payload, fetchedAt = Date.now()) => {
-  const monitors = payload?.data?.monitors || payload?.monitors || [];
+  const monitors = asArray(payload?.data?.monitors || payload?.monitors);
   const observations = [];
   for (const monitor of monitors) {
     const properties = monitor.locationStop?.properties || monitor.stop?.properties || {};
     const stationId = finite(properties.name || properties.id || monitor.diva);
     const stationName = properties.title || properties.nameText || properties.name || `Station ${stationId || 'unknown'}`;
-    for (const line of monitor.lines || []) {
+    for (const line of asArray(monitor.lines)) {
       const lineId = String(line.name || line.line || '').toUpperCase();
       if (!LINES.includes(lineId)) continue;
-      for (const departure of line.departures?.departure || line.departures || []) {
+      for (const departure of asArray(line.departures?.departure || line.departures)) {
         const timing = departure.departureTime || departure.timing || {};
         const realTimestamp = parseTimestamp(timing.timeReal || timing.real);
         const plannedTimestamp = parseTimestamp(timing.timePlanned || timing.planned);
@@ -194,15 +201,42 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
   const origin = request.headers.get('Origin') || 'http://localhost:5173';
   if (request.method === 'OPTIONS') return json({}, 204, origin);
   if (request.method !== 'GET' || !url.pathname.endsWith('/network-snapshot')) return null;
-  const upstream = new URL('https://www.wienerlinien.at/ogd_realtime/monitor');
-  for (const id of MONITOR_STATIONS) upstream.searchParams.append('diva', String(id));
-  let payload;
-  try {
-    const response = await fetchImpl(upstream, { headers: { Accept: 'application/json' } });
-    if (!response.ok) return json({ error: `Wiener Linien monitor returned HTTP ${response.status}` }, 502, origin);
-    payload = await response.json();
-  } catch {
-    return json({ error: 'Shared network snapshot is temporarily unavailable.' }, 502, origin);
+  const fetchMonitorBatch = async (stationIds) => {
+    const upstream = new URL('https://www.wienerlinien.at/ogd_realtime/monitor');
+    for (const id of stationIds) upstream.searchParams.append('diva', String(id));
+    try {
+      const response = await fetchImpl(upstream, { headers: { Accept: 'application/json' } });
+      if (!response.ok) return { ok: false, status: response.status, payload: null };
+      return { ok: true, status: response.status, payload: await response.json() };
+    } catch (error) {
+      return { ok: false, status: 0, payload: null, error };
+    }
+  };
+
+  const batch = await fetchMonitorBatch(MONITOR_STATIONS);
+  let payload = batch.payload;
+  if (!batch.ok) {
+    // The upstream endpoint occasionally rejects a long multi-station URL.
+    // Retry as four smaller requests so a single bad batch does not blank the
+    // network-wide map. Successful chunks are merged into one monitor payload.
+    const chunks = [];
+    for (let index = 0; index < MONITOR_STATIONS.length; index += 8) {
+      chunks.push(MONITOR_STATIONS.slice(index, index + 8));
+    }
+    const results = await Promise.all(chunks.map(fetchMonitorBatch));
+    const successful = results.filter((result) => result.ok && result.payload);
+    if (!successful.length) {
+      console.error('Wiener Linien monitor unavailable', batch.status || batch.error?.message || 'network error');
+      return json({ error: `Wiener Linien monitor returned HTTP ${batch.status || 502}` }, 502, origin);
+    }
+    payload = {
+      message: successful.find((result) => result.payload?.message)?.payload?.message || null,
+      data: {
+        monitors: successful.flatMap((result) => asArray(
+          result.payload?.data?.monitors || result.payload?.monitors,
+        )),
+      },
+    };
   }
   const generatedAt = Date.now();
   const observations = parseMonitorPayload(payload, generatedAt);

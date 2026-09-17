@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildOpenAIRequest, handleRequest } from './index';
+import { parseMonitorPayload } from './networkSnapshot';
 
 const origin = 'https://salarshk.github.io';
 const env = { OPENAI_API_KEY: 'test-key', OPENAI_MODEL: 'gpt-5.4-mini' };
@@ -10,6 +11,18 @@ const advisorRequest = (body, options = {}) => new Request('https://worker.examp
 });
 
 describe('advisor worker', () => {
+  it('accepts singleton monitor, line, and departure objects', () => {
+    const payload = {
+      data: { monitors: { locationStop: { properties: { name: '60201320', title: 'Stephansplatz' } }, lines: {
+        name: 'U1', towards: 'Leopoldau', departures: { departure: {
+          departureTime: { timePlanned: '2026-09-17T12:01:00+0200', timeReal: '2026-09-17T12:03:00+0200' },
+          vehicle: { towards: 'Leopoldau' },
+        } },
+      } } },
+    };
+    expect(parseMonitorPayload(payload, Date.parse('2026-09-17T10:00:00Z'))).toHaveLength(1);
+  });
+
   it('proxies the documented Wiener Linien feed endpoints', async () => {
     const fetchMock = vi.fn(async (url) => {
       expect(String(url)).toContain('https://www.wienerlinien.at/ogd_realtime/newsList?name=news');
@@ -43,6 +56,22 @@ describe('advisor worker', () => {
     expect(result.observations).toHaveLength(2);
     expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to smaller monitor batches when the full request fails', async () => {
+    let calls = 0;
+    const fetchMock = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) return new Response('', { status: 502 });
+      return new Response(JSON.stringify({ data: { monitors: [] } }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    const response = await handleRequest(new Request('https://worker.example/network-snapshot', {
+      method: 'GET', headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() },
+    }), env, fetchMock);
+    expect(response.status).toBe(200);
+    expect(calls).toBe(5);
   });
 
   it('answers an allowed CORS preflight', async () => {
