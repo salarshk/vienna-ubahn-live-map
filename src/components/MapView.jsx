@@ -556,10 +556,19 @@ const renderFocusNode = (focus, theme) => {
     </div>`;
 };
 
-/** Picks the first line's color for a station marker border */
-const stationBorderColor = (st) => {
-  const lines = st.properties.lines || [];
-  return lines.length > 0 ? (lineColorMap[lines[0]] || '#aaaaaa') : '#aaaaaa';
+// Interchanges used to be a single ten-pixel dot. At a busy junction that dot
+// sat directly under a train marker and the coloured corridors, so it was
+// impossible to tell which object was the station. A segmented ring keeps all
+// served lines visible while an opaque centre masks the linework underneath.
+const stationRingBackground = (st) => {
+  const lines = (st.properties.lines || []).map(String).filter(Boolean);
+  if (lines.length <= 1) return lineColorMap[lines[0]] || '#aaaaaa';
+  const step = 100 / lines.length;
+  const segments = lines.map((line, index) => {
+    const color = lineColorMap[line] || '#aaaaaa';
+    return `${color} ${index * step}% ${(index + 1) * step}%`;
+  });
+  return `conic-gradient(${segments.join(',')})`;
 };
 
 const normaliseStationName = (value) => String(value || '')
@@ -860,25 +869,36 @@ const MapView = ({
 
       const wrapper = document.createElement('div');
       wrapper.className = 'ml-station-marker-wrapper';
-      // Fixed wrapper size; inner scales via transform so MapLibre anchor stays correct
-      wrapper.style.cssText = 'width:10px; height:10px; cursor:pointer; z-index:1; overflow:visible;';
+      // Fixed wrapper size; the ring scales via transform so MapLibre's anchor
+      // stays correct. The larger opaque footprint deliberately separates an
+      // interchange from both its linework and trains stopped at the platform.
+      wrapper.style.cssText = 'width:24px; height:24px; cursor:pointer; z-index:1100; overflow:visible; display:flex; align-items:center; justify-content:center;';
 
       const inner = document.createElement('div');
+      const centre = document.createElement('div');
       const isHovered = hoverRef.current && (st.properties.lines || []).includes(hoverRef.current);
       const isHidden = scale < 0.55;
-      
+      const ring = stationRingBackground(st);
+
       inner.style.cssText = `
-        width:10px; height:10px; border-radius:50%;
-        background:${isDark ? '#1a1a2e' : '#ffffff'};
-        border:${isHovered ? '3px' : '2px'} solid ${stationBorderColor(st)};
-        box-shadow:0 2px 6px rgba(0,0,0,.5);
+        width:22px; height:22px; border-radius:50%;
+        background:${ring};
+        box-shadow:0 0 0 3px ${isDark ? '#171722' : '#ffffff'}, 0 3px 10px rgba(0,0,0,.55);
         transition:transform .1s ease;
         transform: scale(${Math.min(1.2, scale).toFixed(3)});
         visibility: ${isHidden ? 'hidden' : ''};
-        pointer-events: ${isHidden ? 'none' : ''};
+        pointer-events: ${isHidden ? 'none' : 'auto'};
         box-sizing:border-box;
         transform-origin: center center;
+        display:flex; align-items:center; justify-content:center;
       `;
+      centre.style.cssText = `
+        width:9px; height:9px; border-radius:50%;
+        background:${isDark ? '#1a1a2e' : '#ffffff'};
+        border:2px solid ${isDark ? '#ffffff' : '#111827'};
+        box-sizing:border-box; pointer-events:none;
+      `;
+      inner.appendChild(centre);
       wrapper.appendChild(inner);
       wrapper.title = st.properties.name;
       stInnerElemsRef.current.push(inner);
