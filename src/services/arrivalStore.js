@@ -245,6 +245,7 @@ class ArrivalStore {
     this.isSeedingHubs = false;
     this.isSyncingNetwork = false;
     this.lastNetworkSyncAt = 0;
+    this.sharedSnapshotAt = 0;
 
     // Hydrate from sessionStorage if available
     this.hydrateFromSessionStorage();
@@ -437,6 +438,9 @@ class ArrivalStore {
    */
   async syncNetwork() {
     if (this.isSyncingNetwork) return { fetched: 0, skipped: 0 };
+    if (this.sharedSnapshotAt && Date.now() - this.sharedSnapshotAt < NETWORK_SYNC_INTERVAL_MS + 1500) {
+      return { fetched: 0, skipped: MAJOR_STATIONS.length, shared: true };
+    }
     this.isSyncingNetwork = true;
 
     let fetched = 0;
@@ -533,6 +537,60 @@ class ArrivalStore {
   /** Current live arrival predictions across every synchronised reference station. */
   getNetworkArrivals(now = Date.now()) {
     return [...this.memory.values()].flatMap((entry) => this.projectArrivals(entry, now));
+  }
+
+  /** Hydrate the normal arrival cache from one shared Cloudflare snapshot. */
+  hydrateSharedSnapshot(snapshot) {
+    const observations = Array.isArray(snapshot?.observations) ? snapshot.observations : [];
+    const fetchedAt = Number(snapshot?.generatedAt) || Date.now();
+    if (!observations.length || fetchedAt <= this.sharedSnapshotAt) return 0;
+    const grouped = new Map();
+    for (const item of observations) {
+      if (!item?.stationId || !item.line || !Number.isFinite(Number(item.realtimeTimestamp))) continue;
+      const key = String(item.stationId);
+      const arrivals = grouped.get(key) || [];
+      arrivals.push({
+        line: item.line,
+        destination: item.destination || 'Unknown destination',
+        directionCode: item.direction || null,
+        targetTimestamp: Number(item.realtimeTimestamp),
+        plannedTargetTimestamp: Number(item.plannedTimestamp) || Number(item.realtimeTimestamp),
+        reportedDelaySeconds: Number.isFinite(Number(item.reportedDelaySeconds)) ? Number(item.reportedDelaySeconds) : null,
+        delaySource: item.delaySource || null,
+        timingSource: item.timingSource || 'official-wiener-linien-realtime',
+        vehicleId: item.vehicleId || undefined,
+        exactGpsCoordinates: null,
+        exactGpsAvailable: false,
+        positionSource: 'inferred-from-departure-prediction',
+        positionConfidence: item.isLive ? 0.65 : 0.35,
+        feedAgeSeconds: 0,
+        initialSeconds: Math.max(0, Math.round((Number(item.realtimeTimestamp) - fetchedAt) / 1000)),
+        isLive: Boolean(item.isLive),
+        fetchedAt,
+      });
+      grouped.set(key, arrivals);
+    }
+    for (const [stationId, arrivals] of grouped) {
+      const previous = this.memory.get(stationId);
+      // A focused train refresh can be newer than a Worker snapshot.
+      if (previous?.fetchedAt && (
+        Number(previous.fetchedAt) > fetchedAt
+        || (!previous.sharedSnapshot && fetchedAt - Number(previous.fetchedAt) < NETWORK_SYNC_INTERVAL_MS)
+      )) continue;
+      this.memory.set(stationId, {
+        stationId: Number(stationId),
+        stationName: observations.find((item) => String(item.stationId) === stationId)?.stationName || stationId,
+        fetchedAt,
+        arrivals,
+        feedServerTime: snapshot.sourceServerTime || null,
+        fetchError: null,
+        sharedSnapshot: true,
+      });
+    }
+    this.sharedSnapshotAt = fetchedAt;
+    this.lastNetworkSyncAt = fetchedAt;
+    this.notify();
+    return grouped.size;
   }
 
   /**

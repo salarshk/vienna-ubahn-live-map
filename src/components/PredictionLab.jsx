@@ -12,23 +12,24 @@ import {
 import { buildDataDrivenModels } from '../services/dataDrivenModels';
 
 const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, networkSnapshot = null, operationalModels = null }) => {
-  const multiHorizon = useMemo(() => predictMultiHorizonDelay({ arrivals, linePredictions: delayPredictions, disruptions, now }), [arrivals, delayPredictions, disruptions, now]);
-  const eta = useMemo(() => predictNextStationEta({ vehicles }), [vehicles]);
-  const dwell = useMemo(() => predictDwellForecast({ vehicles }), [vehicles]);
-  const headways = useMemo(() => predictHeadwayForecast({ issues, arrivals }), [issues, arrivals]);
-  const recovery = useMemo(() => predictRecoveryForecast({ disruptions, issues, reliability }), [disruptions, issues, reliability]);
-  const impact = useMemo(() => predictDisruptionImpact({ disruptions, arrivals, issues, now }), [disruptions, arrivals, issues, now]);
-  const severity = useMemo(() => classifyDelaySeverity({ arrivals, disruptions }), [arrivals, disruptions]);
-  const delayBands = useMemo(() => predictDelayBands({ arrivals, linePredictions: delayPredictions }), [arrivals, delayPredictions]);
-  const transfer = useMemo(() => predictTransferSuccess({ transfers }), [transfers]);
-  const routes = useMemo(() => scoreRouteReliability({ routeRisk, reliability }), [routeRisk, reliability]);
-  const cancellations = useMemo(() => predictCancellationRisk({ arrivals, disruptions, issues }), [arrivals, disruptions, issues]);
-  const crowd = useMemo(() => forecastCrowding({ crowding, issues, now }), [crowding, issues, now]);
-  const weatherForecast = useMemo(() => predictWeatherImpact({ weather, now }), [weather, now]);
-  const events = useMemo(() => predictEventDemand({ alerts: disruptions, now }), [disruptions, now]);
-  const sbahn = useMemo(() => predictSbahnConnections({ vehicles, now }), [vehicles, now]);
-  const anomalies = useMemo(() => detectPredictiveAnomalies({ vehicles, issues, arrivals }), [vehicles, issues, arrivals]);
-  const uncertainty = useMemo(() => calibrateUncertainty({ vehicles, reliability }), [vehicles, reliability]);
+  const shared = networkSnapshot?.data?.models?.predictionLab;
+  const multiHorizon = useMemo(() => shared?.multiHorizon || predictMultiHorizonDelay({ arrivals, linePredictions: delayPredictions, disruptions, now }), [shared, arrivals, delayPredictions, disruptions, now]);
+  const eta = useMemo(() => shared?.eta || predictNextStationEta({ vehicles }), [shared, vehicles]);
+  const dwell = useMemo(() => shared?.dwell || predictDwellForecast({ vehicles }), [shared, vehicles]);
+  const headways = useMemo(() => shared?.headways || predictHeadwayForecast({ issues, arrivals }), [shared, issues, arrivals]);
+  const recovery = useMemo(() => shared?.recovery || predictRecoveryForecast({ disruptions, issues, reliability }), [shared, disruptions, issues, reliability]);
+  const impact = useMemo(() => shared?.impact || predictDisruptionImpact({ disruptions, arrivals, issues, now }), [shared, disruptions, arrivals, issues, now]);
+  const severity = useMemo(() => shared?.severity || classifyDelaySeverity({ arrivals, disruptions }), [shared, arrivals, disruptions]);
+  const delayBands = useMemo(() => shared?.delayBands || predictDelayBands({ arrivals, linePredictions: delayPredictions }), [shared, arrivals, delayPredictions]);
+  const transfer = useMemo(() => shared?.transfers || predictTransferSuccess({ transfers }), [shared, transfers]);
+  const routes = useMemo(() => shared?.routes || scoreRouteReliability({ routeRisk, reliability }), [shared, routeRisk, reliability]);
+  const cancellations = useMemo(() => shared?.cancellations || predictCancellationRisk({ arrivals, disruptions, issues }), [shared, arrivals, disruptions, issues]);
+  const crowd = useMemo(() => shared?.crowd || forecastCrowding({ crowding, issues, now }), [shared, crowding, issues, now]);
+  const weatherForecast = useMemo(() => shared?.weather || predictWeatherImpact({ weather, now }), [shared, weather, now]);
+  const events = useMemo(() => shared?.events || predictEventDemand({ alerts: disruptions, now }), [shared, disruptions, now]);
+  const sbahn = useMemo(() => shared?.sbahn || predictSbahnConnections({ vehicles, now }), [shared, vehicles, now]);
+  const anomalies = useMemo(() => shared?.anomalies || detectPredictiveAnomalies({ vehicles, issues, arrivals }), [shared, vehicles, issues, arrivals]);
+  const uncertainty = useMemo(() => shared?.uncertainty || calibrateUncertainty({ vehicles, reliability }), [shared, vehicles, reliability]);
   const dataDrivenModels = useMemo(() => buildDataDrivenModels({
     context: mobilitySnapshot?.context || {},
     sources: mobilitySnapshot?.sources || {},

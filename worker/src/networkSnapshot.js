@@ -1,7 +1,12 @@
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
+// The same distributed reference stations used by the browser position
+// engine. One Worker request now aggregates the whole U-Bahn network.
 const MONITOR_STATIONS = [
-  60201320, 60201182, 60201468, 60200657, 60201040, 60200299,
-  60201430, 60200743, 60201198, 60201062, 60201015, 60201510,
+  60201481, 60201095, 60200657, 60201040, 60200031, 60201860, 60201859,
+  60200910, 60200299, 60201299, 60201894, 60201182, 60201430,
+  60201317, 60201468, 60201320, 60200743, 60201199, 60200425,
+  60200956, 60200520, 60200820, 60201198, 60200357, 60201062,
+  60201007, 60201499, 60201015, 60200615, 60201510, 60201705, 60201668,
 ];
 
 const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
@@ -52,7 +57,11 @@ export const parseMonitorPayload = (payload, fetchedAt = Date.now()) => {
           direction: vehicle.direction || line.direction || null,
           countdownSeconds: countdown === null ? Math.max(0, Math.round((realtimeTimestamp - fetchedAt) / 1000)) : Math.max(0, Math.round(countdown * 60)),
           plannedTimestamp, realtimeTimestamp, reportedDelaySeconds,
+          isLive: Boolean(realTimestamp),
+          timingSource: realTimestamp ? 'official-wiener-linien-realtime' : 'wiener-linien-timetable',
+          delaySource: reportedDelaySeconds === null ? null : 'wiener-linien-timeReal-minus-timePlanned',
           vehicleId: vehicle.id || vehicle.vehicleId || null,
+          onStop: vehicle.onStop ?? line.onStop ?? null,
           fetchedAt,
         });
       }
@@ -97,6 +106,50 @@ const lineHeadway = (values) => {
   return { risk: Math.round(risk), status: risk >= 70 ? 'high' : risk >= 40 ? 'watch' : 'stable', location, largestGapMinutes: largestGap ? round(largestGap.seconds / 60, 1) : null, smallestGapMinutes: smallestGap ? round(smallestGap.seconds / 60, 1) : null };
 };
 
+const buildPredictionLabModels = ({ lines, observations }) => {
+  const multiHorizon = lines.map((item) => {
+    const centre = item.delay.meanDelayMinutes;
+    return {
+      line: item.line,
+      forecasts: [2, 5, 10, 15].map((horizonMinutes) => ({ horizonMinutes, minutes: round(centre, 1), lowMinutes: round(Math.max(0, centre - 1), 1), highMinutes: round(centre + 1, 1) })),
+      samples: item.delay.labelledObservations,
+      confidence: Math.round(clamp(35 + Math.min(45, item.delay.labelledObservations * 5) - (item.headway.risk >= 70 ? 8 : 0), 15, 85)),
+      model: 'cloudflare shared multi-horizon delay', trainingStatus: 'shared baseline',
+    };
+  });
+  const eta = observations.filter((item) => item.countdownSeconds >= 0).sort((a, b) => a.countdownSeconds - b.countdownSeconds).slice(0, 12).map((item, index) => ({
+    id: `shared-${item.line}-${item.stationId}-${index}`,
+    line: item.line,
+    station: item.stationName,
+    destination: item.destination,
+    etaMinutes: round(item.countdownSeconds / 60, 1),
+    lowMinutes: round(Math.max(0, item.countdownSeconds / 60 - 0.5), 1),
+    highMinutes: round(item.countdownSeconds / 60 + 0.5, 1),
+    confidence: item.isLive ? 72 : 42,
+    evidence: item.isLive ? 'shared official live departure observation' : 'shared timetable observation',
+  }));
+  const dwell = observations.filter((item) => item.onStop === true).slice(0, 8).map((item) => ({
+    line: item.line, station: item.stationName, predictedMinutes: 1, confidence: item.isLive ? 60 : 30, evidence: 'shared platform observation',
+  }));
+  const severity = lines.map((item) => ({ line: item.line, category: item.severity, score: item.delay.meanDelayMinutes >= 3 ? 60 : item.delay.meanDelayMinutes >= 1 ? 30 : 0, meanMinutes: item.delay.meanDelayMinutes, samples: item.delay.labelledObservations, evidence: `${item.delay.labelledObservations} shared delay observations` }));
+  const delayBands = lines.map((item) => ({ line: item.line, low: Math.max(-2, round(item.delay.meanDelayMinutes - 1, 1)), typical: round(item.delay.meanDelayMinutes, 1), high: round(item.delay.meanDelayMinutes + 1, 1), confidence: 35 + Math.min(50, item.delay.labelledObservations * 4), evidence: 'shared line-level delay distribution' }));
+  const cancellations = lines.map((item) => ({ line: item.line, risk: item.delay.observations < 2 ? 40 : 5, status: item.delay.observations < 2 ? 'watch' : 'low', action: item.delay.observations < 2 ? 'check next departure' : 'routine monitoring' })).sort((a, b) => b.risk - a.risk);
+  const routes = lines.map((item) => ({ line: item.line, score: Math.round(clamp(100 - item.headway.risk * 0.45 - item.delay.meanDelayMinutes * 6)), risk: Math.round(clamp(item.headway.risk * 0.45 + item.delay.meanDelayMinutes * 6)), evidence: 'shared delay and headway signals' })).sort((a, b) => a.score - b.score);
+  const transfers = [];
+  const anomalies = lines.filter((item) => item.headway.risk >= 70 || item.delay.meanDelayMinutes >= 5).map((item) => ({ line: item.line, type: item.headway.risk >= 70 ? 'headway' : 'delay', detail: item.headway.location, severity: item.headway.risk >= 80 ? 'high' : 'watch' }));
+  const uncertainty = lines.map((item) => ({ line: item.line, intervalMinutes: round(0.8 + (item.delay.labelledObservations ? 1 / Math.sqrt(item.delay.labelledObservations) : 1.5), 1), calibration: item.delay.labelledObservations ? 65 : 30, status: 'shared baseline' }));
+  return {
+    multiHorizon, eta, dwell,
+    headways: lines.map((item) => ({ ...item.headway, line: item.line, probability: item.headway.risk, model: 'shared headway/bunching forecast', trainingStatus: 'shared baseline', evidence: item.headway.location })),
+    recovery: [{ status: 'clear', window: 'No active incident in shared monitor snapshot', confidence: 30, evidence: 'shared network feed', model: 'shared recovery baseline' }],
+    impact: [], severity, delayBands, transfers, routes, cancellations,
+    crowd: lines.map((item) => ({ line: item.line, score: item.crowding.score, level: item.crowding.level, window: 'next 30–60 min' })),
+    weather: { status: 'not connected', impact: 'Weather context remains a separate public feed', confidence: 0, horizon: '—' },
+    events: { status: 'baseline', score: 0, confidence: 20, evidence: 'shared rail feed only' },
+    sbahn: [], anomalies, uncertainty,
+  };
+};
+
 export const buildSharedModels = ({ observations = [], fetchedAt = Date.now() } = {}) => {
   const hour = new Date(fetchedAt).getHours();
   const peak = (hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19);
@@ -119,6 +172,7 @@ export const buildSharedModels = ({ observations = [], fetchedAt = Date.now() } 
     modelSource: 'Cloudflare Worker shared inference',
     status: 'live',
     lines,
+    predictionLab: buildPredictionLabModels({ lines, observations }),
     summary: {
       observations: observations.length,
       labelledObservations: observations.filter((item) => Number.isFinite(item.reportedDelaySeconds)).length,

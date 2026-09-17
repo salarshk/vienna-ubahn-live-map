@@ -16,6 +16,7 @@ import { findVehicleForArrival } from './services/vehicleSelection';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
+import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
 import { Activity, Sun, Moon, X, LayoutDashboard, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
@@ -81,6 +82,19 @@ function App() {
       window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
       window.removeEventListener('appinstalled', installed);
     };
+  }, []);
+
+  // One shared network poll feeds the map, station panels and intelligence
+  // views. A clicked train still performs its direct 2.5-second refresh.
+  useEffect(() => {
+    if (!networkSnapshotStore.isConfigured()) return undefined;
+    const apply = (state) => {
+      if (state.status === 'ready' && state.data) arrivalStore.hydrateSharedSnapshot(state.data);
+    };
+    const unsubscribe = networkSnapshotStore.subscribe(apply);
+    networkSnapshotStore.refresh().then(apply);
+    const timer = setInterval(() => networkSnapshotStore.refresh(), NETWORK_SNAPSHOT_INTERVAL_MS);
+    return () => { unsubscribe(); clearInterval(timer); };
   }, []);
 
   useEffect(() => {

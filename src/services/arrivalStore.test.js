@@ -20,6 +20,7 @@ describe('batched live synchronization', () => {
     vi.restoreAllMocks();
     arrivalStore.memory.clear();
     arrivalStore.lastRequestTimestamp = 0;
+    arrivalStore.sharedSnapshotAt = 0;
   });
 
   it('requests multiple DIVA stations at once and stores their live departures', async () => {
@@ -94,5 +95,20 @@ describe('batched live synchronization', () => {
       routeDirectionId: 'u1-north', vehicleId: 'v-1', vehicleType: 'X',
       onStop: true, cooling: true, feedAgeSeconds: 0,
     });
+  });
+
+  it('hydrates the map cache from a shared Worker snapshot', () => {
+    const fetchedAt = Date.parse('2026-09-09T18:08:00.000+0200');
+    const updated = arrivalStore.hydrateSharedSnapshot({
+      generatedAt: fetchedAt,
+      observations: [{
+        stationId: 60201320, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau',
+        realtimeTimestamp: fetchedAt + 120000, plannedTimestamp: fetchedAt + 60000,
+        reportedDelaySeconds: 60, isLive: true,
+      }],
+    });
+    expect(updated).toBe(1);
+    expect(arrivalStore.memory.get('60201320')).toMatchObject({ sharedSnapshot: true, stationName: 'Stephansplatz' });
+    expect(arrivalStore.memory.get('60201320').arrivals[0]).toMatchObject({ line: 'U1', reportedDelaySeconds: 60, isLive: true });
   });
 });

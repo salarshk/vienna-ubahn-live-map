@@ -27,7 +27,7 @@ import { buildRecoveryForecast, buildRouteRisk, buildTransferHealth } from '../s
 import { weatherStore } from '../services/contextSignals';
 import disruptionStore from '../services/disruptionStore';
 import { mobilityContextStore } from '../services/mobilityContextStore';
-import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from '../services/networkSnapshotStore';
+import { networkSnapshotStore } from '../services/networkSnapshotStore';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -117,9 +117,7 @@ const RailIntelligence = ({
   useEffect(() => {
     if (!networkSnapshotStore.isConfigured()) return undefined;
     const unsubscribe = networkSnapshotStore.subscribe(setNetworkSnapshot);
-    networkSnapshotStore.refresh();
-    const refresh = setInterval(() => networkSnapshotStore.refresh(), NETWORK_SNAPSHOT_INTERVAL_MS);
-    return () => { unsubscribe(); clearInterval(refresh); };
+    return unsubscribe;
   }, []);
 
   return (
