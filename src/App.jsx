@@ -9,6 +9,9 @@ import RailIntelligence from './components/RailIntelligence';
 import NearbyStations from './components/NearbyStations';
 import CommuteDashboard from './components/CommuteDashboard';
 import FleetTracker from './components/FleetTracker';
+import AlertCenter from './components/AlertCenter';
+import StationDeparturesHub from './components/StationDeparturesHub';
+import ScenarioSimulator from './components/ScenarioSimulator';
 import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
@@ -19,7 +22,7 @@ import officialSnapshotStore from './services/officialSnapshotStore';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw } from 'lucide-react';
+import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, Bell, MapPin, SlidersHorizontal } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -35,6 +38,9 @@ function App() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [fleetTrackerOpen, setFleetTrackerOpen] = useState(false);
+  const [alertCenterOpen, setAlertCenterOpen] = useState(false);
+  const [stationHubOpen, setStationHubOpen] = useState(false);
+  const [scenarioSimulatorOpen, setScenarioSimulatorOpen] = useState(false);
   const [replayOffset, setReplayOffset] = useState(0);
   const [intelligenceSnapshot, setIntelligenceSnapshot] = useState(
     networkIntelligenceStore.getSnapshot()
@@ -208,6 +214,9 @@ function App() {
     setAlertsOpen(false);
     setIntelligenceOpen(false);
     setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
     setSelectedStation(station);
   };
 
@@ -217,6 +226,9 @@ function App() {
     setAlertsOpen(false);
     setIntelligenceOpen(false);
     setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
     setSelectedVehicle(vehicle);
   };
 
@@ -364,6 +376,9 @@ function App() {
     setSelectedAlert(null);
     setAlertsOpen(false);
     setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
     setIntelligenceOpen((open) => !open);
   };
 
@@ -374,7 +389,49 @@ function App() {
     setAlertsOpen(false);
     setCommuteOpen(false);
     setReplayOffset(0);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
     setFleetTrackerOpen(true);
+  };
+
+  const openAlertCenter = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setCommuteOpen(false);
+    setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
+    setAlertCenterOpen(true);
+  };
+
+  const openStationHub = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setCommuteOpen(false);
+    setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setScenarioSimulatorOpen(false);
+    setStationHubOpen(true);
+  };
+
+  const openScenarioSimulator = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setCommuteOpen(false);
+    setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(true);
   };
 
   const openCommute = () => {
@@ -384,12 +441,18 @@ function App() {
     setAlertsOpen(false);
     setFleetTrackerOpen(false);
     setIntelligenceOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
     setCommuteOpen((open) => !open);
   };
 
   const closeIntelligence = () => {
     setIntelligenceOpen(false);
     setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
     setReplayOffset(0);
   };
 
@@ -472,6 +535,36 @@ function App() {
             aria-label="Open all-trains live tracker"
           >
             <TrainFront size={18} />
+          </button>
+          <button
+            onClick={openAlertCenter}
+            className={alertCenterOpen ? 'top-action-active' : ''}
+            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title="Open service-alert center"
+            aria-label="Open service-alert center"
+            aria-pressed={alertCenterOpen}
+          >
+            <Bell size={18} color={alertCenterOpen ? '#ffb74d' : undefined} />
+          </button>
+          <button
+            onClick={openStationHub}
+            className={stationHubOpen ? 'top-action-active' : ''}
+            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title="Open station departures hub"
+            aria-label="Open station departures hub"
+            aria-pressed={stationHubOpen}
+          >
+            <MapPin size={18} color={stationHubOpen ? '#00b4d8' : undefined} />
+          </button>
+          <button
+            onClick={openScenarioSimulator}
+            className={scenarioSimulatorOpen ? 'top-action-active' : ''}
+            style={{ padding: '8px', borderRadius: '8px', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title="Open scenario simulator"
+            aria-label="Open scenario simulator"
+            aria-pressed={scenarioSimulatorOpen}
+          >
+            <SlidersHorizontal size={18} color={scenarioSimulatorOpen ? '#b388ff' : undefined} />
           </button>
           <button
             onClick={openIntelligence}
@@ -617,6 +710,32 @@ function App() {
           theme={theme}
           onClose={() => setFleetTrackerOpen(false)}
           onSelectVehicle={handleSelectVehicle}
+        />
+      )}
+
+      {alertCenterOpen && (
+        <AlertCenter
+          snapshot={disruptionSnapshot}
+          selectedAlert={selectedAlert}
+          onSelectAlert={setSelectedAlert}
+          onRefresh={() => disruptionStore.refresh()}
+          onClose={() => { setAlertCenterOpen(false); setSelectedAlert(null); }}
+        />
+      )}
+
+      {stationHubOpen && (
+        <StationDeparturesHub
+          theme={theme}
+          onClose={() => setStationHubOpen(false)}
+          onSelectStation={(station) => { setStationHubOpen(false); handleSelectStation(station); }}
+        />
+      )}
+
+      {scenarioSimulatorOpen && (
+        <ScenarioSimulator
+          issues={intelligenceSnapshot.issues}
+          disruptions={disruptionSnapshot.alerts}
+          onClose={() => setScenarioSimulatorOpen(false)}
         />
       )}
 
