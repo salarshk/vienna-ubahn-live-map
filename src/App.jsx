@@ -19,6 +19,7 @@ import { findVehicleForArrival } from './services/vehicleSelection';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
+import delayReportStore from './services/delayReportStore';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
@@ -87,6 +88,22 @@ function App() {
     return () => {
       window.removeEventListener('beforeinstallprompt', captureInstallPrompt);
       window.removeEventListener('appinstalled', installed);
+    };
+  }, []);
+
+  // Save compact official delay observations once per minute. The report store
+  // keeps bounded period aggregates in IndexedDB; it does not write every
+  // five-second map refresh as a separate raw record.
+  useEffect(() => {
+    const record = () => delayReportStore.record([...arrivalStore.memory.values()], Date.now());
+    const unsubscribe = arrivalStore.subscribe(record);
+    record();
+    const timer = setInterval(record, 30000);
+    document.addEventListener('visibilitychange', record);
+    return () => {
+      unsubscribe();
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', record);
     };
   }, []);
 

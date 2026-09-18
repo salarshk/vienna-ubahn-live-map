@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, Bot, Clock3, Database, Gauge, History, LayoutDashboard, Radar, Sparkles, X } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, BarChart3, Bot, Clock3, Database, Gauge, History, LayoutDashboard, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
   analyseAccessibility,
@@ -30,6 +30,7 @@ import { mobilityContextStore } from '../services/mobilityContextStore';
 import { networkSnapshotStore } from '../services/networkSnapshotStore';
 import { advisorIsEnabled } from '../services/railAdvisor';
 import ModelDashboard from './ModelDashboard';
+import DelayPanel from './DelayPanel';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -184,7 +185,7 @@ const RailIntelligence = ({
 
       <nav className={`intelligence-tabs${advisorEnabled ? '' : ' advisor-disabled'}`} aria-label="Rail intelligence views">
         {[
-          ['forecast', Radar, 'Forecast'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
+          ['forecast', Radar, 'Forecast'], ['delays', BarChart3, 'Delays'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
           ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'], ['predictions', Sparkles, 'Models'],
         ].filter(([id]) => id !== 'advisor' || advisorEnabled).map(([id, Icon, label]) => (
@@ -207,6 +208,8 @@ const RailIntelligence = ({
             ))}</div>
           )}
         </section>
+
+        <DelayPanel entries={entries} now={now} compact />
 
         <section className="intelligence-section delay-model-card">
           <div className="intelligence-section-title">
@@ -318,6 +321,8 @@ const RailIntelligence = ({
           <p className="intelligence-note">A transparent time-and-service-gap risk model. Passenger-count data is not publicly available.</p>
         </section>
       </>}
+
+      {tab === 'delays' && <DelayPanel entries={entries} now={now} />}
 
       {tab === 'predictions' && <PredictionLab
         now={now}
