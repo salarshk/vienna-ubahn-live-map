@@ -923,6 +923,10 @@ button:active {
 .passenger-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
 .passenger-selects label { display: flex; flex-direction: column; gap: 3px; color: var(--text-secondary); font-size: .54rem; font-weight: 800; }
 .passenger-selects select, .feedback-controls select { min-width: 0; min-height: 30px; padding: 5px 7px; border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); background: var(--bg-card, var(--bg-primary)); font: inherit; font-size: .62rem; }
+.passenger-route-toggles { display: flex; flex-wrap: wrap; gap: 5px 10px; margin: -2px 0 8px; }
+.passenger-route-toggles label { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: .53rem; font-weight: 700; }
+.passenger-route-toggles input { margin: 0; accent-color: #4f8cff; }
+.passenger-route-toggles svg { color: #80a8ff; }
 .feedback-controls { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .feedback-controls select { flex: 1 1 150px; }
 .feedback-controls button { min-height: 30px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); background: var(--bg-hover); font-size: .59rem; font-weight: 800; }

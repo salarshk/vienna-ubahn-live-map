@@ -37,6 +37,8 @@ export const DATA_MODEL_CATALOG = [
   { id: 'fleet-formation', name: 'Fleet formation model', description: 'Estimates train formation and capacity implications for the live fleet.', inputs: 'Vehicle telemetry + vehicle identities', source: 'vehicle-telemetry' },
   { id: 'mobility-flow', name: 'Mobility-flow model', description: 'Nowcasts citywide movement pressure around stations and corridors.', inputs: 'Aggregated mobility movement', source: 'mobile-movement' },
   { id: 'control-room-decisions', name: 'Control-room decision model', description: 'Converts model outputs into prioritised operational actions for each line.', inputs: 'All available signals', source: 'all' },
+  { id: 'tram-operations', name: 'Tram operations baseline', description: 'Separates street-running tram delay, headway and disruption pressure from U-Bahn conditions.', inputs: 'Tram departures + inferred vehicles + notices', source: 'wiener-linien' },
+  { id: 'tram-crowding', name: 'Tram crowding proxy', description: 'Estimates tram pressure from near departures, gaps, peak time and passenger reports.', inputs: 'Tram departures + service pattern + reports', source: 'wiener-linien' },
 ];
 
 const averageDelay = (arrivals) => {
@@ -61,6 +63,8 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     return { ...descriptor, status: statusLabel(sourceIds, sources, context, true), score: round(clamp(score)), risk: riskLabel(score), output, ...extra };
   };
   const impactedLines = LINES.filter((line) => disruptions.some((item) => item.lines?.includes(line)) || issues.some((item) => item.line === line));
+  const tramArrivals = arrivals.filter((item) => item.isLive && !/^U|^S/i.test(String(item.line || '')));
+  const tramIssues = issues.filter((item) => !/^U|^S/i.test(String(item.line || '')));
   const decisions = LINES.map((line) => {
     const lineIssues = issues.filter((item) => item.line === line);
     const lineDelay = averageDelay(arrivals.filter((item) => item.line === line));
@@ -88,6 +92,8 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     make('fleet-formation', `${new Set(vehicles.map((item) => item.id).filter(Boolean)).size} live vehicle identities; formation feed ${source('vehicle-telemetry') ? 'connected' : 'not connected'}`, source('vehicle-telemetry') ? 35 : 0, { confidence: source('vehicle-telemetry') ? 80 : 24 }),
     make('mobility-flow', context['mobile-movement'] ? 'Aggregated city movement context connected' : 'Awaiting privacy-preserving mobility partner feed', peakScore + incidentScore * 0.2, { confidence: source('mobile-movement') ? 70 : 20 }),
     make('control-room-decisions', decisions.map((item) => `${item.line}: ${item.action}`).join(' · '), Math.max(...decisions.map((item) => item.score), 0), { confidence: 70, decisions }),
+    make('tram-operations', `${tramArrivals.length} live tram departures · ${tramIssues.length} tram headway signals`, clamp(tramArrivals.length * 4 + tramIssues.length * 20), { confidence: tramArrivals.length ? 62 : 25 }),
+    make('tram-crowding', `${riskLabel(clamp(crowdScore * 0.8 + tramArrivals.length * 2))} tram pressure proxy`, clamp(crowdScore * 0.8 + tramArrivals.length * 2), { confidence: tramArrivals.length ? 58 : 28 }),
   ];
   const remoteLines = Array.isArray(remoteModels?.lines) ? remoteModels.lines : [];
   if (!remoteLines.length) return localModels;

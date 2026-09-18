@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   JOURNEY_STATIONS,
+  PASSENGER_STATIONS,
   buildIncidentSimilarities,
   buildRiskAwareJourneys,
   buildStationCrowdingNowcast,
@@ -17,6 +18,24 @@ describe('passenger intelligence', () => {
     });
     expect(options.length).toBeGreaterThan(0);
     expect(options[0].resilience).toBeGreaterThanOrEqual(options.at(-1).resilience);
+  });
+
+  it('can include tram-only stations and avoid a blocked transfer', () => {
+    expect(PASSENGER_STATIONS.length).toBeGreaterThan(JOURNEY_STATIONS.length);
+    const tramOptions = buildRiskAwareJourneys({
+      origin: 'Alser Straße, Skodagasse',
+      destination: 'Alser Straße',
+      includeTrams: true,
+    });
+    expect(tramOptions.some((option) => option.lines.some((line) => !line.startsWith('U')))).toBe(true);
+
+    const blocked = buildRiskAwareJourneys({
+      origin: 'Karlsplatz',
+      destination: 'Schwedenplatz',
+      accessibleOnly: true,
+      blockedStations: ['Stephansplatz'],
+    });
+    expect(blocked.every((option) => option.transfer !== 'Stephansplatz')).toBe(true);
   });
 
   it('estimates station pressure from arrivals and local headway issues', () => {
@@ -46,4 +65,3 @@ describe('passenger intelligence', () => {
     expect(getPredictionFeedbackSummary()).toBeTypeOf('object');
   });
 });
-

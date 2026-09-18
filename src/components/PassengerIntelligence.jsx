@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { CalendarDays, CloudRain, Database, History, LifeBuoy, RefreshCw, Route, Signpost, ThumbsDown, ThumbsUp, Users } from 'lucide-react';
+import { Accessibility, CalendarDays, CloudRain, Database, History, LifeBuoy, RefreshCw, Route, Signpost, ThumbsDown, ThumbsUp, Users } from 'lucide-react';
 import {
-  JOURNEY_STATIONS,
+  PASSENGER_STATIONS,
   buildIncidentSimilarities,
   buildRescueOptions,
   buildRiskAwareJourneys,
@@ -12,7 +12,7 @@ import {
 import { lineColor } from '../utils/lineColor';
 import { mobilityContextStore } from '../services/mobilityContextStore';
 
-const stationNames = JOURNEY_STATIONS.map((station) => station.name);
+const stationNames = PASSENGER_STATIONS.map((station) => station.name);
 const firstStation = (preferred, fallbackIndex = 0) => stationNames.find((name) => name === preferred) || stationNames[fallbackIndex] || '';
 
 const formatDue = (seconds) => {
@@ -24,13 +24,16 @@ const formatDue = (seconds) => {
 const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [], reliability = [], vehicles = [], entries = [], mobilitySnapshot = null }) => {
   const [origin, setOrigin] = useState(() => firstStation('Karlsplatz'));
   const [destination, setDestination] = useState(() => firstStation('Schwedenplatz', 1));
+  const [includeTrams, setIncludeTrams] = useState(false);
+  const [accessibleOnly, setAccessibleOnly] = useState(false);
   const [feedbackModel, setFeedbackModel] = useState('U-Bahn delay');
   const [feedbackSaved, setFeedbackSaved] = useState(false);
   const [contextRefreshing, setContextRefreshing] = useState(false);
   const context = mobilitySnapshot?.context || {};
   const sourceStates = mobilitySnapshot?.sources || {};
   const lineRisks = useMemo(() => reliability.map((item) => ({ line: item.line, risk: item.score == null ? 35 : Math.max(0, 100 - item.score) })), [reliability]);
-  const journeys = useMemo(() => buildRiskAwareJourneys({ origin, destination, lineRisks }), [origin, destination, lineRisks]);
+  const blockedStations = useMemo(() => disruptions.filter((item) => item.isElevator && item.station).map((item) => item.station), [disruptions]);
+  const journeys = useMemo(() => buildRiskAwareJourneys({ origin, destination, lineRisks, includeTrams, accessibleOnly, blockedStations }), [origin, destination, lineRisks, includeTrams, accessibleOnly, blockedStations]);
   const rescues = useMemo(() => buildRescueOptions({ vehicles, lineRisks, now }), [vehicles, lineRisks, now]);
   const stationCrowding = useMemo(() => buildStationCrowdingNowcast({ entries, issues, now, context }), [entries, issues, now, context]);
   const similarities = useMemo(() => buildIncidentSimilarities({ alerts: disruptions, history }), [disruptions, history]);
@@ -73,19 +76,23 @@ const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [
       {restrictedSources.length > 0 && <small className="advanced-caveat">Partner-only feeds are represented honestly until a licensed relay is configured; no private endpoint is scraped.</small>}
     </div>
 
-    <div className="advanced-card">
-      <div className="advanced-card-title"><strong>Risk-aware journey planner</strong><span>choose the resilient route</span></div>
-      <p className="prediction-description">Ranks direct and one-transfer options by current service risk. It does not replace the official timetable’s exact travel time.</p>
-      <div className="passenger-selects">
-        <label>From<select value={origin} onChange={(event) => setOrigin(event.target.value)}>{stationNames.map((name) => <option key={`from-${name}`}>{name}</option>)}</select></label>
-        <label>To<select value={destination} onChange={(event) => setDestination(event.target.value)}>{stationNames.map((name) => <option key={`to-${name}`}>{name}</option>)}</select></label>
-      </div>
-      {journeys.length ? <div className="advanced-list">{journeys.map((journey) => <div className="advanced-row" key={journey.id}>
+      <div className="advanced-card">
+        <div className="advanced-card-title"><strong>Risk-aware journey planner</strong><span>choose the resilient route</span></div>
+        <p className="prediction-description">Ranks direct and one-transfer options by current service risk. It does not replace the official timetable’s exact travel time.</p>
+        <div className="passenger-selects">
+          <label>From<select value={origin} onChange={(event) => setOrigin(event.target.value)}>{stationNames.map((name) => <option key={`from-${name}`}>{name}</option>)}</select></label>
+          <label>To<select value={destination} onChange={(event) => setDestination(event.target.value)}>{stationNames.map((name) => <option key={`to-${name}`}>{name}</option>)}</select></label>
+        </div>
+        <div className="passenger-route-toggles">
+          <label><input type="checkbox" checked={includeTrams} onChange={(event) => setIncludeTrams(event.target.checked)} /> Include tram options</label>
+          <label><input type="checkbox" checked={accessibleOnly} onChange={(event) => setAccessibleOnly(event.target.checked)} /> <Accessibility size={12} /> Avoid reported lift outages</label>
+        </div>
+        {journeys.length ? <div className="advanced-list">{journeys.map((journey) => <div className="advanced-row" key={journey.id}>
         <i style={{ background: lineColor(journey.lines[0]) }}>{journey.lines.join('·')}</i>
         <div><strong>{journey.label}</strong><span>{journey.transfer ? `Change at ${journey.transfer}` : journey.evidence}</span></div>
         <b>{journey.resilience}%</b><small>resilience</small>
-      </div>)}</div> : <p className="advanced-empty">Choose two different stations served by the U-Bahn.</p>}
-      <small className="advanced-caveat">Risk is based on current reliability and service-pressure signals; verify exact departures before leaving.</small>
+      </div>)}</div> : <p className="advanced-empty">Choose two different stations served by a selected mode.</p>}
+        <small className="advanced-caveat">Risk is based on current reliability and service-pressure signals; accessibility metadata is advisory and exact departures must be verified before leaving.</small>
     </div>
 
     <div className="advanced-card">

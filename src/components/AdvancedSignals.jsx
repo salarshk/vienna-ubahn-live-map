@@ -11,6 +11,9 @@ import { LINES } from '../services/transitModels';
 import { addReport, getReports, REPORT_CATEGORIES, subscribe as subscribeReports, summariseReports } from '../services/communityReports';
 import { estimateNetworkOccupancy } from '../services/occupancyEstimation';
 import { classifyDelayCauses } from '../services/delayCause';
+import { TRAM_LINES } from '../services/tramIntelligence';
+
+const REPORT_LINES = [...new Set([...LINES, ...TRAM_LINES])];
 
 const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, accessibility, reliability, vehicles, entries, modelHealth }) => {
   const [scenarioLine, setScenarioLine] = useState('U1');
@@ -64,7 +67,7 @@ const AdvancedSignals = ({ now, issues, forecasts, disruptions, crowding, access
     <div className="advanced-card community-report-card">
       <div className="advanced-card-title"><strong><Users size={14} /> Passenger reports</strong><span>{reportSummary.total} active · expires after 6h</span></div>
       <form className="community-report-form" onSubmit={submitReport}>
-        <select value={reportForm.line} onChange={(event) => setReportForm({ ...reportForm, line: event.target.value })} aria-label="Line"><option value="">Network</option>{LINES.map((line) => <option key={line}>{line}</option>)}</select>
+        <select value={reportForm.line} onChange={(event) => setReportForm({ ...reportForm, line: event.target.value })} aria-label="Line"><option value="">Network</option>{REPORT_LINES.map((line) => <option key={line}>{line}</option>)}</select>
         <input value={reportForm.station} maxLength={80} placeholder="Station (optional)" onChange={(event) => setReportForm({ ...reportForm, station: event.target.value })} />
         <select value={reportForm.category} onChange={(event) => setReportForm({ ...reportForm, category: event.target.value })} aria-label="Report type">{REPORT_CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select>
         <select value={reportForm.severity} onChange={(event) => setReportForm({ ...reportForm, severity: event.target.value })} aria-label="Severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>

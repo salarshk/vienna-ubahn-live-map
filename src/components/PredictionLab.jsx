@@ -10,6 +10,7 @@ import {
   scoreRouteReliability,
 } from '../services/predictionModels';
 import { buildDataDrivenModels } from '../services/dataDrivenModels';
+import { buildTramPredictions } from '../services/tramIntelligence';
 
 const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, networkSnapshot = null, operationalModels = null, category = 'all' }) => {
   const shared = networkSnapshot?.data?.models?.predictionLab;
@@ -30,6 +31,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
   const sbahn = useMemo(() => shared?.sbahn || predictSbahnConnections({ vehicles, now }), [shared, vehicles, now]);
   const anomalies = useMemo(() => shared?.anomalies || detectPredictiveAnomalies({ vehicles, issues, arrivals }), [shared, vehicles, issues, arrivals]);
   const uncertainty = useMemo(() => shared?.uncertainty || calibrateUncertainty({ vehicles, reliability }), [shared, vehicles, reliability]);
+  const tramPredictions = useMemo(() => buildTramPredictions({ arrivals, vehicles, issues, disruptions, now }), [arrivals, vehicles, issues, disruptions, now]);
   const dataDrivenModels = useMemo(() => buildDataDrivenModels({
     context: mobilitySnapshot?.context || {},
     sources: mobilitySnapshot?.sources || {},
@@ -85,6 +87,19 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
       {explain('Predicts arrival at the next station and provides a range widened by inferred-position uncertainty and observation age.')}
       {eta.length ? <div className="advanced-list">{eta.slice(0, 5).map((item) => <div className="advanced-row" key={item.id}><i style={{ background: lineColor(item.line) }}>{item.line}</i><div><strong>{item.station}</strong><span>{item.destination} · {item.evidence}</span></div><b>{item.etaMinutes}m</b><small>{item.lowMinutes}–{item.highMinutes}m</small></div>)}</div> : <p className="advanced-empty">No live train ETA is available.</p>}
       <small className="advanced-caveat">ETA uses official station departures and inferred position; it is not GPS ground truth.</small>
+    </div>}
+
+    {show('predictions') && <div className="advanced-card tram-model-card">
+      <div className="advanced-card-title"><strong><TrainFront size={13} /> Tram operations models</strong><span>street-running services</span></div>
+      {explain('Separately estimates tram pressure, disruption impact and headway risk because trams share streets and traffic signals. A tram location is still departure-based unless the official feed supplies coordinates.')}
+      <div className="advanced-line-grid">{tramPredictions.filter((item) => item.liveArrivals || item.impact > 0 || item.pressure >= 45).slice(0, 12).map((item) => <div key={item.line}>
+        <i style={{ background: lineColor(item.line) }}>{item.line}</i>
+        <strong>{item.pressureLevel} · {item.impactLevel}</strong>
+        <span>{item.meanDelayMinutes > 0 ? `+${item.meanDelayMinutes}m delay` : 'no reported delay'} · {item.confidence}%</span>
+        <small>{item.headway.largestGapStation ? `largest gap near ${item.headway.largestGapStation}` : item.evidence}</small>
+      </div>)}</div>
+      {!tramPredictions.some((item) => item.liveArrivals || item.impact > 0 || item.pressure >= 45) && <p className="advanced-empty">Waiting for live tram observations.</p>}
+      <small className="advanced-caveat">This is a transparent tram baseline, not a traffic-signal or operator-control command.</small>
     </div>}
 
     {show('predictions') && <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Dwell-time model</strong><span>station stop risk</span></div>

@@ -1,8 +1,12 @@
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 import { estimateConnections } from './networkIntelligence';
 
 const U_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
+const TRAM_LINES = new Set((tramData.features || [])
+  .filter((feature) => feature.geometry?.type === 'LineString')
+  .map((feature) => String(feature.properties?.line)));
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 const normalise = (value) => clean(value).toLocaleLowerCase('de-AT');
@@ -11,6 +15,7 @@ const stationMap = new Map();
 for (const feature of [
   ...(gtfsData.features || []),
   ...(sbahnData.features || []),
+  ...(tramData.features || []),
 ].filter((item) => item.geometry?.type === 'Point')) {
   const name = clean(feature.properties?.name);
   if (!name) continue;
@@ -26,12 +31,18 @@ export const JOURNEY_STATIONS = [...stationMap.values()]
   .filter((station) => station.lines.some((line) => U_LINES.has(line)))
   .sort((a, b) => a.name.localeCompare(b.name, 'de-AT'));
 
+// Includes tram-only stops for the optional multimodal planner. The default
+// journey list remains U-Bahn-focused for a compact UI, while this catalogue
+// lets a passenger explicitly opt into street-running connections.
+export const PASSENGER_STATIONS = [...stationMap.values()]
+  .sort((a, b) => a.name.localeCompare(b.name, 'de-AT'));
+
 const lineRisk = (lineRisks = []) => new Map((lineRisks || [])
   .map((item) => [String(item.line), Number.isFinite(Number(item.risk)) ? Number(item.risk) : 35]));
 
 const findStation = (name) => stationMap.get(normalise(name));
 
-const transferStations = (fromLine, toLine) => JOURNEY_STATIONS
+const transferStations = (fromLine, toLine) => [...stationMap.values()]
   .filter((station) => station.lines.includes(fromLine) && station.lines.includes(toLine))
   .map((station) => station.name);
 
@@ -40,14 +51,17 @@ const transferStations = (fromLine, toLine) => JOURNEY_STATIONS
  * does not invent journey minutes: exact routing remains the operator's job,
  * while this layer answers which available path is more resilient right now.
  */
-export const buildRiskAwareJourneys = ({ origin, destination, lineRisks = [] } = {}) => {
+export const buildRiskAwareJourneys = ({ origin, destination, lineRisks = [], includeTrams = false, accessibleOnly = false, blockedStations = [] } = {}) => {
   const from = findStation(origin);
   const to = findStation(destination);
   if (!from || !to || normalise(from.name) === normalise(to.name)) return [];
 
   const risks = lineRisk(lineRisks);
+  const routingLines = includeTrams ? new Set([...U_LINES, ...TRAM_LINES]) : U_LINES;
+  const blocked = new Set(blockedStations.map(normalise));
+  if (accessibleOnly && (blocked.has(normalise(from.name)) || blocked.has(normalise(to.name)))) return [];
   const options = [];
-  const directLines = from.lines.filter((line) => U_LINES.has(line) && to.lines.includes(line));
+  const directLines = from.lines.filter((line) => routingLines.has(line) && to.lines.includes(line));
   directLines.forEach((line) => {
     const risk = risks.get(line) ?? 35;
     options.push({
@@ -58,16 +72,18 @@ export const buildRiskAwareJourneys = ({ origin, destination, lineRisks = [] } =
       resilience: clamp(Math.round(100 - risk), 5, 98),
       label: `Direct ${line}`,
       evidence: risk < 30 ? 'lowest current line risk' : 'direct route with current line risk',
+      accessibility: accessibleOnly ? 'step-free status must be verified' : 'access not assessed',
     });
   });
 
-  const fromLines = from.lines.filter((line) => U_LINES.has(line));
-  const toLines = to.lines.filter((line) => U_LINES.has(line));
+  const fromLines = from.lines.filter((line) => routingLines.has(line));
+  const toLines = to.lines.filter((line) => routingLines.has(line));
   for (const first of fromLines) {
     for (const second of toLines) {
       if (first === second) continue;
       const station = transferStations(first, second)[0];
       if (!station) continue;
+      if (accessibleOnly && blocked.has(normalise(station))) continue;
       const risk = Math.round(((risks.get(first) ?? 35) + (risks.get(second) ?? 35)) / 2 + 12);
       options.push({
         id: `transfer-${first}-${second}-${station}`,
@@ -77,6 +93,7 @@ export const buildRiskAwareJourneys = ({ origin, destination, lineRisks = [] } =
         resilience: clamp(Math.round(100 - risk), 5, 98),
         label: `${first} → ${second}`,
         evidence: `one transfer at ${station}`,
+        accessibility: accessibleOnly ? 'no current elevator outage at transfer' : 'access not assessed',
       });
     }
   }
