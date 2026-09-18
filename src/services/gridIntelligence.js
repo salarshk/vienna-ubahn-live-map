@@ -16,13 +16,20 @@ const VIENNA_LATITUDE = 48.2082;
 const LONGITUDE_METRES = LATITUDE_METRES * Math.cos(VIENNA_LATITUDE * Math.PI / 180);
 const ORIGIN = [16.1, 47.9];
 // Vienna plus the S7 airport/Fischamend corridor. This stable envelope lets
-// the map show quiet areas even when no train is currently observed there.
+// the map show quiet areas even when no train is currently observed there;
+// Niederösterreich is added separately along the mapped S-Bahn corridors.
 export const VIENNA_GRID_BOUNDS = Object.freeze({ west: 16.10, east: 16.67, south: 48.05, north: 48.37 });
+export const NIEDEROSTERREICH_RAIL_BOUNDS = Object.freeze({ west: 15.50, east: 17.30, south: 47.60, north: 49.10 });
 const isInsideGridBounds = (coordinates) => Array.isArray(coordinates)
   && Number(coordinates[0]) >= VIENNA_GRID_BOUNDS.west
   && Number(coordinates[0]) <= VIENNA_GRID_BOUNDS.east
   && Number(coordinates[1]) >= VIENNA_GRID_BOUNDS.south
   && Number(coordinates[1]) <= VIENNA_GRID_BOUNDS.north;
+const isInsideRailBounds = (coordinates) => Array.isArray(coordinates)
+  && Number(coordinates[0]) >= NIEDEROSTERREICH_RAIL_BOUNDS.west
+  && Number(coordinates[0]) <= NIEDEROSTERREICH_RAIL_BOUNDS.east
+  && Number(coordinates[1]) >= NIEDEROSTERREICH_RAIL_BOUNDS.south
+  && Number(coordinates[1]) <= NIEDEROSTERREICH_RAIL_BOUNDS.north;
 
 const finite = (value, fallback = null) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
@@ -213,6 +220,41 @@ export const buildCellIntelligence = ({
     }
     return cell;
   };
+  const seedCorridorCell = (coordinates, line) => {
+    if (!isInsideRailBounds(coordinates)) return;
+    const base = coordinatesToCell(coordinates);
+    if (!base) return;
+    // A one-cell buffer makes the rail corridor readable at city-map zoom
+    // without creating a full Lower Austria rectangle of empty polygons.
+    for (let dx = -1; dx <= 1; dx += 1) {
+      for (let dy = -1; dy <= 1; dy += 1) {
+        const x = base.x + dx;
+        const y = base.y + dy;
+        const west = ORIGIN[0] + x * GRID_SIZE_METRES / LONGITUDE_METRES;
+        const south = ORIGIN[1] + y * GRID_SIZE_METRES / LATITUDE_METRES;
+        const cell = cells.get(`${x}:${y}`) || newCell({
+          id: `${x}:${y}`,
+          x,
+          y,
+          center: [west + GRID_SIZE_METRES / (2 * LONGITUDE_METRES), south + GRID_SIZE_METRES / (2 * LATITUDE_METRES)],
+          bounds: [west, south, west + GRID_SIZE_METRES / LONGITUDE_METRES, south + GRID_SIZE_METRES / LATITUDE_METRES],
+        });
+        cells.set(cell.id, cell);
+        addLine(cell, line, 'sbahn');
+      }
+    }
+  };
+
+  // Extend the grid through the Niederösterreich S-Bahn routes available in
+  // the bundled network data. Only route corridors are seeded outside Vienna;
+  // this keeps the mobile map responsive while still covering the useful rail
+  // service area around the city.
+  sbahnData.features
+    .filter((feature) => feature?.geometry?.type === 'LineString')
+    .forEach((feature) => {
+      const line = feature.properties?.line;
+      (feature.geometry.coordinates || []).forEach((coordinates) => seedCorridorCell(coordinates, line));
+    });
 
   // Include the static station cells so the grid also describes service
   // coverage, accessibility and transfer locations when no train is present.

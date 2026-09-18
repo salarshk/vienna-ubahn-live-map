@@ -51,7 +51,7 @@ const Sidebar = ({
     ['confidenceRanges', 'Position ranges'],
     ['movementTrails', 'Selected train trail'],
     ['reliabilityAtlas', 'Reliability atlas'],
-    ['cellGrid', '200 m Vienna intelligence grid'],
+    ['cellGrid', '200 m Vienna + NÖ rail grid'],
   ];
 
   return (
