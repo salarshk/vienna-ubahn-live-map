@@ -18,7 +18,9 @@ const ORIGIN = [16.1, 47.9];
 // Vienna plus the S7 airport/Fischamend corridor. This stable envelope lets
 // the map show quiet areas even when no train is currently observed there;
 // Niederösterreich is added separately along the mapped S-Bahn corridors.
-export const VIENNA_GRID_BOUNDS = Object.freeze({ west: 16.10, east: 16.67, south: 48.05, north: 48.37 });
+// Tight city envelope for the filled Vienna grid. Areas outside this envelope
+// are added only when an S-Bahn corridor passes through them.
+export const VIENNA_GRID_BOUNDS = Object.freeze({ west: 16.18, east: 16.59, south: 48.10, north: 48.33 });
 export const NIEDEROSTERREICH_RAIL_BOUNDS = Object.freeze({ west: 15.50, east: 17.30, south: 47.60, north: 49.10 });
 const isInsideGridBounds = (coordinates) => Array.isArray(coordinates)
   && Number(coordinates[0]) >= VIENNA_GRID_BOUNDS.west
@@ -49,7 +51,7 @@ const stations = [...new Map(stationFeatures.map((feature) => {
     lines: [...new Set((p.lines || []).map(String).filter(Boolean))],
     mode: p.mode || (String(p.lines?.[0] || '').startsWith('S') ? 'sbahn' : String(p.lines?.[0] || '').match(/^\d/) ? 'tram' : 'ubahn'),
   }];
-}).filter(([key, station]) => key && isInsideGridBounds(station.coordinates)))].map(([, station]) => station);
+}).filter(([key, station]) => key && (isInsideGridBounds(station.coordinates) || isInsideRailBounds(station.coordinates))))].map(([, station]) => station);
 
 const stationByName = new Map(stations.map((station) => [normalise(station.name), station]));
 
