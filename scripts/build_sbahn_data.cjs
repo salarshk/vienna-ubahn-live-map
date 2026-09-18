@@ -236,7 +236,32 @@ try {
     const chains = chainsByLine.get(line);
     // The longest in-city stopping pattern is the clearest single map path for
     // a line with express/short-turn variants.
-    const canonical = chains.sort((a, b) => b.length - a.length)[0];
+    let canonical = chains.sort((a, b) => b.length - a.length)[0];
+    // S7 has two valid in-city patterns in the annual feed: some services
+    // turn short at Schwechat, while the airport/Wolfsthal pattern continues
+    // through Flughafen Wien and Fischamend. Join that downstream section to
+    // the longest north-side path so the map renders the complete physical
+    // corridor instead of ending at Schwechat.
+    if (line === 'S7' && canonical) {
+      const airportChain = chains.find((chain) => {
+        const names = chain.map((id) => stationById.get(id)?.name);
+        const sharedEndIndex = chain.indexOf(canonical.at(-1));
+        return sharedEndIndex >= 0
+          && names.indexOf('Flughafen Wien') > sharedEndIndex
+          && names.indexOf('Fischamend') > sharedEndIndex;
+      });
+      if (airportChain) {
+        const sharedEndIndex = airportChain.indexOf(canonical.at(-1));
+        if (sharedEndIndex >= 0) {
+          canonical = [...canonical, ...airportChain.slice(sharedEndIndex + 1)];
+        } else {
+          const sharedStartIndex = canonical.findIndex((id) => airportChain.includes(id));
+          if (sharedStartIndex >= 0) {
+            canonical = [...canonical.slice(0, sharedStartIndex), ...airportChain];
+          }
+        }
+      }
+    }
     if (!canonical) continue;
     const stations = canonical.map((id) => stationById.get(id)).filter(Boolean);
     lineFeatures.push({

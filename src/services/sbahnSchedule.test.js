@@ -31,6 +31,19 @@ describe('Vienna S-Bahn timetable', () => {
     });
   });
 
+  it('draws the S7 corridor through the airport and Fischamend', () => {
+    const stationNames = new Map(
+      sbahnData.features
+        .filter((item) => item.geometry.type === 'Point')
+        .map((item) => [item.properties.stop_id, item.properties.name])
+    );
+    const s7 = sbahnData.features.find((item) => item.geometry.type === 'LineString' && item.properties.line === 'S7');
+    const names = s7.properties.stationIds.map((id) => stationNames.get(id));
+    expect(names.indexOf('Flughafen Wien')).toBeGreaterThan(-1);
+    expect(names.indexOf('Fischamend')).toBeGreaterThan(names.indexOf('Flughafen Wien'));
+    expect(s7.geometry.coordinates.length).toBe(names.length);
+  });
+
   it('uses Vienna local time rather than the viewer timezone', () => {
     expect(getViennaServiceClock(new Date('2026-09-10T09:15:30Z')))
       .toMatchObject({ date: '20260910', seconds: 11 * 3600 + 15 * 60 + 30 });
