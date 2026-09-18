@@ -52,6 +52,8 @@ describe('advisor worker', () => {
     }), env, fetchMock);
     const result = await response.json();
     expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=1');
+    expect(Number(response.headers.get('X-Snapshot-Generated-At'))).toBe(result.generatedAt);
     expect(result.source).toBe('wiener-linien-monitor');
     expect(result.observations).toHaveLength(2);
     expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);

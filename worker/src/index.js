@@ -130,7 +130,15 @@ const handleCachedNetworkSnapshot = async (request, env, fetchImpl, executionCon
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   if (cache) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      // Cloudflare can serve a stale-while-revalidate response while the
+      // upstream refresh is in flight. That is useful for ordinary content,
+      // but it violates the map's strict three-second telemetry promise. Only
+      // reuse a snapshot whose own generation timestamp is still recent.
+      const generatedAt = Number(cached.headers.get('X-Snapshot-Generated-At'));
+      if (Number.isFinite(generatedAt) && Date.now() - generatedAt <= 1800) return cached;
+      if (typeof cache.delete === 'function') await cache.delete(cacheKey);
+    }
   }
   const response = await handleNetworkSnapshot(request, env, fetchImpl, executionContext);
   if (cache && response?.ok) await cache.put(cacheKey, response.clone());

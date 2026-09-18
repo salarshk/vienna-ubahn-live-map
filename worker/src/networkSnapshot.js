@@ -250,11 +250,11 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
   };
   if (executionContext?.waitUntil) executionContext.waitUntil(archiveSnapshot(env, snapshot).catch(() => null));
   return json(snapshot, 200, origin, {
-    // The map marks observations older than three seconds as waiting. A
-    // two-second edge window keeps normal cache hits below that threshold,
-    // while stale-while-revalidate still protects the UI during short feed
-    // hiccups without manufacturing a fresh timestamp.
-    'Cache-Control': 'public, max-age=0, s-maxage=2, stale-while-revalidate=10',
+    // The map marks observations older than three seconds as waiting. Keep the
+    // edge cache to one second and never serve a stale-while-revalidate copy:
+    // a stale response must not be labelled as fresh telemetry.
+    'Cache-Control': 'public, max-age=0, s-maxage=1',
+    'X-Snapshot-Generated-At': String(generatedAt),
     ETag: `W/"${generatedAt}"`,
   });
 };
