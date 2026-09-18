@@ -41,10 +41,10 @@ const ageLabel = (timestamp) => {
 const RailIntelligence = ({
   snapshot, disruptions = [], replayOffset, replaySnapshot, onReplayChange,
   atlasVisible, onToggleAtlas, onClose, officialSnapshotState, officialReplaySnapshot,
-  dashboardInitiallyOpen = false, onDashboardClose,
+  dashboardInitiallyOpen = false, onDashboardClose, initialTab = 'forecast',
 }) => {
   const now = snapshot.generatedAt || 0;
-  const [tab, setTab] = useState('forecast');
+  const [tab, setTab] = useState(initialTab);
   const advisorEnabled = advisorIsEnabled();
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [sheetDragOffset, setSheetDragOffset] = useState(0);
@@ -98,6 +98,10 @@ const RailIntelligence = ({
   const labTransfers = useMemo(() => buildTransferHealth(vehicles, now), [vehicles, now]);
   const labRecovery = useMemo(() => buildRecoveryForecast({ issues, forecasts, reliability: snapshot.reliability || [] }), [issues, forecasts, snapshot.reliability]);
   const labRouteRisk = useMemo(() => buildRouteRisk({ recovery: labRecovery, pressure: crowding, reliability: snapshot.reliability || [] }), [labRecovery, crowding, snapshot.reliability]);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     const unsubscribe = delayModelStore.subscribe(setDelaySnapshot);

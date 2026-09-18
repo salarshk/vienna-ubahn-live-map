@@ -259,6 +259,7 @@ body {
 .top-action-button:hover, .top-action-button:focus-visible { border-color: var(--border-color); color: var(--text-primary); background: var(--bg-hover-active); outline: none; transform: translateY(-1px); }
 .top-action-button.top-action-active { border-color: currentColor; background: var(--bg-hover-active); box-shadow: 0 0 0 2px var(--bg-hover); }
 .top-action-button.fleet-action { color: #80a8ff; }
+.top-action-button.delay-action { color: #ff6b6b; }
 .top-action-button.alert-action { color: #ffb74d; }
 .top-action-button.station-action { color: #00b4d8; }
 .top-action-button.scenario-action { color: #b388ff; }

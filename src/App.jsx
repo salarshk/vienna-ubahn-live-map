@@ -23,7 +23,7 @@ import delayReportStore from './services/delayReportStore';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route } from 'lucide-react';
+import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3 } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -38,6 +38,7 @@ function App() {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [intelligenceInitialTab, setIntelligenceInitialTab] = useState('forecast');
   const [fleetTrackerOpen, setFleetTrackerOpen] = useState(false);
   const [alertCenterOpen, setAlertCenterOpen] = useState(false);
   const [stationHubOpen, setStationHubOpen] = useState(false);
@@ -401,7 +402,23 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setIntelligenceInitialTab('forecast');
     setIntelligenceOpen((open) => !open);
+  };
+
+  const openDelayPanel = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
+    setCommuteOpen(false);
+    setReplayOffset(0);
+    setIntelligenceInitialTab('delays');
+    setIntelligenceOpen(true);
   };
 
   const openFleetTracker = () => {
@@ -550,6 +567,16 @@ function App() {
             aria-label="Open all-trains live tracker"
           >
             <TrainFront size={18} />
+          </button>
+          <button
+            onClick={openDelayPanel}
+            className={`top-action-button delay-action ${intelligenceOpen && intelligenceInitialTab === 'delays' ? 'top-action-active' : ''}`}
+            data-label="Delays"
+            title="Open ranked delay reports"
+            aria-label="Open ranked delay reports"
+            aria-pressed={intelligenceOpen && intelligenceInitialTab === 'delays'}
+          >
+            <Clock3 size={18} />
           </button>
           <button
             onClick={openAlertCenter}
@@ -751,6 +778,7 @@ function App() {
           replaySnapshot={replaySnapshot}
           officialSnapshotState={officialSnapshotState}
           officialReplaySnapshot={officialReplaySnapshot}
+          initialTab={intelligenceInitialTab}
           onReplayChange={setReplayOffset}
           atlasVisible={mapVisibility.reliabilityAtlas}
           onToggleAtlas={() => setMapVisibility((previous) => ({
