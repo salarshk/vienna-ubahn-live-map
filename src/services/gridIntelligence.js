@@ -7,6 +7,7 @@ import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
 import tramData from '../data/tram_network.json';
 import { persistBrowserArchive, readBrowserArchive } from './browserArchive';
+import { estimateEnvironmentalComfort, parseTrafficContext, predictAirportArrivalWave, predictEventCrowding } from './transportIntelligence';
 
 export const GRID_SIZE_METRES = 50;
 export const GRID_KEY = 'vienna_cell_intelligence_v1';
@@ -88,6 +89,9 @@ const newCell = (cell) => ({
   disruptionCount: 0,
   accessibilityIssues: 0,
   trafficJamSignals: 0,
+  directions: new Map(),
+  nextArrivalSeconds: Infinity,
+  conflictCount: 0,
   transferLines: new Set(),
   nearestStation: null,
   userDistanceMetres: null,
@@ -133,6 +137,10 @@ const toCellList = (cells) => [...cells.values()].map((cell) => {
   const confidence = cell.exactGpsCount > 0
     ? clamp(70 + Math.min(30, cell.exactGpsCount * 8))
     : clamp(35 + Math.min(35, cell.inferredPositionCount * 3));
+  const dominantDirection = [...cell.directions.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  const etaMinutes = Number.isFinite(cell.nextArrivalSeconds) ? Number((Math.max(0, cell.nextArrivalSeconds) / 60).toFixed(1)) : null;
+  const walkingMinutes = Number.isFinite(cell.userDistanceMetres) ? Number((cell.userDistanceMetres / 80).toFixed(1)) : null;
+  const anomalyScore = Math.round(clamp(cell.positionStale * 25 + cell.conflictCount * 25 + cell.dwellRisk * 0.35 + Math.max(0, delayTrend) * 18));
 
   return {
     ...cell,
@@ -150,6 +158,10 @@ const toCellList = (cells) => [...cells.values()].map((cell) => {
     reliability: Math.round(reliability),
     transferProbability: transferProbability == null ? null : Math.round(transferProbability),
     confidence: Math.round(confidence),
+    dominantDirection,
+    etaMinutes,
+    walkingMinutes,
+    anomalyScore,
     severity,
     riskScore: Math.round(clamp(100 - reliability + crowdPressure * 0.35 + cell.dwellRisk * 0.2)),
     coverage: lines.length ? Math.round(clamp(35 + lines.length * 20 + (cell.arrivalCount ? 20 : 0))) : 0,
@@ -190,6 +202,8 @@ export const buildCellIntelligence = ({
     const mode = String(vehicle.line || '').startsWith('S') ? 'sbahn' : String(vehicle.line || '').match(/^\d/) ? 'tram' : 'ubahn';
     addLine(cell, vehicle.line, mode);
     cell.trainIds.add(String(vehicle.id || `${vehicle.line}-${vehicle.direction || ''}`));
+    const direction = vehicle.direction || vehicle.directionCode;
+    if (direction) cell.directions.set(String(direction), (cell.directions.get(String(direction)) || 0) + 1);
     if (vehicle.isLive) cell.liveTrainCount += 1;
     if (vehicle.isScheduled) cell.scheduledTrainCount += 1;
     if (vehicle.exactGpsAvailable || vehicle.positionSource === 'official-vehicle-gps') cell.exactGpsCount += 1;
@@ -210,6 +224,7 @@ export const buildCellIntelligence = ({
       addDelay(cell, arrival.reportedDelaySeconds);
       const trend = finite(arrival.delayTrendMinutes);
       if (trend !== null) cell.delayTrends.push(trend);
+      if (Number.isFinite(Number(arrival.targetTimestamp))) cell.nextArrivalSeconds = Math.min(cell.nextArrivalSeconds, Math.max(0, (Number(arrival.targetTimestamp) - now) / 1000));
       if (arrival.onStop === true) cell.dwellRisk = Math.max(cell.dwellRisk, 35 + Math.max(0, finite(arrival.reportedDelaySeconds, 0)) / 6);
       if (arrival.trafficJam) cell.trafficJamSignals += 1;
     });
@@ -237,6 +252,10 @@ export const buildCellIntelligence = ({
   const weather = context.weatherNowcast || context.weather || null;
   const air = context.airQuality || null;
   const bike = context.bikeShare || null;
+  const traffic = parseTrafficContext(context);
+  const airport = predictAirportArrivalWave({ context, now });
+  const events = predictEventCrowding({ context, disruptions, now });
+  const comfort = estimateEnvironmentalComfort({ context, now });
   const environmental = weather || air || bike ? {
     weather: weather?.description || null,
     temperature: finite(weather?.temperature),
@@ -245,7 +264,13 @@ export const buildCellIntelligence = ({
     pm10: finite(air?.pm10),
     availableBikes: finite(bike?.availableBikes),
   } : null;
-  cells.forEach((cell) => { cell.environmental = environmental; });
+  cells.forEach((cell) => {
+    cell.environmental = environmental;
+    cell.contextModels = { traffic, airport, events, comfort };
+    cell.trafficRisk = traffic.congestionScore;
+    cell.airportPressure = airport.railPressureScore;
+    cell.eventPressure = events.score;
+  });
 
   const userCell = userLocation?.status === 'located' ? coordinatesToCell(userLocation.coordinates) : null;
   if (userCell) {

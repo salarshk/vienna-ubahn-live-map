@@ -14,9 +14,15 @@ const CellRow = ({ cell, metric = 'risk' }) => {
     : metric === 'pressure' ? `${cell.crowdPressure}/100`
       : metric === 'reliability' ? `${cell.reliability}/100`
         : `${cell.recoveryMinutes} min`;
+  const details = [
+    cell.lines.join(' · ') || 'network',
+    cell.dominantDirection ? `towards ${cell.dominantDirection}` : null,
+    cell.etaMinutes == null ? null : `next ${cell.etaMinutes} min`,
+    cell.anomalyScore > 0 ? `anomaly ${cell.anomalyScore}` : `${cell.observations} observations`,
+  ].filter(Boolean).join(' · ');
   return <div className="cell-intelligence-row">
     <span className="cell-intelligence-rank">{cell.stations[0] || cell.lines.join(' · ') || cell.id}</span>
-    <small>{cell.lines.join(' · ') || 'network'} · {cell.userDistanceMetres == null ? `${cell.observations} observations` : `${Math.round(cell.userDistanceMetres)} m away`}</small>
+    <small>{details}{cell.userDistanceMetres == null ? '' : ` · ${Math.round(cell.userDistanceMetres)} m away`}</small>
     <b className={cell.severity === 'high' ? 'risk-high' : cell.severity === 'medium' ? 'risk-medium' : ''}>{value}</b>
   </div>;
 };
@@ -67,7 +73,7 @@ const CellIntelligencePanel = ({
     </div>
 
     {view === 'overview' && <>
-      <div className="cell-intelligence-kpis"><span><strong>{grid.cells.length}</strong>cells</span><span><strong>{grid.cells.filter((cell) => cell.liveTrainCount).length}</strong>live train areas</span><span><strong>{grid.cells.filter((cell) => cell.disruptionCount).length}</strong>affected areas</span><span><strong>{grid.cells.filter((cell) => cell.transferProbability != null).length}</strong>transfer cells</span></div>
+      <div className="cell-intelligence-kpis"><span><strong>{grid.cells.length}</strong>cells</span><span><strong>{grid.cells.filter((cell) => cell.liveTrainCount).length}</strong>live train areas</span><span><strong>{grid.cells.filter((cell) => cell.disruptionCount).length}</strong>affected areas</span><span><strong>{grid.cells.filter((cell) => cell.anomalyScore > 0).length}</strong>anomaly cells</span></div>
       <div className="cell-intelligence-section-title"><Activity size={13} /> Highest-risk cells</div>
       <div className="cell-intelligence-list">{grid.cells.slice(0, 10).map((cell) => <CellRow key={cell.id} cell={cell} />)}</div>
       <div className="cell-intelligence-feature-grid"><span><Navigation size={12} /><b>ETA</b><small>Cell-to-station arrival estimate and confidence</small></span><span><ShieldCheck size={12} /><b>Reliability</b><small>Delay, gaps and disruption combined</small></span><span><Route size={12} /><b>Route risk</b><small>Risk-adjusted corridor and transfer quality</small></span><span><Users size={12} /><b>Pressure</b><small>Service-pressure proxy, not passenger counting</small></span></div>
@@ -96,7 +102,12 @@ const CellIntelligencePanel = ({
 
     {view === 'context' && <>
       <div className="cell-intelligence-section-title"><CloudRain size={13} /> External context by cell</div>
-      <div className="cell-intelligence-context-grid">{contextRows(context).map(([label, value, Icon]) => <span key={label}><Icon size={13} /><b>{label}</b><small>{value}</small></span>)}</div>
+      <div className="cell-intelligence-context-grid">{contextRows(context).map(([label, value, Icon]) => <span key={label}><Icon size={13} /><b>{label}</b><small>{value}</small></span>)}
+        <span><Activity size={13} /><b>Road pressure</b><small>{grid.cells[0]?.contextModels?.traffic?.congestionScore ?? 0}/100 · {grid.cells[0]?.contextModels?.traffic?.observations || 0} observations</small></span>
+        <span><Plane size={13} /><b>Airport wave</b><small>{grid.cells[0]?.contextModels?.airport?.railPressureLevel || 'routine'} · {grid.cells[0]?.contextModels?.airport?.railPressureScore ?? 0}/100</small></span>
+        <span><Users size={13} /><b>Events</b><small>{grid.cells[0]?.contextModels?.events?.level || 'routine'} · {grid.cells[0]?.contextModels?.events?.score ?? 0}/100</small></span>
+        <span><ShieldCheck size={13} /><b>Outdoor comfort</b><small>{grid.cells[0]?.contextModels?.comfort?.level || 'baseline'} · {grid.cells[0]?.contextModels?.comfort?.score ?? 0}/100</small></span>
+      </div>
       <div className="cell-intelligence-feature-grid"><span><CloudRain size={12} /><b>Weather walking</b><small>Transfer comfort and tram exposure</small></span><span><Wind size={12} /><b>Air quality</b><small>Environmental context, not medical advice</small></span><span><Bike size={12} /><b>Bike fallback</b><small>Alternative availability near a cell</small></span><span><Plane size={12} /><b>Airport wave</b><small>Airport-to-rail demand probability</small></span></div>
     </>}
 
