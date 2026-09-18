@@ -22,6 +22,7 @@ import officialSnapshotStore from './services/officialSnapshotStore';
 import delayReportStore from './services/delayReportStore';
 import { buildCellIntelligence } from './services/gridIntelligence';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
+import { mobilityContextStore } from './services/mobilityContextStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
 import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3 } from 'lucide-react';
