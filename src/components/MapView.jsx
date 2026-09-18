@@ -1392,17 +1392,30 @@ const MapView = ({
     map.on('zoom', updateZoomScale);
     updateZoomScale();
 
+    // Resolve a grid cell from the layer itself as well as from the map-wide
+    // click handler below.  MapLibre's layer-specific event is important on
+    // touch devices: station/train DOM markers and the basemap can otherwise
+    // win the hit test even though the finger is visibly inside a cell.
+    const selectCellFromEvent = (event) => {
+      if (!cellGridVisibleRef.current || !map.getLayer('cell-intelligence-fill')) return false;
+      const cellFeature = event.features?.[0]
+        || map.queryRenderedFeatures(event.point, { layers: ['cell-intelligence-fill'] })[0];
+      if (!cellFeature?.properties?.id) return false;
+      selectCellRef.current?.(String(cellFeature.properties.id));
+      return true;
+    };
+    const onCellLayerClick = (event) => { selectCellFromEvent(event); };
+    const onCellTouchEnd = (event) => { selectCellFromEvent(event); };
+    map.on('click', 'cell-intelligence-fill', onCellLayerClick);
+    map.on('touchend', onCellTouchEnd);
+    map.on('mouseenter', 'cell-intelligence-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'cell-intelligence-fill', () => { map.getCanvas().style.cursor = ''; });
+
     // A forgiving tap. This fires only for clicks that reach the map canvas —
     // a click that lands squarely on a Station marker is handled by the marker's
     // own handler and never gets here — so this is purely the near-miss case.
     map.on('click', (event) => {
-      if (cellGridVisibleRef.current && map.getLayer('cell-intelligence-fill')) {
-        const cellFeature = map.queryRenderedFeatures(event.point, { layers: ['cell-intelligence-fill'] })[0];
-        if (cellFeature?.properties?.id) {
-          selectCellRef.current?.(String(cellFeature.properties.id));
-          return;
-        }
-      }
+      if (selectCellFromEvent(event)) return;
       // Below this scale the Station markers are hidden, and nothing invisible
       // should be tappable.
       if (zoomScaleRef.current < 0.55) return;
