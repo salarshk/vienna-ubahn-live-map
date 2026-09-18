@@ -20,6 +20,7 @@ import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from '.
 import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
 import delayReportStore from './services/delayReportStore';
+import { buildCellIntelligence } from './services/gridIntelligence';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
@@ -68,7 +69,9 @@ function App() {
     confidenceRanges: true,
     movementTrails: true,
     reliabilityAtlas: false,
+    cellGrid: false,
   });
+  const [cellGridSnapshot, setCellGridSnapshot] = useState({ cells: [], generatedAt: 0 });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
   const [installPrompt, setInstallPrompt] = useState(null);
   const [commuteOpen, setCommuteOpen] = useState(false);
@@ -91,6 +94,29 @@ function App() {
       window.removeEventListener('appinstalled', installed);
     };
   }, []);
+
+  // Refresh the spatial intelligence layer with the same live cache used by
+  // the map. The expensive work is bounded to station/train cells and is
+  // deliberately slower than the five-second marker animation.
+  useEffect(() => {
+    const refresh = () => {
+      const now = Date.now();
+      const intelligence = networkIntelligenceStore.getSnapshot();
+      setCellGridSnapshot(buildCellIntelligence({
+        vehicles: trainPositionEngine.getAllVehicles(now),
+        entries: [...arrivalStore.memory.values()],
+        issues: intelligence.issues,
+        disruptions: disruptionStore.getSnapshot().alerts,
+        context: mobilityContextStore.getSnapshot().context,
+        userLocation,
+        now,
+      }));
+    };
+    const unsubscribe = arrivalStore.subscribe(refresh);
+    refresh();
+    const timer = setInterval(refresh, 10000);
+    return () => { unsubscribe(); clearInterval(timer); };
+  }, [userLocation]);
 
   // Save compact official delay observations once per minute. The report store
   // keeps bounded period aggregates in IndexedDB; it does not write every
@@ -513,6 +539,8 @@ function App() {
         selectedVehicleId={selectedVehicle?.id || null}
         replaySnapshot={replaySnapshot}
         reliabilityScores={intelligenceSnapshot.reliability}
+        gridCells={cellGridSnapshot.cells}
+        cellGridVisible={mapVisibility.cellGrid}
       />
 
       {/* Collapsible Sidebar */}
@@ -779,6 +807,9 @@ function App() {
           officialSnapshotState={officialSnapshotState}
           officialReplaySnapshot={officialReplaySnapshot}
           initialTab={intelligenceInitialTab}
+          userLocation={userLocation}
+          cellGridVisible={mapVisibility.cellGrid}
+          onToggleCellGrid={() => setMapVisibility((previous) => ({ ...previous, cellGrid: !previous.cellGrid }))}
           onReplayChange={setReplayOffset}
           atlasVisible={mapVisibility.reliabilityAtlas}
           onToggleAtlas={() => setMapVisibility((previous) => ({

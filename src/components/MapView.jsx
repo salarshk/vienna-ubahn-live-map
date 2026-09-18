@@ -10,6 +10,7 @@ import tramData from '../data/tram_network.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import lineRenderConfig from '../data/line_render_config.js';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
+import { cellsToGeoJSON } from '../services/gridIntelligence';
 
 // MapLibre derives its worker's URL from import.meta.url, which resolves to a
 // file Vite's bundler never writes (maplibre-gl is bundled into the app chunk,
@@ -464,9 +465,18 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
     'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
+    'cell-intelligence': { type: 'geojson', data: emptyFeatureCollection },
   },
   layers: [
     { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
+    {
+      id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
+      paint: {
+        'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
+        'fill-opacity': 0.22,
+        'fill-outline-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
+      },
+    },
     ...structuredClone(metroLayers),
   ],
 });
@@ -492,10 +502,19 @@ const buildVectorStyle = (flavour) => ({
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
     'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
+    'cell-intelligence': { type: 'geojson', data: emptyFeatureCollection },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
     ...noLabels('protomaps', flavour),
+    {
+      id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
+      paint: {
+        'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
+        'fill-opacity': 0.22,
+        'fill-outline-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
+      },
+    },
     ...structuredClone(metroLayers),
     ...labels('protomaps', flavour, 'en'),
   ],
@@ -738,6 +757,7 @@ const MapView = ({
   selectedVehicleId = null,
   replaySnapshot = null,
   reliabilityScores = [],
+  gridCells = [], cellGridVisible = false,
 }) => {
   const containerRef    = useRef(null);
   const mapRef          = useRef(null);
@@ -756,6 +776,8 @@ const MapView = ({
   const visibilityRef   = useRef(mapVisibility);
   const replayRef       = useRef(replaySnapshot);
   const reliabilityRef  = useRef(reliabilityScores);
+  const gridCellsRef = useRef(gridCells);
+  const cellGridVisibleRef = useRef(cellGridVisible);
   const disruptionsRef  = useRef(disruptions);
   const selectStRef     = useRef(onSelectStation);
   const selectVehicleRef= useRef(onSelectVehicle);
@@ -782,6 +804,14 @@ const MapView = ({
   useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
   useEffect(() => { replayRef.current = replaySnapshot; }, [replaySnapshot]);
   useEffect(() => { disruptionsRef.current = disruptions; }, [disruptions]);
+  useEffect(() => { gridCellsRef.current = gridCells; }, [gridCells]);
+  useEffect(() => { cellGridVisibleRef.current = cellGridVisible; }, [cellGridVisible]);
+
+  const updateCellGrid = (map) => {
+    const source = map?.getSource('cell-intelligence');
+    if (!source || typeof source.setData !== 'function') return;
+    source.setData(cellsToGeoJSON(gridCellsRef.current, cellGridVisibleRef.current));
+  };
 
   const updateReliabilityAtlas = (map) => {
     const source = map?.getSource('reliability-atlas');
@@ -1391,6 +1421,7 @@ const MapView = ({
       initVehicleLoop(map);
       applyLineFilter(map, filterRef.current);
       updateReliabilityAtlas(map);
+      updateCellGrid(map);
       arrivalStore.syncNetwork();
     });
 
@@ -1506,8 +1537,16 @@ const MapView = ({
     initAlertMarkers(map);
     initVehicleLoop(map);
     updateReliabilityAtlas(map);
+    updateCellGrid(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapVisibility]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    updateCellGrid(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridCells, cellGridVisible]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Accessibility, Activity, AlertTriangle, BarChart3, Bot, Clock3, Database, Gauge, History, LayoutDashboard, Radar, Sparkles, X } from 'lucide-react';
+import { Accessibility, Activity, AlertTriangle, BarChart3, Bot, Clock3, Database, Gauge, Grid2X2, History, LayoutDashboard, Radar, Sparkles, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
 import {
   analyseAccessibility,
@@ -31,6 +31,7 @@ import { networkSnapshotStore } from '../services/networkSnapshotStore';
 import { advisorIsEnabled } from '../services/railAdvisor';
 import ModelDashboard from './ModelDashboard';
 import DelayPanel from './DelayPanel';
+import CellIntelligencePanel from './CellIntelligencePanel';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -41,7 +42,8 @@ const ageLabel = (timestamp) => {
 const RailIntelligence = ({
   snapshot, disruptions = [], replayOffset, replaySnapshot, onReplayChange,
   atlasVisible, onToggleAtlas, onClose, officialSnapshotState, officialReplaySnapshot,
-  dashboardInitiallyOpen = false, onDashboardClose, initialTab = 'forecast',
+  dashboardInitiallyOpen = false, onDashboardClose, initialTab = 'forecast', userLocation = null,
+  cellGridVisible = false, onToggleCellGrid,
 }) => {
   const now = snapshot.generatedAt || 0;
   const [tab, setTab] = useState(initialTab);
@@ -189,7 +191,7 @@ const RailIntelligence = ({
 
       <nav className={`intelligence-tabs${advisorEnabled ? '' : ' advisor-disabled'}`} aria-label="Rail intelligence views">
         {[
-          ['forecast', Radar, 'Forecast'], ['delays', BarChart3, 'Delays'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
+          ['forecast', Radar, 'Forecast'], ['delays', BarChart3, 'Delays'], ['cells', Grid2X2, 'Cells'], ['signals', Activity, 'Signals'], ['history', History, 'History'],
           ['access', Accessibility, 'Access'], ['explain', Bot, 'Explain'],
           ['advisor', Sparkles, 'Advisor'], ['operations', Gauge, 'Operations'], ['predictions', Sparkles, 'Models'],
         ].filter(([id]) => id !== 'advisor' || advisorEnabled).map(([id, Icon, label]) => (
@@ -214,6 +216,12 @@ const RailIntelligence = ({
         </section>
 
         <DelayPanel entries={entries} now={now} compact />
+
+        <CellIntelligencePanel
+          entries={entries} vehicles={vehicles} issues={issues} disruptions={disruptions}
+          context={mobilitySnapshot?.context || {}} userLocation={userLocation} now={now}
+          compact cellGridVisible={cellGridVisible} onToggleCellGrid={onToggleCellGrid}
+        />
 
         <section className="intelligence-section delay-model-card">
           <div className="intelligence-section-title">
@@ -327,6 +335,12 @@ const RailIntelligence = ({
       </>}
 
       {tab === 'delays' && <DelayPanel entries={entries} now={now} />}
+
+      {tab === 'cells' && <CellIntelligencePanel
+        entries={entries} vehicles={vehicles} issues={issues} disruptions={disruptions}
+        context={mobilitySnapshot?.context || {}} userLocation={userLocation} now={now}
+        cellGridVisible={cellGridVisible} onToggleCellGrid={onToggleCellGrid}
+      />}
 
       {tab === 'predictions' && <PredictionLab
         now={now}
