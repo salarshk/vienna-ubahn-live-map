@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, RefreshCw, X } from 'lucide-react';
+import { getCommutePreferences } from '../services/commutePreferences';
 
 const timeLabel = (value) => {
   if (!value) return null;
@@ -12,6 +13,17 @@ const timeLabel = (value) => {
 /** A dedicated, readable service-alert workspace opened from the top bar. */
 const AlertCenter = ({ snapshot, selectedAlert, onSelectAlert, onRefresh, onClose }) => {
   const alerts = Array.isArray(snapshot?.alerts) ? snapshot.alerts : [];
+  const [scope, setScope] = useState('all');
+  const saved = getCommutePreferences().stations || [];
+  const savedNames = useMemo(() => new Set(saved.map((station) => String(station.name || '').toLowerCase())), [saved]);
+  const savedLines = useMemo(() => new Set(saved.flatMap((station) => station.lines || []).map(String)), [saved]);
+  const visibleAlerts = scope === 'saved'
+    ? alerts.filter((alert) => {
+      const location = String(alert.station || alert.location || '').toLowerCase();
+      return (alert.lines || []).some((line) => savedLines.has(String(line)))
+        || [...savedNames].some((name) => name && location.includes(name));
+    })
+    : alerts;
 
   return (
     <div className="alert-center-overlay" role="dialog" aria-modal="true" aria-label="Service-alert center">
@@ -35,21 +47,27 @@ const AlertCenter = ({ snapshot, selectedAlert, onSelectAlert, onRefresh, onClos
           </div>
         </header>
 
+        <div className="alert-center-scope" role="group" aria-label="Alert scope">
+          <button className={scope === 'all' ? 'active' : ''} onClick={() => setScope('all')} aria-pressed={scope === 'all'}>All network alerts</button>
+          <button className={scope === 'saved' ? 'active' : ''} onClick={() => setScope('saved')} aria-pressed={scope === 'saved'} disabled={!saved.length}>My saved lines and stations</button>
+          {!saved.length && <small>Save stations in My commute to personalize this view.</small>}
+        </div>
+
         <div className="alert-center-summary" aria-live="polite">
-          <div className={alerts.length ? 'alert-center-summary-icon warning' : 'alert-center-summary-icon ok'}>
-            {alerts.length ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
+          <div className={visibleAlerts.length ? 'alert-center-summary-icon warning' : 'alert-center-summary-icon ok'}>
+            {visibleAlerts.length ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
           </div>
           <div>
-            <strong>{alerts.length ? `${alerts.length} active service alert${alerts.length === 1 ? '' : 's'}` : 'Network normal'}</strong>
-            <span>{alerts.length ? 'Tap an alert to see its scope, timing and operator message.' : 'No current U-Bahn disruption is reported by the official feed.'}</span>
+            <strong>{visibleAlerts.length ? `${visibleAlerts.length} active service alert${visibleAlerts.length === 1 ? '' : 's'}` : 'No matching alerts'}</strong>
+            <span>{scope === 'saved' ? 'Filtered to your saved lines and stations.' : visibleAlerts.length ? 'Tap an alert to see its scope, timing and operator message.' : 'No current U-Bahn disruption is reported by the official feed.'}</span>
           </div>
         </div>
 
         {snapshot?.error && <p className="alert-center-error" role="alert">{snapshot.error}</p>}
 
-        {alerts.length > 0 ? (
+        {visibleAlerts.length > 0 ? (
           <div className="alert-center-list">
-            {alerts.map((alert) => {
+            {visibleAlerts.map((alert) => {
               const expanded = selectedAlert?.id === alert.id;
               return (
                 <article className={`alert-center-item ${expanded ? 'selected' : ''}`} key={alert.id}>

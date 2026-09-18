@@ -13,7 +13,7 @@ const Sidebar = ({
   onSelectLine,
   onHoverLine,
   trainStats = { live: 0, confirmed: 0, scheduled: 0 },
-  mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true, confidenceRanges: true, reliabilityAtlas: false },
+  mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true, confidenceRanges: true, movementTrails: true, reliabilityAtlas: false },
   onToggleVisibility,
   disruptionSnapshot,
   selectedAlert,
@@ -45,6 +45,7 @@ const Sidebar = ({
     ['liveTrains', 'U-Bahn trains'],
     ['scheduledTrains', 'Scheduled S-Bahn'],
     ['confidenceRanges', 'Position ranges'],
+    ['movementTrails', 'Selected train trail'],
     ['reliabilityAtlas', 'Reliability atlas'],
   ];
 

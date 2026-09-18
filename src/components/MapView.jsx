@@ -394,6 +394,19 @@ const metroLayers = [
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   },
   {
+    id: 'vehicle-trails',
+    type: 'line',
+    source: 'vehicle-trails',
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2, 13, 3.5, 17, 5],
+      'line-opacity': 0.72,
+      'line-blur': 0.4,
+      'line-dasharray': [1.2, 0.8],
+    },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+  },
+  {
     id: 'service-alert-line',
     type: 'line',
     source: 'metro-lines',
@@ -426,6 +439,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     [tileSourceId]: { type: 'raster', tiles, tileSize: 256, attribution: TILE_ATTRIBUTION, maxzoom: 16 },
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
+    'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
   },
   layers: [
@@ -453,6 +467,7 @@ const buildVectorStyle = (flavour) => ({
     },
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
+    'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
@@ -509,7 +524,7 @@ const stationClearanceOffset = (vehicle) => {
   } else if (vehicle.targetStation) {
     nearest = stations.find((station) => station.name === vehicle.targetStation) || null;
     if (nearest && Array.isArray(vehicle.coordinates)) {
-      distance = haversineDistance(vehicle.coordinates, nearest.coords);
+      distance = getDistance(vehicle.coordinates, nearest.coords);
     }
   }
 
@@ -711,6 +726,7 @@ const MapView = ({
   // and rediscovering it by walking the marker's DOM would tie the loop to a
   // wrapper structure built far away in createVehicleMarker.
   const markerMapRef    = useRef(new globalThis.Map());
+  const trailHistoryRef = useRef(new globalThis.Map());
   const themeRef        = useRef(theme);
   const filterRef       = useRef(activeLineFilter);
   const hoverRef        = useRef(null);
@@ -780,6 +796,12 @@ const MapView = ({
     markerMapRef.current.forEach(({ marker }) => marker.remove());
     markerMapRef.current.clear();
     vehInnerElemsRef.current = [];
+  };
+
+  const clearVehicleTrail = () => {
+    trailHistoryRef.current.clear();
+    const source = mapRef.current?.getSource('vehicle-trails');
+    if (source && typeof source.setData === 'function') source.setData(emptyFeatureCollection);
   };
 
   const clearStationMarkers = () => {
@@ -1009,6 +1031,7 @@ const MapView = ({
   const initVehicleLoop = (map) => {
     stopAnimation();
     clearVehicleMarkers();
+    trailHistoryRef.current.clear();
 
     const activeFilter = filterRef.current;
     const displayedVehicles = (now) => replayRef.current
@@ -1118,7 +1141,48 @@ const MapView = ({
         })) : [];
       source.setData({ type: 'FeatureCollection', features });
     };
+
+    // Keep a short, deliberately sparse history for the selected live train.
+    // This makes movement and direction corrections visible without drawing a
+    // distracting trail for the entire fleet or retaining sensitive history.
+    const updateVehicleTrail = (vehicles, now) => {
+      const source = map.getSource('vehicle-trails');
+      if (!source || typeof source.setData !== 'function') return;
+      const selectedId = selectedVehicleRef.current;
+      const enabled = visibilityRef.current?.movementTrails !== false;
+      const selected = enabled && selectedId
+        ? vehicles.find((vehicle) => vehicle.id === selectedId && vehicle.isLive && Array.isArray(vehicle.coordinates))
+        : null;
+
+      if (!selected) {
+        trailHistoryRef.current.clear();
+        source.setData(emptyFeatureCollection);
+        return;
+      }
+
+      const history = trailHistoryRef.current.get(selected.id) || [];
+      const last = history.at(-1);
+      const moved = !last || getDistance(last.coordinates, selected.coordinates) >= 8;
+      if (moved) history.push({ coordinates: [...selected.coordinates], at: now });
+      const cutoff = now - 90_000;
+      const recent = history.filter((point) => point.at >= cutoff).slice(-36);
+      trailHistoryRef.current.clear();
+      trailHistoryRef.current.set(selected.id, recent);
+      if (recent.length < 2) {
+        source.setData(emptyFeatureCollection);
+        return;
+      }
+      source.setData({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: { id: selected.id, line: selected.line, color: lineColorMap[selected.line] || '#ffffff' },
+          geometry: { type: 'LineString', coordinates: recent.map((point) => point.coordinates) },
+        }],
+      });
+    };
     updatePositionRanges(visible, Date.now(), true);
+    updateVehicleTrail(visible, Date.now());
 
     const animate = () => {
       const now = Date.now();
@@ -1129,6 +1193,7 @@ const MapView = ({
         currentVisible = currentVisible.filter(v => filterRef.current.includes(String(v.line)));
       }
       updatePositionRanges(currentVisible, now);
+      updateVehicleTrail(currentVisible, now);
       const visibleIds = new Set(currentVisible.map(v => v.id));
 
       markerMapRef.current.forEach(({ marker }, id) => {
@@ -1320,6 +1385,7 @@ const MapView = ({
       document.removeEventListener('visibilitychange', syncIfVisible);
       stopAnimation();
       clearVehicleMarkers();
+      clearVehicleTrail();
       clearStationMarkers();
       clearAlertMarkers();
       trainCount.remove();
@@ -1587,6 +1653,7 @@ const MapView = ({
       <div className="data-provenance-legend" aria-label="Data provenance">
         <span><i className="official" /> Live timing · predicted position (no GPS)</span>
         <span><i className="scheduled" /> Scheduled timetable estimate</span>
+        <span><i className="trail" /> Selected train · recent movement trail</span>
       </div>
     </>
   );

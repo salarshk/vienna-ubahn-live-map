@@ -60,6 +60,7 @@ function App() {
     liveTrains: true,
     scheduledTrains: true,
     confidenceRanges: true,
+    movementTrails: true,
     reliabilityAtlas: false,
   });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());

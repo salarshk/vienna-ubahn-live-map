@@ -53,6 +53,16 @@ const FleetTracker = ({ theme = 'dark', onClose, onSelectVehicle }) => {
     fallback: vehicles.filter((vehicle) => vehicle.isSimulated).length,
   }), [vehicles]);
 
+  const health = useMemo(() => {
+    const live = vehicles.filter((vehicle) => vehicle.isLive);
+    const fresh = live.filter((vehicle) => Number(vehicle.lastDataAgeSeconds) <= 3).length;
+    return {
+      fresh,
+      stale: live.length - fresh,
+      scheduled: vehicles.filter((vehicle) => vehicle.isScheduled).length,
+    };
+  }, [vehicles]);
+
   const visibleVehicles = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return vehicles
@@ -85,6 +95,13 @@ const FleetTracker = ({ theme = 'dark', onClose, onSelectVehicle }) => {
           <div className="fleet-tracker-filters" role="group" aria-label="Filter trains">{[
             ['all', `All ${counts.all}`], ['live', `Live ${counts.live}`], ['scheduled', `S-Bahn ${counts.scheduled}`], ['fallback', `Fallback ${counts.fallback}`],
           ].map(([id, label]) => <button key={id} className={filter === id ? 'active' : ''} onClick={() => setFilter(id)} aria-pressed={filter === id}>{label}</button>)}</div>
+        </div>
+
+        <div className="fleet-tracker-health" aria-label="Network data health">
+          <span className="healthy"><b>{health.fresh}</b> live within 3s</span>
+          <span className={health.stale ? 'stale' : 'healthy'}><b>{health.stale}</b> live awaiting refresh</span>
+          <span className="scheduled"><b>{health.scheduled}</b> timetable-only S-Bahn</span>
+          <small>Freshness describes the operator observation, not GPS precision.</small>
         </div>
 
         <div className="fleet-tracker-meta"><span>{visibleVehicles.length} train{visibleVehicles.length === 1 ? '' : 's'} shown</span><span><i className="fleet-tracker-fresh-dot" />Live map data · updates every {NETWORK_SYNC_INTERVAL_MS / 1000}s</span></div>
