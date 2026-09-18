@@ -19,6 +19,18 @@ describe('Vienna S-Bahn timetable', () => {
     }
   });
 
+  it('uses the official Vienna S-Bahn route-family colours', () => {
+    const colours = Object.fromEntries(SBAHN_LINES.map((line) => [
+      line,
+      sbahnData.features.find((item) => item.properties.line === line).properties.color,
+    ]));
+    expect(colours).toEqual({
+      S1: '#CB7375', S2: '#CB7375', S3: '#CB7375', S4: '#CB7375',
+      S7: '#20214F', S40: '#20214F', S45: '#8AAE1F',
+      S50: '#20214F', S60: '#20214F', S80: '#20214F',
+    });
+  });
+
   it('uses Vienna local time rather than the viewer timezone', () => {
     expect(getViennaServiceClock(new Date('2026-09-10T09:15:30Z')))
       .toMatchObject({ date: '20260910', seconds: 11 * 3600 + 15 * 60 + 30 });

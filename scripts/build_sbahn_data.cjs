@@ -21,8 +21,12 @@ let archivePrefix = null;
 
 const S_LINES = new Set(['S1', 'S2', 'S3', 'S4', 'S7', 'S40', 'S45', 'S50', 'S60', 'S80']);
 const COLORS = {
-  S1: '#00AEEF', S2: '#FF6B6B', S3: '#C084FC', S4: '#5DD39E', S7: '#FFB547',
-  S40: '#5BC0EB', S45: '#E879F9', S50: '#A3E635', S60: '#FB923C', S80: '#2DD4BF',
+  // Vienna's official network palette: the Stammstrecke is altrosa, the
+  // Vorortelinie (S45) is hellgrün, and the remaining S-Bahn services use
+  // the standard ultramarine S-Bahn colour. These are route-family colours,
+  // not invented per-line hues.
+  S1: '#CB7375', S2: '#CB7375', S3: '#CB7375', S4: '#CB7375', S7: '#20214F',
+  S40: '#20214F', S45: '#8AAE1F', S50: '#20214F', S60: '#20214F', S80: '#20214F',
 };
 
 // City boundary plus a small fringe so trains do not disappear exactly at the

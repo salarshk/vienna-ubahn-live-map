@@ -32,6 +32,12 @@ const colors = {
   U3: '#EF7C00',
   U4: '#009540',
   U6: '#9D6930',
+  // Shared application palette for the Vienna S-Bahn network. The
+  // generated U-Bahn data only consumes the U* entries, but keeping the
+  // complete palette here prevents a future data rebuild from dropping the
+  // S-Bahn colours used by the map and station surfaces.
+  S1: '#CB7375', S2: '#CB7375', S3: '#CB7375', S4: '#CB7375', S7: '#20214F',
+  S40: '#20214F', S45: '#8AAE1F', S50: '#20214F', S60: '#20214F', S80: '#20214F',
 };
 
 const speeds = { U1: 10.4, U2: 9.6, U3: 10.0, U4: 9.2, U6: 8.5 };
