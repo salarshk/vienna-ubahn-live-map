@@ -16,6 +16,8 @@ export const SOURCE_CATALOG = [
   { id: 'wienmobil-rad', label: 'WienMobil Rad / Nextbike GBFS', kind: 'public', cadence: 'live', models: 'first/last-mile rescue' },
   { id: 'vienna-events', label: 'Vienna event database', kind: 'partner', cadence: 'event updates', models: 'event demand and station pressure' },
   { id: 'evis-traffic', label: 'EVIS / ITS Vienna Region', kind: 'partner', cadence: 'live/forecast', models: 'surface access and incident propagation' },
+  { id: 'vienna-traffic-counters', label: 'Vienna traffic counters', kind: 'archive', cadence: 'historical/near-live', models: 'traffic-aware tram delay and road pressure' },
+  { id: 'airport-flights', label: 'Vienna Airport / OpenSky activity', kind: 'partner', cadence: 'live/limited', models: 'airport arrival-wave and corridor pressure' },
   { id: 'vao-routing', label: 'VAO multimodal routing', kind: 'partner', cadence: 'on demand', models: 'independent routing and connection validation' },
   { id: 'oebb-train-history', label: 'ÖBB train journeys and NeTEx', kind: 'archive', cadence: 'weekly/annual', models: 'S-Bahn delay labels and infrastructure joins' },
   { id: 'oebb-greenlight', label: 'ÖBB Greenlight / Aramis', kind: 'restricted', cadence: 'seconds', models: 'track-accurate S-Bahn position' },
@@ -152,6 +154,8 @@ export const parseHolidays = (publicHolidays, schoolHolidays, now = Date.now()) 
 const configuredSources = {
   'vienna-events': env('VITE_VIENNA_EVENTS_API_URL'),
   'evis-traffic': env('VITE_EVIS_API_URL'),
+  'vienna-traffic-counters': env('VITE_VIENNA_TRAFFIC_API_URL'),
+  'airport-flights': env('VITE_AIRPORT_FLIGHT_API_URL') || env('VITE_OPENSKY_API_URL'),
   'vao-routing': env('VITE_VAO_API_URL'),
   'oebb-train-history': env('VITE_OEBB_CONTEXT_API_URL'),
   'oebb-greenlight': env('VITE_OEBB_GREENLIGHT_API_URL'),

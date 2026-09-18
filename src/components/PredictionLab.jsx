@@ -11,6 +11,13 @@ import {
 } from '../services/predictionModels';
 import { buildDataDrivenModels } from '../services/dataDrivenModels';
 import { buildTramPredictions } from '../services/tramIntelligence';
+import {
+  buildMultimodalFallbacks,
+  estimateEnvironmentalComfort,
+  predictAirportArrivalWave,
+  predictEventCrowding,
+  predictTrafficAwareTrams,
+} from '../services/transportIntelligence';
 
 const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, networkSnapshot = null, operationalModels = null, category = 'all' }) => {
   const shared = networkSnapshot?.data?.models?.predictionLab;
@@ -32,6 +39,12 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
   const anomalies = useMemo(() => shared?.anomalies || detectPredictiveAnomalies({ vehicles, issues, arrivals }), [shared, vehicles, issues, arrivals]);
   const uncertainty = useMemo(() => shared?.uncertainty || calibrateUncertainty({ vehicles, reliability }), [shared, vehicles, reliability]);
   const tramPredictions = useMemo(() => buildTramPredictions({ arrivals, vehicles, issues, disruptions, now }), [arrivals, vehicles, issues, disruptions, now]);
+  const transportContext = useMemo(() => mobilitySnapshot?.context || {}, [mobilitySnapshot?.context]);
+  const trafficTrams = useMemo(() => predictTrafficAwareTrams({ tramPredictions, context: transportContext, issues, now }), [tramPredictions, transportContext, issues, now]);
+  const airportWave = useMemo(() => predictAirportArrivalWave({ context: transportContext, now }), [transportContext, now]);
+  const eventCrowding = useMemo(() => predictEventCrowding({ context: transportContext, disruptions, now }), [transportContext, disruptions, now]);
+  const environmental = useMemo(() => estimateEnvironmentalComfort({ context: transportContext, now }), [transportContext, now]);
+  const fallbacks = useMemo(() => buildMultimodalFallbacks({ context: transportContext, lineRisk: disruptions.length * 20 + issues.length * 8, disruptions, now }), [transportContext, disruptions, issues, now]);
   const dataDrivenModels = useMemo(() => buildDataDrivenModels({
     context: mobilitySnapshot?.context || {},
     sources: mobilitySnapshot?.sources || {},
@@ -102,6 +115,20 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
       <small className="advanced-caveat">This is a transparent tram baseline, not a traffic-signal or operator-control command.</small>
     </div>}
 
+    {show('operations') && <div className="advanced-card">
+      <div className="advanced-card-title"><strong><Activity size={13} /> Traffic-aware tram delay</strong><span>road pressure → tram risk</span></div>
+      {explain('Combines optional Vienna road observations with live tram pressure. It estimates additional delay exposure; it does not claim a measured traffic signal or exact road speed for each line.')}
+      {trafficTrams.some((item) => item.traffic.observations || item.risk > 25) ? <div className="advanced-line-grid">{trafficTrams.filter((item) => item.traffic.observations || item.risk > 25).slice(0, 10).map((item) => <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong className={`risk-label ${item.level === 'high' ? 'high' : item.level === 'watch' ? 'medium' : 'low'}`}>{item.level} · +{item.extraMinutes}m</strong><span>{item.traffic.congestionScore}/100 road pressure · {item.confidence}%</span><small>{item.evidence}</small></div>)}</div> : <p className="advanced-empty">Waiting for an EVIS or Vienna traffic-counter feed.</p>}
+      <small className="advanced-caveat">Road congestion is a context signal for street-running trams, not a verified cause of every delay.</small>
+    </div>}
+
+    {show('operations') && <div className="advanced-card">
+      <div className="advanced-card-title"><strong>Multimodal fallback engine</strong><span>disruption rescue</span></div>
+      {explain('Ranks rail, bike, taxi-stand and walking alternatives when current rail risk rises. Private Uber or taxi vehicle locations are not assumed without a licensed feed.')}
+      <div className="advanced-list">{fallbacks.slice(0, 4).map((item) => <div className="advanced-row" key={item.mode}><i>{item.rank}</i><div><strong>{item.title}</strong><span>{item.detail}</span></div><b>{Math.round(item.score)}</b><small>{item.evidence}</small></div>)}</div>
+      <small className="advanced-caveat">Fallback scores are relative priorities, not guaranteed travel times or booking availability.</small>
+    </div>}
+
     {show('predictions') && <div className="advanced-card"><div className="advanced-card-title"><strong><Activity size={13} /> Dwell-time model</strong><span>station stop risk</span></div>
       {explain('Estimates whether a train will remain at a platform longer than its normal stop, which can delay following services.')}
       {dwell.length ? <div className="advanced-list">{dwell.slice(0, 4).map((item) => <div className="advanced-row" key={`${item.line}-${item.station}`}><i style={{ background: lineColor(item.line) }}>{item.line}</i><div><strong>{item.station}</strong><span>{item.evidence}</span></div><b>{item.predictedMinutes}m</b><small>{item.confidence}%</small></div>)}</div> : <p className="advanced-empty">No prolonged live platform stop detected.</p>}
@@ -170,6 +197,24 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong>Event-demand forecast</strong><span>calendar signal</span></div>
       {explain('Extracts event-like demand signals from official service/news text, then falls back to weekday and peak-hour baselines.')}
       <div className="quality-grid"><span>State<strong>{events.status}</strong></span><span>Pressure<strong>{events.score}/100</strong></span><span>Confidence<strong>{events.confidence}%</strong></span><span>Evidence<strong>{events.evidence}</strong></span></div>
+    </div>}
+
+    {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong>Event crowd forecast</strong><span>station pressure ahead</span></div>
+      {explain('Uses an optional Vienna event feed plus peak periods and current disruptions to estimate crowd pressure before it appears in departure data.')}
+      <div className="quality-grid"><span>Level<strong>{eventCrowding.level}</strong></span><span>Pressure<strong>{eventCrowding.score}/100</strong></span><span>Events<strong>{eventCrowding.events}</strong></span><span>Confidence<strong>{eventCrowding.confidence}%</strong></span></div>
+      <small className="advanced-caveat">Venue-to-station matching is not claimed until event locations are geocoded; this remains a city-level pressure proxy.</small>
+    </div>}
+
+    {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong>Airport arrival-wave pressure</strong><span>S7 · CAT · taxi corridors</span></div>
+      {explain('Uses an optional airport-arrivals or OpenSky activity feed to estimate pressure on the airport corridor. Aircraft activity alone cannot confirm flight status, cancellations or passenger counts.')}
+      <div className="quality-grid"><span>Level<strong>{airportWave.railPressureLevel}</strong></span><span>Rail pressure<strong>{airportWave.railPressureScore}/100</strong></span><span>Activity<strong>{airportWave.activity}</strong></span><span>Confidence<strong>{airportWave.confidence}%</strong></span></div>
+      <small className="advanced-caveat">{airportWave.evidence} · likely corridors: {airportWave.corridors.join(' · ')}</small>
+    </div>}
+
+    {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong>Environmental transfer comfort</strong><span>weather + air quality</span></div>
+      {explain('Scores the comfort of outdoor walking and waiting around a transfer using rain, wind, temperature and pollutant observations.')}
+      <div className="quality-grid"><span>Level<strong>{environmental.level}</strong></span><span>Comfort<strong>{environmental.score}/100</strong></span><span>Air<strong>PM10 {environmental.pm10 || '—'} · NO₂ {environmental.no2 || '—'}</strong></span><span>Weather<strong>{environmental.rain.toFixed(1)} mm · wind {environmental.wind.toFixed(1)}</strong></span></div>
+      <small className="advanced-caveat">{environmental.recommendation}. This is a comfort signal, not medical advice or an official air-quality warning.</small>
     </div>}
 
     {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong>S-Bahn connection forecast</strong><span>ÖBB timetable only</span></div>

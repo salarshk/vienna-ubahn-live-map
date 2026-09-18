@@ -2,6 +2,15 @@
 // deliberately transparent baselines: they expose the signal and its source
 // while labels are collected for future supervised training.
 
+import {
+  buildMultimodalFallbacks,
+  estimateEnvironmentalComfort,
+  predictAirportArrivalWave,
+  predictEventCrowding,
+  predictTrafficAwareTrams,
+} from './transportIntelligence';
+import { buildTramPredictions } from './tramIntelligence';
+
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
 const round = (value, digits = 0) => Number((Number(value) || 0).toFixed(digits));
@@ -39,6 +48,10 @@ export const DATA_MODEL_CATALOG = [
   { id: 'control-room-decisions', name: 'Control-room decision model', description: 'Converts model outputs into prioritised operational actions for each line.', inputs: 'All available signals', source: 'all' },
   { id: 'tram-operations', name: 'Tram operations baseline', description: 'Separates street-running tram delay, headway and disruption pressure from U-Bahn conditions.', inputs: 'Tram departures + inferred vehicles + notices', source: 'wiener-linien' },
   { id: 'tram-crowding', name: 'Tram crowding proxy', description: 'Estimates tram pressure from near departures, gaps, peak time and passenger reports.', inputs: 'Tram departures + service pattern + reports', source: 'wiener-linien' },
+  { id: 'tram-traffic-delay', name: 'Traffic-aware tram delay', description: 'Adds road congestion and incident pressure to the street-running tram baseline.', inputs: 'Tram departures + EVIS/traffic counters + anomalies', source: 'evis-traffic' },
+  { id: 'airport-arrival-wave', name: 'Airport arrival-wave pressure', description: 'Estimates pressure on S7, CAT, airport buses and taxi fallbacks from airport activity.', inputs: 'Airport arrivals or aircraft activity + rail state', source: 'airport-flights' },
+  { id: 'event-crowding', name: 'Event crowd forecast', description: 'Projects station pressure from nearby event records, attendance signals and disruption overlap.', inputs: 'Vienna events + calendar + rail pressure', source: 'vienna-events' },
+  { id: 'environmental-comfort', name: 'Environmental transfer comfort', description: 'Ranks outdoor transfer conditions using rain, wind, temperature and pollutants.', inputs: 'GeoSphere weather + air quality', source: 'air-quality,geosphere-nowcast' },
 ];
 
 const averageDelay = (arrivals) => {
@@ -65,6 +78,12 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
   const impactedLines = LINES.filter((line) => disruptions.some((item) => item.lines?.includes(line)) || issues.some((item) => item.line === line));
   const tramArrivals = arrivals.filter((item) => item.isLive && !/^U|^S/i.test(String(item.line || '')));
   const tramIssues = issues.filter((item) => !/^U|^S/i.test(String(item.line || '')));
+  const tramPredictions = buildTramPredictions({ arrivals, vehicles, issues, disruptions, now });
+  const trafficTrams = predictTrafficAwareTrams({ tramPredictions, context, issues, now });
+  const airportWave = predictAirportArrivalWave({ context, now });
+  const eventCrowding = predictEventCrowding({ context, disruptions, now });
+  const environmental = estimateEnvironmentalComfort({ context, now });
+  const fallbackOptions = buildMultimodalFallbacks({ context, lineRisk: incidentScore, disruptions, now });
   const decisions = LINES.map((line) => {
     const lineIssues = issues.filter((item) => item.line === line);
     const lineDelay = averageDelay(arrivals.filter((item) => item.line === line));
@@ -79,7 +98,7 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     make('event-impact', `${riskLabel(clamp(incidentScore + (contextText(context['vienna-events']).includes('event') ? 25 : 0)))} station pressure`, incidentScore + (contextText(context['vienna-events']).includes('event') ? 25 : 0), { confidence: source('vienna-events') ? 70 : 40 }),
     make('traffic-propagation', `${riskLabel(incidentScore * 0.7)} access-to-rail propagation · ${impactedLines.length ? impactedLines.join(', ') : 'no line currently exposed'}`, incidentScore * 0.7, { confidence: source('evis-traffic') ? 65 : 34 }),
     make('station-crowding', `${riskLabel(crowdScore)} pressure · ${round(crowdScore)}/100 proxy`, crowdScore, { confidence: source('passenger-counts') ? 78 : 52 }),
-    make('multimodal-fallback', bikes.availableBikes == null ? 'Fallback route ready when bike feed connects' : `${bikes.availableBikes} bikes available for disruption rescue`, clamp(incidentScore + (bikes.availableBikes ? 20 : 0)), { confidence: source('wienmobil-rad') ? 76 : 35 }),
+    make('multimodal-fallback', `${fallbackOptions[0]?.title || 'Rail fallback'} ranked first · ${fallbackOptions.length} options`, clamp(100 - (fallbackOptions[0]?.score || 40)), { confidence: source('wienmobil-rad') ? 76 : 42, fallbackOptions }),
     make('bike-availability', bikes.availableBikes == null ? 'Awaiting station-level bike availability' : `${bikes.availableBikes} bikes · ${bikes.availableDocks ?? '—'} docks`, bikes.availableBikes == null ? 0 : clamp(100 - (bikes.availableBikes / Math.max(1, bikes.availableDocks + bikes.availableBikes)) * 100), { confidence: source('wienmobil-rad') ? 90 : 25 }),
     make('air-quality-comfort', air.pm10 == null && air.no2 == null ? 'Awaiting pollutant observation' : `PM10 ${air.pm10 ?? '—'} · NO₂ ${air.no2 ?? '—'} · outdoor comfort ${riskLabel((air.pm10 || 0) * 2)}`, clamp((air.pm10 || 0) * 2), { confidence: source('air-quality') ? 86 : 25 }),
     make('disruption-propagation', `${riskLabel(incidentScore)} propagation · ${impactedLines.length ? impactedLines.join(', ') : 'network clear'}`, incidentScore, { confidence: 72 }),
@@ -94,6 +113,10 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     make('control-room-decisions', decisions.map((item) => `${item.line}: ${item.action}`).join(' · '), Math.max(...decisions.map((item) => item.score), 0), { confidence: 70, decisions }),
     make('tram-operations', `${tramArrivals.length} live tram departures · ${tramIssues.length} tram headway signals`, clamp(tramArrivals.length * 4 + tramIssues.length * 20), { confidence: tramArrivals.length ? 62 : 25 }),
     make('tram-crowding', `${riskLabel(clamp(crowdScore * 0.8 + tramArrivals.length * 2))} tram pressure proxy`, clamp(crowdScore * 0.8 + tramArrivals.length * 2), { confidence: tramArrivals.length ? 58 : 28 }),
+    make('tram-traffic-delay', `${riskLabel(Math.max(...trafficTrams.map((item) => item.risk), 0))} road pressure · ${trafficTrams.filter((item) => item.level !== 'routine').length} tram lines to watch`, Math.max(...trafficTrams.map((item) => item.risk), 0), { confidence: trafficTrams.some((item) => item.traffic.observations) ? 64 : 34, trafficTrams }),
+    make('airport-arrival-wave', `${airportWave.railPressureLevel} airport corridor pressure · ${airportWave.activity} activity observations`, airportWave.railPressureScore, { confidence: airportWave.confidence, airportWave }),
+    make('event-crowding', `${eventCrowding.level} event pressure · ${eventCrowding.events} event records`, eventCrowding.score, { confidence: eventCrowding.confidence, eventCrowding }),
+    make('environmental-comfort', `${environmental.level} outdoor transfer conditions · ${environmental.score}/100`, 100 - environmental.score, { confidence: environmental.confidence, environmental }),
   ];
   const remoteLines = Array.isArray(remoteModels?.lines) ? remoteModels.lines : [];
   if (!remoteLines.length) return localModels;
