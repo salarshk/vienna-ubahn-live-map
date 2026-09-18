@@ -1398,8 +1398,15 @@ const MapView = ({
     // win the hit test even though the finger is visibly inside a cell.
     const selectCellFromEvent = (event) => {
       if (!cellGridVisibleRef.current || !map.getLayer('cell-intelligence-fill')) return false;
-      const cellFeature = event.features?.[0]
-        || map.queryRenderedFeatures(event.point, { layers: ['cell-intelligence-fill'] })[0];
+      // At the normal city-wide zoom a real 50 m square is only a few pixels
+      // wide. Query a forgiving touch box as a fallback so a finger does not
+      // need to land on the exact centre pixel of the coloured cell.
+      const point = event.point;
+      const nearby = point ? map.queryRenderedFeatures([
+        [point.x - 24, point.y - 24],
+        [point.x + 24, point.y + 24],
+      ], { layers: ['cell-intelligence-fill'] }) : [];
+      const cellFeature = event.features?.[0] || nearby[0];
       if (!cellFeature?.properties?.id) return false;
       selectCellRef.current?.(String(cellFeature.properties.id));
       return true;
