@@ -1370,6 +1370,7 @@ const MapView = ({
   // snapshot.
   useEffect(() => {
     selectedVehicleRef.current = selectedVehicleId;
+    trainPositionEngine.setFocusedVehicleId(selectedVehicleId);
     const selected = selectedVehicleId;
     markerMapRef.current.forEach(({ inner, marker, vehicle }) => {
       const color = lineColorMap[vehicle.line] || '#ffffff';

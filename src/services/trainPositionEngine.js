@@ -224,7 +224,15 @@ class TrainPositionEngine {
     // Per-vehicle render position, so a fresh fetch eases the marker to its new
     // anchor instead of teleporting it.
     this.renderState = new Map();
+    // A selected train is allowed to use its newest fresh observation directly.
+    // This keeps the detail panel and the highlighted marker in agreement when
+    // the focused 2.5-second refresh produces a new distance estimate.
+    this.focusedVehicleId = null;
     this.init();
+  }
+
+  setFocusedVehicleId(vehicleId) {
+    this.focusedVehicleId = vehicleId || null;
   }
 
   init() {
@@ -958,8 +966,35 @@ class TrainPositionEngine {
       this.renderState.set(vehicle.id, {
         trackDist: vehicle.distanceAlongTrack,
         at: now,
+        sourceDataAt: Number(vehicle.lastDataAt) || null,
       });
       return vehicle;
+    }
+
+    const sourceDataAt = Number(vehicle.lastDataAt);
+    const hasNewSourceObservation = Number.isFinite(sourceDataAt)
+      && sourceDataAt > Number(previous.sourceDataAt || 0);
+    const focusedFreshUpdate = this.focusedVehicleId === vehicle.id
+      && hasNewSourceObservation
+      && Number(vehicle.lastDataAgeSeconds) <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS;
+
+    // A clicked train has a direct, focused station refresh. Once that response
+    // is fresh, do not leave its marker at the pre-refresh rendered distance
+    // while the detail card says the feed is within three seconds. The regular
+    // fleet still follows the conservative smoothing below, so one correction
+    // cannot make every marker jump or appear to reverse.
+    if (focusedFreshUpdate) {
+      const { coordinates, bearing } = this.getCoordsAndBearingAtDistance(
+        vehicle.line,
+        vehicle.distanceAlongTrack,
+        vehicle.isForward !== false,
+      );
+      this.renderState.set(vehicle.id, {
+        trackDist: vehicle.distanceAlongTrack,
+        at: now,
+        sourceDataAt,
+      });
+      return { ...vehicle, coordinates, bearing };
     }
 
     const sign = vehicle.isForward === false ? -1 : 1;
@@ -983,7 +1018,11 @@ class TrainPositionEngine {
       vehicle.line, eased, vehicle.isForward !== false
     );
 
-    this.renderState.set(vehicle.id, { trackDist: eased, at: now });
+    this.renderState.set(vehicle.id, {
+      trackDist: eased,
+      at: now,
+      sourceDataAt: Number.isFinite(sourceDataAt) ? sourceDataAt : previous.sourceDataAt || null,
+    });
     return { ...vehicle, coordinates, bearing, distanceAlongTrack: eased };
   }
 

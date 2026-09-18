@@ -164,6 +164,7 @@ describe('live vehicle reconstruction', () => {
   beforeEach(() => {
     arrivalStore.memory.clear();
     trainPositionEngine.renderState.clear();
+    trainPositionEngine.setFocusedVehicleId(null);
   });
 
   it('fuses repeated sightings when a vehicle id is available', () => {
@@ -227,6 +228,26 @@ describe('live vehicle reconstruction', () => {
       { ...base, distanceAlongTrack: 5000 }, now + 2000
     );
     expect(jump.distanceAlongTrack).toBe(1025);
+  });
+
+  it('updates a selected train to its new fresh distance immediately', () => {
+    const now = Date.now();
+    const base = {
+      id: 'live-focused', line: 'U1', isLive: true, isForward: true,
+      distanceAlongTrack: 1000, coordinates: [16.37, 48.2],
+      lastDataAt: now - 5000, lastDataAgeSeconds: 5,
+    };
+    trainPositionEngine.setFocusedVehicleId(base.id);
+    trainPositionEngine.smoothVehicle(base, now);
+
+    const fresh = trainPositionEngine.smoothVehicle({
+      ...base,
+      distanceAlongTrack: 1400,
+      lastDataAt: now + 2500,
+      lastDataAgeSeconds: 1,
+    }, now + 2500);
+
+    expect(fresh.distanceAlongTrack).toBe(1400);
   });
 
   it('fuses keyless Wiener Linien sightings by their projected terminus time', () => {
