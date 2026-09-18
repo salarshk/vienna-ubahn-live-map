@@ -14,6 +14,7 @@
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 import segmentTimes from '../data/segment_times.json';
 import arrivalStore, { NETWORK_SYNC_INTERVAL_MS, POSITION_SOURCE_IDS } from './arrivalStore';
 import { getScheduledSbahnVehicles } from './sbahnSchedule';
@@ -59,7 +60,7 @@ export const projectPointOntoPolyline = (point, coords, cumDists) => {
 };
 
 const DWELL_SECONDS = segmentTimes.dwellSeconds ?? 25;
-const RAIL_FEATURES = [...(metroData.features || []), ...(sbahnData.features || [])];
+const RAIL_FEATURES = [...(metroData.features || []), ...(sbahnData.features || []), ...(tramData.features || [])];
 const LINE_IDS = RAIL_FEATURES
   .filter((feature) => feature.geometry && feature.geometry.type === 'LineString')
   .map((feature) => String(feature.properties.line));
@@ -236,7 +237,7 @@ class TrainPositionEngine {
   }
 
   init() {
-    const allStationPoints = [...(gtfsData.features || []), ...(sbahnData.features || [])].filter(
+    const allStationPoints = [...(gtfsData.features || []), ...(sbahnData.features || []), ...(tramData.features || [])].filter(
       f => f.geometry && f.geometry.type === 'Point'
     );
 
@@ -267,6 +268,7 @@ class TrainPositionEngine {
         minSegmentSeconds: (timing.fallback || segmentTimes.networkFallback).minSeconds ?? DWELL_SECONDS + 15,
         color: feature.properties.color || '#888888',
         name: feature.properties.name || `Line ${lineId}`,
+        mode: feature.properties.mode || (lineId.startsWith('S') ? 'sbahn' : lineId.startsWith('U') ? 'ubahn' : 'tram'),
       });
 
       // 2. Project stations serving this line
@@ -844,6 +846,7 @@ class TrainPositionEngine {
       vehicles.push({
         id: `live-${train.key}`,
         line: train.lineId,
+        mode: this.getLineTrack(train.lineId)?.mode || 'ubahn',
         vehicleId: train.vehicleId,
         direction: train.destination,
         coordinates,
@@ -938,6 +941,7 @@ class TrainPositionEngine {
         vehicles.push({
           id: `sim-L${lineId}-${isForward ? 'fwd' : 'rev'}-${tIdx}`,
           line: lineId,
+          mode: this.getLineTrack(lineId)?.mode || 'ubahn',
           direction: destination,
           coordinates,
           bearing,

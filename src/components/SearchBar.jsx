@@ -3,6 +3,7 @@ import { Search, X, MapPin, Navigation } from 'lucide-react';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 
 // gtfs_expanded.json is the canonical station set for the whole network; the
 // handful of points in metro_lines.json are a much older subset.
@@ -10,6 +11,7 @@ const stationByKey = new Map();
 for (const station of [
   ...gtfsData.features.filter(f => f.geometry.type === 'Point'),
   ...sbahnData.features.filter(f => f.geometry.type === 'Point'),
+  ...tramData.features.filter(f => f.geometry.type === 'Point'),
 ]) {
   const key = station.properties.apiId || station.properties.name;
   const existing = stationByKey.get(key);
@@ -28,6 +30,7 @@ const stations = [...stationByKey.values()];
 const lines = [
   ...metroData.features.filter(f => f.geometry.type === 'LineString'),
   ...sbahnData.features.filter(f => f.geometry.type === 'LineString'),
+  ...tramData.features.filter(f => f.geometry.type === 'LineString'),
 ];
 
 const SearchBar = ({ onSelectStation, onSelectLine, activeLineFilter }) => {

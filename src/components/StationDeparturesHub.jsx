@@ -5,8 +5,12 @@ import { getStationFocus } from '../services/stationFocus';
 import { countdownHeat, countdownLabel } from '../utils/countdownHeat';
 import { lineColor } from '../utils/lineColor';
 import gtfsData from '../data/gtfs_expanded.json';
+import tramData from '../data/tram_network.json';
 
-const stationFeatures = (gtfsData.features || []).filter((feature) => feature.geometry?.type === 'Point' && feature.properties?.type === 'station');
+const stationFeatures = [
+  ...(gtfsData.features || []),
+  ...(tramData.features || []),
+].filter((feature) => feature.geometry?.type === 'Point' && feature.properties?.type === 'station');
 const featureByKey = new Map(stationFeatures.flatMap((feature) => [
   [`id:${feature.properties.apiId}`, feature],
   [`name:${feature.properties.name}`, feature],
@@ -67,7 +71,7 @@ const StationDeparturesHub = ({ theme = 'dark', onClose, onSelectStation }) => {
           <div className="station-hub-heading">
             <span className="station-hub-kicker"><MapPin size={14} /> Live platform view</span>
             <h1>Station departures hub</h1>
-            <p>Choose a station to see its next U-Bahn departures and open it on the map.</p>
+            <p>Choose a station to see its next rail or tram departures and open it on the map.</p>
           </div>
           <button className="station-hub-icon-button" onClick={onClose} aria-label="Close station departures hub" title="Close"><X size={18} /></button>
         </header>
@@ -80,7 +84,7 @@ const StationDeparturesHub = ({ theme = 'dark', onClose, onSelectStation }) => {
                 const lines = station.properties.lines || [];
                 return <button className={`station-hub-station ${selectedId === station.properties.apiId ? 'selected' : ''}`} key={station.properties.apiId} onClick={() => chooseStation(station)}>
                   <strong>{station.properties.name}</strong>
-                  <span>{lines.length ? lines.join(' · ') : 'U-Bahn'}</span>
+                  <span>{lines.length ? lines.join(' · ') : 'Rail stop'}</span>
                 </button>;
               })}
               {!filteredStations.length && <p className="station-hub-empty-small">No station matches “{query}”.</p>}

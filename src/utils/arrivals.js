@@ -1,5 +1,6 @@
 // Real-time Vienna U-Bahn integration with arrival memory and rate budgeting.
 import metroData from '../data/metro_lines.json';
+import tramData from '../data/tram_network.json';
 import arrivalStore, { STATION_ID_MAP } from '../services/arrivalStore';
 
 export { STATION_ID_MAP, arrivalStore };
@@ -20,7 +21,7 @@ export const getStationArrivalsFallback = (stationProps) => {
   const arrivals = [];
 
   lines.forEach((lineId) => {
-    const lineFeature = metroData.features.find(
+    const lineFeature = [...metroData.features, ...(tramData.features || [])].find(
       f => f.properties.line === lineId && f.geometry.type === 'LineString'
     );
     const lineName = lineFeature ? lineFeature.properties.name : `Line ${lineId}`;

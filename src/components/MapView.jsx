@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import lineRenderConfig from '../data/line_render_config.js';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
@@ -102,6 +103,9 @@ for (const f of metroData.features.filter(f => f.geometry && f.geometry.type ===
 for (const f of sbahnData.features.filter(f => f.geometry && f.geometry.type === 'LineString')) {
   if (f.properties && f.properties.line) lineById.set(String(f.properties.line), { ...f });
 }
+for (const f of tramData.features.filter(f => f.geometry && f.geometry.type === 'LineString')) {
+  if (f.properties && f.properties.line) lineById.set(String(f.properties.line), { ...f });
+}
 // Then add GTFS lines only if not present or if configured to prefer GTFS for a given line
 for (const f of (gtfsData && gtfsData.features ? gtfsData.features : []).filter(f => f.geometry && f.geometry.type === 'LineString')) {
   const id = f.properties && f.properties.line && String(f.properties.line);
@@ -117,7 +121,8 @@ for (const f of (gtfsData && gtfsData.features ? gtfsData.features : []).filter(
 // Draw the regional S-Bahn corridors first so the denser U-Bahn remains
 // legible where the networks cross in the city centre.
 let lineFeatures = Array.from(lineById.values()).sort((a, b) =>
-  (a.properties?.mode === 'sbahn' ? 0 : 1) - (b.properties?.mode === 'sbahn' ? 0 : 1)
+  (a.properties?.mode === 'sbahn' ? 0 : a.properties?.mode === 'tram' ? 1 : 2)
+  - (b.properties?.mode === 'sbahn' ? 0 : b.properties?.mode === 'tram' ? 1 : 2)
 );
 // Ensure each feature has a resolved `color` property (image override > feature.color > default)
 for (const f of lineFeatures) {
@@ -156,6 +161,7 @@ const gtfsStationNames = new Set(gtfsStations.map(f => f.properties.name));
 const rawStations = [
   ...gtfsStations,
   ...sbahnData.features.filter(f => f.geometry.type === 'Point'),
+  ...tramData.features.filter(f => f.geometry.type === 'Point'),
   ...metroData.features.filter(
     f => f.geometry.type === 'Point' && !gtfsStationNames.has(f.properties.name)
   ),
@@ -261,6 +267,15 @@ const emptyFeatureCollection = { type: 'FeatureCollection', features: [] };
 const lineColorMap = Object.fromEntries(
   lineFeatures.map(f => [f.properties.line, (imageLineColors && imageLineColors[f.properties.line]) ? imageLineColors[f.properties.line] : f.properties.color])
 );
+const lineModeMap = new Map(lineFeatures.map((feature) => [
+  String(feature.properties.line), feature.properties.mode || 'ubahn',
+]));
+const isLineVisible = (line, visibility = {}) => {
+  const mode = lineModeMap.get(String(line)) || (String(line).startsWith('S') ? 'sbahn' : 'ubahn');
+  if (mode === 'sbahn') return visibility.sbahnLines !== false;
+  if (mode === 'tram') return visibility.tramLines === true;
+  return visibility.ubahnLines !== false;
+};
 
 const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY;
 
@@ -310,7 +325,11 @@ const metroLayers = [
         17, 8.5,
         19, 11.0
       ],
-      'line-opacity': ['case', ['==', ['get', 'mode'], 'sbahn'], 0.22, 0.35],
+      'line-opacity': ['case',
+        ['==', ['get', 'mode'], 'sbahn'], 0.22,
+        ['==', ['get', 'mode'], 'tram'], 0.14,
+        0.35,
+      ],
       'line-offset': [
         'interpolate', ['linear'], ['zoom'],
         6, 0,
@@ -331,7 +350,11 @@ const metroLayers = [
     source: 'metro-lines',
     paint: {
       'line-color': ['get', 'color'],
-      'line-opacity': ['case', ['==', ['get', 'mode'], 'sbahn'], 0.72, 1],
+      'line-opacity': ['case',
+        ['==', ['get', 'mode'], 'sbahn'], 0.72,
+        ['==', ['get', 'mode'], 'tram'], 0.68,
+        1,
+      ],
       'line-width': [
         'interpolate', ['linear'], ['zoom'],
         6, 0.75,
@@ -897,6 +920,9 @@ const MapView = ({
     clearStationMarkers();
     const isDark = themeRef.current === 'dark';
     const activeFilter = filterRef.current;
+    const requestedLines = Array.isArray(activeFilter) && activeFilter.length > 0
+      ? new Set(activeFilter.map(String))
+      : typeof activeFilter === 'string' ? new Set([activeFilter]) : null;
     const hovered = hoverRef.current;
     const visibility = visibilityRef.current || {};
     const seenStops = new Set();
@@ -904,10 +930,7 @@ const MapView = ({
 
     const filteredStations = stationFeatures.filter((st) => {
       const lines = (st.properties.lines || []).map(String);
-      const networkVisible = lines.some((line) =>
-        (line.startsWith('S') && visibility.sbahnLines !== false) ||
-        (!line.startsWith('S') && visibility.ubahnLines !== false)
-      );
+      const networkVisible = lines.some((line) => requestedLines?.has(String(line)) || isLineVisible(line, visibility));
       if (!networkVisible) return false;
       if (hovered) {
         return lines.includes(hovered);
@@ -1044,7 +1067,9 @@ const MapView = ({
     const initialVehicles = displayedVehicles(Date.now());
     const vehicleIsVisible = (vehicle) => vehicle.isScheduled
       ? visibilityRef.current?.scheduledTrains !== false
-      : visibilityRef.current?.liveTrains !== false;
+      : vehicle.mode === 'tram'
+        ? visibilityRef.current?.tramTrains !== false
+        : visibilityRef.current?.liveTrains !== false;
     let visible = initialVehicles.filter(vehicleIsVisible);
     if (Array.isArray(activeFilter) && activeFilter.length > 0) {
       visible = visible.filter(v => activeFilter.includes(String(v.line)));
@@ -1240,9 +1265,8 @@ const MapView = ({
           ? new Set(filter.map(String))
           : typeof filter === 'string' ? new Set([filter]) : null;
         const visible = lineFeatures
-          .filter((feature) => feature.properties.mode === 'sbahn'
-            ? visibility.sbahnLines !== false
-            : visibility.ubahnLines !== false)
+          .filter((feature) => isLineVisible(feature.properties.line, visibility)
+            || requestedLines?.has(String(feature.properties.line)))
           .map((feature) => String(feature.properties.line))
           .filter((line) => !requestedLines || requestedLines.has(line));
         const expr = visible.length > 0

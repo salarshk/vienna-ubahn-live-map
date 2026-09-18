@@ -8,6 +8,7 @@
 // fallback, which is what this is.
 import lineColors from '../data/line_colors_from_image.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 
 export const FALLBACK_LINE_COLOR = '#8a8a8a';
 
@@ -16,7 +17,12 @@ const sbahnColors = Object.fromEntries(
     .filter((feature) => feature.geometry.type === 'LineString')
     .map((feature) => [feature.properties.line, feature.properties.color])
 );
+const tramColors = Object.fromEntries(
+  tramData.features
+    .filter((feature) => feature.geometry.type === 'LineString')
+    .map((feature) => [feature.properties.line, feature.properties.color])
+);
 
-export const lineColor = (id) => lineColors[String(id)] || sbahnColors[String(id)] || FALLBACK_LINE_COLOR;
+export const lineColor = (id) => lineColors[String(id)] || tramColors[String(id)] || sbahnColors[String(id)] || FALLBACK_LINE_COLOR;
 
 export default lineColor;

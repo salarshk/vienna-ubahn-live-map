@@ -57,6 +57,10 @@ function App() {
   const [mapVisibility, setMapVisibility] = useState({
     ubahnLines: true,
     sbahnLines: true,
+    // Trams are available as an opt-in layer so the city-wide view stays
+    // readable; their live markers can be enabled independently.
+    tramLines: false,
+    tramTrains: false,
     liveTrains: true,
     scheduledTrains: true,
     confidenceRanges: true,

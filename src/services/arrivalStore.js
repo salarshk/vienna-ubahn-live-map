@@ -5,6 +5,7 @@ import metroData from '../data/metro_lines.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import paradasApi from '../data/paradas_api.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 
 // Build the U-Bahn station name -> Wiener Linien DIVA identifier map.
 export const STATION_ID_MAP = {};
@@ -23,10 +24,24 @@ for (const station of (sbahnData.features || []).filter((feature) => feature.geo
     STATION_ID_MAP[name.toLowerCase().trim()] = Number(apiId);
   }
 }
+for (const station of (tramData.features || []).filter((feature) => feature.geometry.type === 'Point')) {
+  const { apiId, name } = station.properties || {};
+  if (name && apiId) {
+    STATION_ID_MAP[name] = Number(apiId);
+    STATION_ID_MAP[name.toLowerCase().trim()] = Number(apiId);
+  }
+}
 const U_BAHN_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6']);
+export const TRAM_LINES = new Set(
+  (tramData.features || [])
+    .filter((feature) => feature.geometry?.type === 'LineString')
+    .map((feature) => String(feature.properties?.line))
+    .filter(Boolean),
+);
+const LIVE_LINES = new Set([...U_BAHN_LINES, ...TRAM_LINES]);
 const PUBLIC_API_BASE = String(import.meta.env.VITE_VIENNA_API_BASE || '').replace(/\/$/, '');
 const LINE_METADATA = new Map(
-  [...metroData.features, ...(sbahnData.features || [])]
+  [...metroData.features, ...(sbahnData.features || []), ...(tramData.features || [])]
     .filter((feature) => feature.geometry.type === 'LineString')
     .map((feature) => [feature.properties.line, feature.properties])
 );
@@ -85,6 +100,16 @@ export const MAJOR_STATIONS = [
   { id: 60201510, name: 'Währinger Straße-Volksoper' },
   { id: 60201705, name: 'Handelskai' },
   { id: 60201668, name: 'Neue Donau' },
+
+  // Central tram reference stops. These keep a representative slice of each
+  // corridor in the five-second network sweep without requesting every one of
+  // the 400+ street stops on every refresh.
+  { id: 60200975, name: 'Oper, Karlsplatz' },
+  { id: 60201184, name: 'Schottentor' },
+  { id: 60201198, name: 'Schwedenplatz' },
+  { id: 60201566, name: 'Westbahnhof, Gerstnerstraße' },
+  { id: 60201349, name: 'Hauptbahnhof' },
+  { id: 60200192, name: 'Rathausplatz, Burgtheater' },
 ];
 
 // Only these synchronized reference stations may anchor map positions. A
@@ -131,7 +156,7 @@ export const parseMonitorArrivals = (monitors, fetchTime, feedServerTime = null)
   const arrivals = monitors.flatMap((monitor) =>
     (monitor.lines || []).flatMap((line) => {
       const lineId = String(line.name || '');
-      if (!U_BAHN_LINES.has(lineId)) return [];
+      if (!LIVE_LINES.has(lineId)) return [];
       const stopProperties = monitor.locationStop?.properties || {};
 
       return ((line.departures && line.departures.departure) || []).map((departure) => {

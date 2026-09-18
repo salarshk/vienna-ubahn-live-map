@@ -108,6 +108,7 @@
         "line": "U1",
         "name": "U1: Oberlaa – Leopoldau",
         "color": "#E20613",
+        "mode": "ubahn",
         "operatorLineId": 301,
         "realtime": true,
         "terminals": [
@@ -211,6 +212,7 @@
         "line": "U2",
         "name": "U2: Seestadt – Karlsplatz",
         "color": "#A762A3",
+        "mode": "ubahn",
         "operatorLineId": 302,
         "realtime": true,
         "terminals": [
@@ -314,6 +316,7 @@
         "line": "U3",
         "name": "U3: Ottakring – Simmering",
         "color": "#EF7C00",
+        "mode": "ubahn",
         "operatorLineId": 303,
         "realtime": true,
         "terminals": [
@@ -413,6 +416,7 @@
         "line": "U4",
         "name": "U4: Bhf. Hütteldorf – Heiligenstadt",
         "color": "#009540",
+        "mode": "ubahn",
         "operatorLineId": 304,
         "realtime": true,
         "terminals": [
@@ -528,6 +532,7 @@
         "line": "U6",
         "name": "U6: Siebenhirten – Floridsdorf",
         "color": "#9D6930",
+        "mode": "ubahn",
         "operatorLineId": 306,
         "realtime": true,
         "terminals": [

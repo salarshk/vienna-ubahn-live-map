@@ -1,12 +1,20 @@
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
+// Tram arrivals use the same Wiener Linien monitor endpoint. They are kept
+// separate from the U-Bahn model lines so the operations advisor remains
+// scoped to the calibrated U-Bahn decisions while the shared snapshot still
+// gives the map live tram departures.
+const TRAM_LINES = ['1', '2', '5', '6', '9', '10', '11', '12', 'E4', '18', '25', '26', '27', '30', '31', '37', '38', '40', '41', '42', '43', '44', '46', '49', '52', '60', '62', '71', 'D', 'O', 'WLB', '26E', '71E'];
+const LIVE_LINES = new Set([...LINES, ...TRAM_LINES]);
 // The same distributed reference stations used by the browser position
-// engine. One Worker request now aggregates the whole U-Bahn network.
+// engine. One Worker request now aggregates the U-Bahn plus central tram
+// corridors without polling every street stop.
 const MONITOR_STATIONS = [
   60201481, 60201095, 60200657, 60201040, 60200031, 60201860, 60201859,
   60200910, 60200299, 60201299, 60201894, 60201182, 60201430,
   60201317, 60201468, 60201320, 60200743, 60201199, 60200425,
   60200956, 60200520, 60200820, 60201198, 60200357, 60201062,
   60201007, 60201499, 60201015, 60200615, 60201510, 60201705, 60201668,
+  60200975, 60201184, 60201566, 60201349, 60200192,
 ];
 
 const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
@@ -48,7 +56,7 @@ export const parseMonitorPayload = (payload, fetchedAt = Date.now()) => {
     const stationName = properties.title || properties.nameText || properties.name || `Station ${stationId || 'unknown'}`;
     for (const line of asArray(monitor.lines)) {
       const lineId = String(line.name || line.line || '').toUpperCase();
-      if (!LINES.includes(lineId)) continue;
+      if (!LIVE_LINES.has(lineId)) continue;
       for (const departure of asArray(line.departures?.departure || line.departures)) {
         const timing = departure.departureTime || departure.timing || {};
         const realTimestamp = parseTimestamp(timing.timeReal || timing.real);
@@ -220,8 +228,8 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     // Retry as four smaller requests so a single bad batch does not blank the
     // network-wide map. Successful chunks are merged into one monitor payload.
     const chunks = [];
-    for (let index = 0; index < MONITOR_STATIONS.length; index += 8) {
-      chunks.push(MONITOR_STATIONS.slice(index, index + 8));
+    for (let index = 0; index < MONITOR_STATIONS.length; index += 10) {
+      chunks.push(MONITOR_STATIONS.slice(index, index + 10));
     }
     const results = await Promise.all(chunks.map(fetchMonitorBatch));
     const successful = results.filter((result) => result.ok && result.payload);

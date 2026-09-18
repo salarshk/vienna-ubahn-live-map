@@ -107,6 +107,7 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
         id: `scheduled-${tripId}-${serviceDate}`,
         tripId,
         line,
+        mode: 'sbahn',
         direction: destination,
         coordinates: station.geometry.coordinates,
         bearing: index < calls.length - 1
@@ -146,6 +147,7 @@ const positionTrip = (trip, serviceDate, serviceSeconds) => {
       id: `scheduled-${tripId}-${serviceDate}`,
       tripId,
       line,
+      mode: 'sbahn',
       direction: destination,
       coordinates: [from[0] + (to[0] - from[0]) * progress, from[1] + (to[1] - from[1]) * progress],
       bearing: bearing(from, to),
@@ -228,6 +230,7 @@ export const getScheduledSbahnArrivals = (stationProps, now = Date.now()) => {
       arrivals.push({
         line: trip[1],
         lineName: metadata?.name || trip[1],
+        mode: 'sbahn',
         lineColor: metadata?.color || '#00AEEF',
         destination: trip[4],
         directionCode: null,

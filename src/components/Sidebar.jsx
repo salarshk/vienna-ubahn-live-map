@@ -3,6 +3,7 @@ import { ChevronLeft, Check, Eye, EyeOff } from 'lucide-react';
 import metroData from '../data/metro_lines.json';
 import gtfsData from '../data/gtfs_expanded.json';
 import sbahnData from '../data/sbahn_network.json';
+import tramData from '../data/tram_network.json';
 import { getSbahnFreshness } from '../services/dataFreshness';
 import ServiceAlerts from './ServiceAlerts';
 
@@ -13,7 +14,7 @@ const Sidebar = ({
   onSelectLine,
   onHoverLine,
   trainStats = { live: 0, confirmed: 0, scheduled: 0 },
-  mapVisibility = { ubahnLines: true, sbahnLines: true, liveTrains: true, scheduledTrains: true, confidenceRanges: true, movementTrails: true, reliabilityAtlas: false },
+  mapVisibility = { ubahnLines: true, sbahnLines: true, tramLines: false, liveTrains: true, tramTrains: false, scheduledTrains: true, confidenceRanges: true, movementTrails: true, reliabilityAtlas: false },
   onToggleVisibility,
   disruptionSnapshot,
   selectedAlert,
@@ -28,6 +29,7 @@ const Sidebar = ({
     ...metroData.features,
     ...(gtfsData && gtfsData.features ? gtfsData.features : []),
     ...(sbahnData.features || []),
+    ...(tramData.features || []),
   ];
   const lineFeatures = allFeatures.filter(f => f.geometry && f.geometry.type === 'LineString');
   const seen = new Set();
@@ -42,7 +44,9 @@ const Sidebar = ({
   const visibilityControls = [
     ['ubahnLines', 'U-Bahn lines'],
     ['sbahnLines', 'S-Bahn lines'],
+    ['tramLines', 'Tram lines (optional)'],
     ['liveTrains', 'U-Bahn trains'],
+    ['tramTrains', 'Live trams'],
     ['scheduledTrains', 'Scheduled S-Bahn'],
     ['confidenceRanges', 'Position ranges'],
     ['movementTrails', 'Selected train trail'],
@@ -112,6 +116,9 @@ const Sidebar = ({
               <span><i className="legend-marker scheduled" />Scheduled</span>
               <span><i className="legend-marker simulated" />Fallback</span>
             </div>
+            <p style={{ margin: '8px 2px 0', fontSize: '0.72rem', lineHeight: 1.4, color: 'var(--text-secondary)' }}>
+              Trams are optional to keep the city view clear. Their timing is live when the Wiener Linien monitor reports it; map positions remain departure-based unless the feed provides coordinates.
+            </p>
           </div>
 
           <div>

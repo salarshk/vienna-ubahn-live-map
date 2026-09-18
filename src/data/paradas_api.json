@@ -592,5 +592,2489 @@
     "nombre": "Zippererstraße",
     "latitud": 48.1794978,
     "longitud": 16.4111243
+  },
+  {
+    "id": 60201910,
+    "nombre": "Absberggasse",
+    "latitud": 48.1759577,
+    "longitud": 16.3906068
+  },
+  {
+    "id": 60200019,
+    "nombre": "Albertgasse",
+    "latitud": 48.2106062,
+    "longitud": 16.3440381
+  },
+  {
+    "id": 60201016,
+    "nombre": "Alfred-Adler-Straße",
+    "latitud": 48.1824328,
+    "longitud": 16.3814619
+  },
+  {
+    "id": 60200026,
+    "nombre": "Alsegger Straße",
+    "latitud": 48.2316857,
+    "longitud": 16.324365
+  },
+  {
+    "id": 60200027,
+    "nombre": "Alser Straße",
+    "latitud": 48.2171429,
+    "longitud": 16.3419989
+  },
+  {
+    "id": 60201267,
+    "nombre": "Alser Straße, Skodagasse",
+    "latitud": 48.2150838,
+    "longitud": 16.3491046
+  },
+  {
+    "id": 60200029,
+    "nombre": "Alserbachstraße",
+    "latitud": 48.2247859,
+    "longitud": 16.3549526
+  },
+  {
+    "id": 60200034,
+    "nombre": "Althanstraße",
+    "latitud": 48.2288373,
+    "longitud": 16.359552
+  },
+  {
+    "id": 60200035,
+    "nombre": "Altmannsdorfer Straße",
+    "latitud": 48.1655993,
+    "longitud": 16.3166125
+  },
+  {
+    "id": 60201795,
+    "nombre": "Am Heumarkt",
+    "latitud": 48.1986442,
+    "longitud": 16.3768805
+  },
+  {
+    "id": 60200050,
+    "nombre": "Am Spitz",
+    "latitud": 48.2582053,
+    "longitud": 16.3973801
+  },
+  {
+    "id": 60200051,
+    "nombre": "Am Tabor",
+    "latitud": 48.2251031,
+    "longitud": 16.3834742
+  },
+  {
+    "id": 60200055,
+    "nombre": "Ameisgasse",
+    "latitud": 48.1938538,
+    "longitud": 16.2995176
+  },
+  {
+    "id": 60200061,
+    "nombre": "An den langen Lüssen",
+    "latitud": 48.2526549,
+    "longitud": 16.3419091
+  },
+  {
+    "id": 60202503,
+    "nombre": "Anastasius-Grün-Gasse",
+    "latitud": 48.2299384,
+    "longitud": 16.3494729
+  },
+  {
+    "id": 60200070,
+    "nombre": "Anton-Krieger-Gasse",
+    "latitud": 48.1428202,
+    "longitud": 16.2703852
+  },
+  {
+    "id": 60200132,
+    "nombre": "Anton-Schall-Gasse",
+    "latitud": 48.2890208,
+    "longitud": 16.4157147
+  },
+  {
+    "id": 60200073,
+    "nombre": "Antonigasse",
+    "latitud": 48.2259529,
+    "longitud": 16.3297818
+  },
+  {
+    "id": 60200077,
+    "nombre": "Arbeitergasse, Gürtel",
+    "latitud": 48.184056,
+    "longitud": 16.3459605
+  },
+  {
+    "id": 60200081,
+    "nombre": "Arminenstraße",
+    "latitud": 48.2362811,
+    "longitud": 16.4375887
+  },
+  {
+    "id": 60200086,
+    "nombre": "Arthaberplatz",
+    "latitud": 48.1724951,
+    "longitud": 16.3721644
+  },
+  {
+    "id": 60200910,
+    "nombre": "Aspern Nord",
+    "latitud": 48.2346117,
+    "longitud": 16.5040909
+  },
+  {
+    "id": 60201964,
+    "nombre": "Aspern Nord SU, Mayrederbrücke",
+    "latitud": 48.2347195,
+    "longitud": 16.5033274
+  },
+  {
+    "id": 60201631,
+    "nombre": "Aspern, Oberdorfstraße",
+    "latitud": 48.217514,
+    "longitud": 16.4799263
+  },
+  {
+    "id": 60200103,
+    "nombre": "Aßmayergasse",
+    "latitud": 48.1787251,
+    "longitud": 16.337714
+  },
+  {
+    "id": 60200096,
+    "nombre": "Atzgersdorfer Straße",
+    "latitud": 48.1705121,
+    "longitud": 16.2963645
+  },
+  {
+    "id": 60200099,
+    "nombre": "Augasse",
+    "latitud": 48.229711,
+    "longitud": 16.357441
+  },
+  {
+    "id": 60200101,
+    "nombre": "Aumannplatz",
+    "latitud": 48.2281611,
+    "longitud": 16.3365641
+  },
+  {
+    "id": 60200102,
+    "nombre": "Autokaderstraße",
+    "latitud": 48.2774477,
+    "longitud": 16.3880106
+  },
+  {
+    "id": 60205022,
+    "nombre": "Bahnhof",
+    "latitud": 48.0077845,
+    "longitud": 16.2697385
+  },
+  {
+    "id": 60205201,
+    "nombre": "Bahnhof",
+    "latitud": 48.0870075,
+    "longitud": 16.3140523
+  },
+  {
+    "id": 60201554,
+    "nombre": "Bahnsteggasse",
+    "latitud": 48.2650109,
+    "longitud": 16.4020244
+  },
+  {
+    "id": 60200109,
+    "nombre": "Barawitzkagasse",
+    "latitud": 48.2446212,
+    "longitud": 16.3556803
+  },
+  {
+    "id": 60200112,
+    "nombre": "Bauernfeldplatz",
+    "latitud": 48.2208777,
+    "longitud": 16.3607198
+  },
+  {
+    "id": 60200358,
+    "nombre": "Baumgarten",
+    "latitud": 48.1990633,
+    "longitud": 16.2714902
+  },
+  {
+    "id": 60200115,
+    "nombre": "Baumgasse",
+    "latitud": 48.1932909,
+    "longitud": 16.4047552
+  },
+  {
+    "id": 60200458,
+    "nombre": "Beingasse",
+    "latitud": 48.1994046,
+    "longitud": 16.3322792
+  },
+  {
+    "id": 60201598,
+    "nombre": "Bernhardtstalgasse",
+    "latitud": 48.1764069,
+    "longitud": 16.3618248
+  },
+  {
+    "id": 60201922,
+    "nombre": "Berresgasse",
+    "latitud": 48.2413428,
+    "longitud": 16.485406
+  },
+  {
+    "id": 60201015,
+    "nombre": "Bhf. Meidling",
+    "latitud": 48.1743402,
+    "longitud": 16.3319917
+  },
+  {
+    "id": 60201160,
+    "nombre": "Bhf. Meidling, Schedifkaplatz",
+    "latitud": 48.1733817,
+    "longitud": 16.3300513
+  },
+  {
+    "id": 60200145,
+    "nombre": "Blechturmgasse",
+    "latitud": 48.1843555,
+    "longitud": 16.3682747
+  },
+  {
+    "id": 60200148,
+    "nombre": "Blindengasse",
+    "latitud": 48.2109714,
+    "longitud": 16.3404808
+  },
+  {
+    "id": 60200149,
+    "nombre": "Blumengasse",
+    "latitud": 48.2214942,
+    "longitud": 16.3317312
+  },
+  {
+    "id": 60200195,
+    "nombre": "Börse",
+    "latitud": 48.2155627,
+    "longitud": 16.3660019
+  },
+  {
+    "id": 60200160,
+    "nombre": "Braunhubergasse",
+    "latitud": 48.1717882,
+    "longitud": 16.4186701
+  },
+  {
+    "id": 60200166,
+    "nombre": "Breitensee",
+    "latitud": 48.198243,
+    "longitud": 16.3063628
+  },
+  {
+    "id": 60200170,
+    "nombre": "Brigittaplatz",
+    "latitud": 48.2326431,
+    "longitud": 16.3703318
+  },
+  {
+    "id": 60200173,
+    "nombre": "Brunnenmarkt",
+    "latitud": 48.2110911,
+    "longitud": 16.3359443
+  },
+  {
+    "id": 60200176,
+    "nombre": "Brünner Straße",
+    "latitud": 48.2677557,
+    "longitud": 16.4037042
+  },
+  {
+    "id": 60200178,
+    "nombre": "Brünnlbadgasse",
+    "latitud": 48.2153951,
+    "longitud": 16.3457359
+  },
+  {
+    "id": 60201919,
+    "nombre": "Bruno-Marek-Allee",
+    "latitud": 48.2284603,
+    "longitud": 16.3925921
+  },
+  {
+    "id": 60200188,
+    "nombre": "Burggasse-Stadthalle",
+    "latitud": 48.2022965,
+    "longitud": 16.3373097
+  },
+  {
+    "id": 60200190,
+    "nombre": "Burgring",
+    "latitud": 48.2039251,
+    "longitud": 16.3637202
+  },
+  {
+    "id": 60200197,
+    "nombre": "Camillo-Sitte-Gasse",
+    "latitud": 48.2050027,
+    "longitud": 16.3273025
+  },
+  {
+    "id": 60200202,
+    "nombre": "Canisiusgasse",
+    "latitud": 48.2280474,
+    "longitud": 16.3548089
+  },
+  {
+    "id": 60200203,
+    "nombre": "Carabelligasse",
+    "latitud": 48.2802157,
+    "longitud": 16.4108099
+  },
+  {
+    "id": 60200021,
+    "nombre": "Carminweg",
+    "latitud": 48.2531812,
+    "longitud": 16.4210597
+  },
+  {
+    "id": 60200211,
+    "nombre": "Columbusplatz",
+    "latitud": 48.182361,
+    "longitud": 16.3736915
+  },
+  {
+    "id": 60200225,
+    "nombre": "Davidgasse",
+    "latitud": 48.1754724,
+    "longitud": 16.3563271
+  },
+  {
+    "id": 60201613,
+    "nombre": "Deutschordenstraße",
+    "latitud": 48.1999435,
+    "longitud": 16.2674567
+  },
+  {
+    "id": 60200302,
+    "nombre": "Diesterweggasse",
+    "latitud": 48.1937579,
+    "longitud": 16.3063358
+  },
+  {
+    "id": 60200252,
+    "nombre": "Döblinger Bad",
+    "latitud": 48.2511595,
+    "longitud": 16.3569828
+  },
+  {
+    "id": 60200135,
+    "nombre": "Döblinger Hauptstraße, Gatterburggasse",
+    "latitud": 48.2389137,
+    "longitud": 16.3546023
+  },
+  {
+    "id": 60200233,
+    "nombre": "Dommayergasse",
+    "latitud": 48.1864517,
+    "longitud": 16.298781
+  },
+  {
+    "id": 60201278,
+    "nombre": "Donauspital",
+    "latitud": 48.219561,
+    "longitud": 16.4659934
+  },
+  {
+    "id": 60200236,
+    "nombre": "Donaustadtstraße",
+    "latitud": 48.2336843,
+    "longitud": 16.4436882
+  },
+  {
+    "id": 60200865,
+    "nombre": "Dörfelstraße",
+    "latitud": 48.1755144,
+    "longitud": 16.3357916
+  },
+  {
+    "id": 60200450,
+    "nombre": "Dornbach",
+    "latitud": 48.2263658,
+    "longitud": 16.3077192
+  },
+  {
+    "id": 0,
+    "nombre": "Dornbach",
+    "latitud": 0,
+    "longitud": 0
+  },
+  {
+    "id": 60200241,
+    "nombre": "Dornbacher Straße",
+    "latitud": 48.2281611,
+    "longitud": 16.3018712
+  },
+  {
+    "id": 60200500,
+    "nombre": "Dresdner Straße",
+    "latitud": 48.2369812,
+    "longitud": 16.3795216
+  },
+  {
+    "id": 60200467,
+    "nombre": "Eckpergasse",
+    "latitud": 48.2333492,
+    "longitud": 16.3165586
+  },
+  {
+    "id": 60201920,
+    "nombre": "Eduardgasse",
+    "latitud": 48.2227211,
+    "longitud": 16.3400137
+  },
+  {
+    "id": 60200267,
+    "nombre": "Eichenstraße",
+    "latitud": 48.1804263,
+    "longitud": 16.3498412
+  },
+  {
+    "id": 60204302,
+    "nombre": "Eigenheimsiedlung Haltestelle",
+    "latitud": 48.0395796,
+    "longitud": 16.3041439
+  },
+  {
+    "id": 60200276,
+    "nombre": "Elterleinplatz",
+    "latitud": 48.2181784,
+    "longitud": 16.3310575
+  },
+  {
+    "id": 60200471,
+    "nombre": "Empergergasse",
+    "latitud": 48.2863071,
+    "longitud": 16.4141786
+  },
+  {
+    "id": 60200425,
+    "nombre": "Enkplatz",
+    "latitud": 48.1743402,
+    "longitud": 16.4153104
+  },
+  {
+    "id": 60201757,
+    "nombre": "Enkplatz, Gottschalkg.",
+    "latitud": 48.1748494,
+    "longitud": 16.4145828
+  },
+  {
+    "id": 60200287,
+    "nombre": "Erndtgasse",
+    "latitud": 48.2373222,
+    "longitud": 16.3226582
+  },
+  {
+    "id": 60201583,
+    "nombre": "Ernst-Happel-Stadion",
+    "latitud": 48.2087504,
+    "longitud": 16.4191732
+  },
+  {
+    "id": 60200288,
+    "nombre": "Erzherzog-Karl-Straße",
+    "latitud": 48.2295674,
+    "longitud": 16.4532283
+  },
+  {
+    "id": 60200294,
+    "nombre": "Etrichstraße",
+    "latitud": 48.1484365,
+    "longitud": 16.4614389
+  },
+  {
+    "id": 60200669,
+    "nombre": "Familienplatz",
+    "latitud": 48.2135275,
+    "longitud": 16.3189302
+  },
+  {
+    "id": 60200300,
+    "nombre": "Fasangasse",
+    "latitud": 48.1884101,
+    "longitud": 16.3850282
+  },
+  {
+    "id": 60201374,
+    "nombre": "Feßtgasse",
+    "latitud": 48.2105943,
+    "longitud": 16.3251915
+  },
+  {
+    "id": 60200330,
+    "nombre": "Fichtnergasse",
+    "latitud": 48.1871225,
+    "longitud": 16.2888816
+  },
+  {
+    "id": 60200314,
+    "nombre": "Fickeysstraße",
+    "latitud": 48.1670432,
+    "longitud": 16.4237097
+  },
+  {
+    "id": 60200333,
+    "nombre": "Florianigasse",
+    "latitud": 48.2127912,
+    "longitud": 16.345682
+  },
+  {
+    "id": 60200334,
+    "nombre": "Floridsdorf",
+    "latitud": 48.2567938,
+    "longitud": 16.4002996
+  },
+  {
+    "id": 60200235,
+    "nombre": "Floridsdorfer Brücke",
+    "latitud": 48.2485993,
+    "longitud": 16.3878669
+  },
+  {
+    "id": 60201186,
+    "nombre": "Floridsdorfer Markt",
+    "latitud": 48.2620986,
+    "longitud": 16.4003086
+  },
+  {
+    "id": 60200368,
+    "nombre": "Flurschützstraße",
+    "latitud": 48.1793541,
+    "longitud": 16.3400676
+  },
+  {
+    "id": 60200938,
+    "nombre": "Forstnergasse",
+    "latitud": 48.2476362,
+    "longitud": 16.453938
+  },
+  {
+    "id": 60200343,
+    "nombre": "Franz-Asenbauer-Gasse",
+    "latitud": 48.1547414,
+    "longitud": 16.2712566
+  },
+  {
+    "id": 60200345,
+    "nombre": "Franz-Josefs-Bahnhof",
+    "latitud": 48.2259888,
+    "longitud": 16.361151
+  },
+  {
+    "id": 60200348,
+    "nombre": "Franzensbrücke",
+    "latitud": 48.2138148,
+    "longitud": 16.3915231
+  },
+  {
+    "id": 60200977,
+    "nombre": "Frauengasse",
+    "latitud": 48.2137729,
+    "longitud": 16.3290362
+  },
+  {
+    "id": 60200357,
+    "nombre": "Friedensbrücke",
+    "latitud": 48.2270301,
+    "longitud": 16.364879
+  },
+  {
+    "id": 60200363,
+    "nombre": "Friedrich-Engels-Platz",
+    "latitud": 48.2442742,
+    "longitud": 16.3797282
+  },
+  {
+    "id": 60200365,
+    "nombre": "Frödenplatz",
+    "latitud": 48.1553047,
+    "longitud": 16.3586537
+  },
+  {
+    "id": 60200369,
+    "nombre": "Fultonstraße",
+    "latitud": 48.253241,
+    "longitud": 16.4145469
+  },
+  {
+    "id": 60200376,
+    "nombre": "Gatterburggasse",
+    "latitud": 48.2395898,
+    "longitud": 16.3491405
+  },
+  {
+    "id": 60200380,
+    "nombre": "Gaußplatz",
+    "latitud": 48.226282,
+    "longitud": 16.3699096
+  },
+  {
+    "id": 60200712,
+    "nombre": "Geibelgasse",
+    "latitud": 48.1917159,
+    "longitud": 16.3317132
+  },
+  {
+    "id": 60200382,
+    "nombre": "Geiereckstraße",
+    "latitud": 48.1750351,
+    "longitud": 16.3996259
+  },
+  {
+    "id": 60200484,
+    "nombre": "Geiselbergstraße",
+    "latitud": 48.1749992,
+    "longitud": 16.407037
+  },
+  {
+    "id": 60200384,
+    "nombre": "Gellertplatz",
+    "latitud": 48.1750112,
+    "longitud": 16.3826387
+  },
+  {
+    "id": 60200389,
+    "nombre": "Gerhardusgasse",
+    "latitud": 48.2316977,
+    "longitud": 16.3662534
+  },
+  {
+    "id": 60200393,
+    "nombre": "Gersthof",
+    "latitud": 48.2311591,
+    "longitud": 16.3291171
+  },
+  {
+    "id": 60201446,
+    "nombre": "Gersthof, Wallrißstraße",
+    "latitud": 48.2320448,
+    "longitud": 16.3270061
+  },
+  {
+    "id": 60201786,
+    "nombre": "Gewerbepark Stadlau",
+    "latitud": 48.2456083,
+    "longitud": 16.4628134
+  },
+  {
+    "id": 60200405,
+    "nombre": "Glatzgasse",
+    "latitud": 48.2333492,
+    "longitud": 16.353174
+  },
+  {
+    "id": 60200408,
+    "nombre": "Gloriettegasse",
+    "latitud": 48.1829959,
+    "longitud": 16.2920616
+  },
+  {
+    "id": 60205200,
+    "nombre": "Griesfeld",
+    "latitud": 48.0778795,
+    "longitud": 16.3128845
+  },
+  {
+    "id": 60200426,
+    "nombre": "Grinzing",
+    "latitud": 48.25549,
+    "longitud": 16.3421516
+  },
+  {
+    "id": 60200428,
+    "nombre": "Grinzinger Straße",
+    "latitud": 48.2547543,
+    "longitud": 16.3653641
+  },
+  {
+    "id": 60200431,
+    "nombre": "Großjedlersdorf",
+    "latitud": 48.2765031,
+    "longitud": 16.4085731
+  },
+  {
+    "id": 60200434,
+    "nombre": "Gruschaplatz",
+    "latitud": 48.1953927,
+    "longitud": 16.2826383
+  },
+  {
+    "id": 60200436,
+    "nombre": "Gumpendorfer Straße",
+    "latitud": 48.1907278,
+    "longitud": 16.3375613
+  },
+  {
+    "id": 60200438,
+    "nombre": "Guneschgasse",
+    "latitud": 48.2365324,
+    "longitud": 16.3535513
+  },
+  {
+    "id": 60200439,
+    "nombre": "Gunoldstraße",
+    "latitud": 48.2446571,
+    "longitud": 16.361708
+  },
+  {
+    "id": 60200440,
+    "nombre": "Guntherstraße",
+    "latitud": 48.2023744,
+    "longitud": 16.3267635
+  },
+  {
+    "id": 60200442,
+    "nombre": "Gusenleithnergasse",
+    "latitud": 48.1946502,
+    "longitud": 16.2900583
+  },
+  {
+    "id": 60200444,
+    "nombre": "Gutheil-Schoder-Gasse",
+    "latitud": 48.1594575,
+    "longitud": 16.3358455
+  },
+  {
+    "id": 60200445,
+    "nombre": "Gutraterplatz",
+    "latitud": 48.2077207,
+    "longitud": 16.3093452
+  },
+  {
+    "id": 60200456,
+    "nombre": "Haberlgasse",
+    "latitud": 48.2117017,
+    "longitud": 16.3311563
+  },
+  {
+    "id": 60200468,
+    "nombre": "Halteraugasse",
+    "latitud": 48.251949,
+    "longitud": 16.3639358
+  },
+  {
+    "id": 60200388,
+    "nombre": "Hanreitergasse",
+    "latitud": 48.2841432,
+    "longitud": 16.4130108
+  },
+  {
+    "id": 60200473,
+    "nombre": "Hardeggasse",
+    "latitud": 48.2208897,
+    "longitud": 16.4577918
+  },
+  {
+    "id": 60200474,
+    "nombre": "Hardtgasse",
+    "latitud": 48.2370589,
+    "longitud": 16.3490417
+  },
+  {
+    "id": 60200702,
+    "nombre": "Hauffgasse",
+    "latitud": 48.1777008,
+    "longitud": 16.4127772
+  },
+  {
+    "id": 60201349,
+    "nombre": "Hauptbahnhof",
+    "latitud": 48.185188,
+    "longitud": 16.3764134
+  },
+  {
+    "id": 60200905,
+    "nombre": "Hauptbahnhof Ost",
+    "latitud": 48.1843555,
+    "longitud": 16.3804917
+  },
+  {
+    "id": 60201525,
+    "nombre": "Hauptwerkstätte",
+    "latitud": 48.1497551,
+    "longitud": 16.4581331
+  },
+  {
+    "id": 60201962,
+    "nombre": "Haussteinstraße",
+    "latitud": 48.2280654,
+    "longitud": 16.3970207
+  },
+  {
+    "id": 60200301,
+    "nombre": "Heiligenstadt, 12.-Februar-Platz",
+    "latitud": 48.2489283,
+    "longitud": 16.3627141
+  },
+  {
+    "id": 60200494,
+    "nombre": "Heinestraße",
+    "latitud": 48.2222842,
+    "longitud": 16.3823333
+  },
+  {
+    "id": 60200400,
+    "nombre": "Heinrich-Drimmel-Platz",
+    "latitud": 48.187949,
+    "longitud": 16.3911188
+  },
+  {
+    "id": 60200502,
+    "nombre": "Herbeckstraße",
+    "latitud": 48.2324636,
+    "longitud": 16.3175019
+  },
+  {
+    "id": 60200505,
+    "nombre": "Hernals",
+    "latitud": 48.2232358,
+    "longitud": 16.3148788
+  },
+  {
+    "id": 60200508,
+    "nombre": "Hernals, Wattgasse",
+    "latitud": 48.2215181,
+    "longitud": 16.3213107
+  },
+  {
+    "id": 60200507,
+    "nombre": "Hernalser Gürtel",
+    "latitud": 48.2151796,
+    "longitud": 16.340903
+  },
+  {
+    "id": 60200511,
+    "nombre": "Hetzendorf",
+    "latitud": 48.1660846,
+    "longitud": 16.3144207
+  },
+  {
+    "id": 60200520,
+    "nombre": "Hietzing",
+    "latitud": 48.1877933,
+    "longitud": 16.3038655
+  },
+  {
+    "id": 60200523,
+    "nombre": "Hillerstraße",
+    "latitud": 48.2211291,
+    "longitud": 16.4077826
+  },
+  {
+    "id": 60200525,
+    "nombre": "Himmelmutterweg",
+    "latitud": 48.2306625,
+    "longitud": 16.2960411
+  },
+  {
+    "id": 60200527,
+    "nombre": "Hintere Zollamtsstraße",
+    "latitud": 48.211157,
+    "longitud": 16.3870584
+  },
+  {
+    "id": 60201912,
+    "nombre": "Hlawkagasse",
+    "latitud": 48.1791025,
+    "longitud": 16.3829711
+  },
+  {
+    "id": 60200534,
+    "nombre": "Hochsatzengasse",
+    "latitud": 48.1980095,
+    "longitud": 16.2774011
+  },
+  {
+    "id": 60200569,
+    "nombre": "Höchstädtplatz",
+    "latitud": 48.2392428,
+    "longitud": 16.3769075
+  },
+  {
+    "id": 60200539,
+    "nombre": "Hofwiesengasse",
+    "latitud": 48.1701586,
+    "longitud": 16.2872287
+  },
+  {
+    "id": 60200540,
+    "nombre": "Hohe Warte",
+    "latitud": 48.2510458,
+    "longitud": 16.3551143
+  },
+  {
+    "id": 60200548,
+    "nombre": "Hopfengasse",
+    "latitud": 48.2691967,
+    "longitud": 16.3917387
+  },
+  {
+    "id": 60200551,
+    "nombre": "Hoßplatz",
+    "latitud": 48.2550055,
+    "longitud": 16.4078454
+  },
+  {
+    "id": 60200554,
+    "nombre": "Hubertusdamm",
+    "latitud": 48.2507647,
+    "longitud": 16.3921878
+  },
+  {
+    "id": 60200556,
+    "nombre": "Huglgasse",
+    "latitud": 48.1979256,
+    "longitud": 16.3251915
+  },
+  {
+    "id": 60200184,
+    "nombre": "Hütteldorf, Bujattigasse",
+    "latitud": 48.2026318,
+    "longitud": 16.2551408
+  },
+  {
+    "id": 60201035,
+    "nombre": "Hütteldorfer Straße",
+    "latitud": 48.1991232,
+    "longitud": 16.3122108
+  },
+  {
+    "id": 60200578,
+    "nombre": "Innstraße",
+    "latitud": 48.2305189,
+    "longitud": 16.38678
+  },
+  {
+    "id": 60200585,
+    "nombre": "Inzersdorf Lokalbahn",
+    "latitud": 48.1499528,
+    "longitud": 16.3344082
+  },
+  {
+    "id": 60200589,
+    "nombre": "Jagdschloßgasse",
+    "latitud": 48.1771377,
+    "longitud": 16.2836264
+  },
+  {
+    "id": 60201667,
+    "nombre": "Jägerstraße",
+    "latitud": 48.235234,
+    "longitud": 16.3694694
+  },
+  {
+    "id": 60200597,
+    "nombre": "Joachimsthalerplatz",
+    "latitud": 48.2088462,
+    "longitud": 16.3049255
+  },
+  {
+    "id": 60200602,
+    "nombre": "Johann-Nepomuk-Berger-Platz",
+    "latitud": 48.2131025,
+    "longitud": 16.325461
+  },
+  {
+    "id": 60201921,
+    "nombre": "Johann-Nepomuk-Vogl-Platz",
+    "latitud": 48.223954,
+    "longitud": 16.3365821
+  },
+  {
+    "id": 60200604,
+    "nombre": "Johann-Strauß-Gasse",
+    "latitud": 48.1899133,
+    "longitud": 16.3661097
+  },
+  {
+    "id": 60200601,
+    "nombre": "Johannes-Krawarik-Gasse",
+    "latitud": 48.2137909,
+    "longitud": 16.3086804
+  },
+  {
+    "id": 60200606,
+    "nombre": "Johnstraße",
+    "latitud": 48.1976741,
+    "longitud": 16.3196399
+  },
+  {
+    "id": 60200607,
+    "nombre": "Josef-Baumann-Gasse",
+    "latitud": 48.2512671,
+    "longitud": 16.4302943
+  },
+  {
+    "id": 60203121,
+    "nombre": "Josefsplatz",
+    "latitud": 48.0058493,
+    "longitud": 16.2335543
+  },
+  {
+    "id": 60200615,
+    "nombre": "Josefstädter Straße",
+    "latitud": 48.2113844,
+    "longitud": 16.3391603
+  },
+  {
+    "id": 60200619,
+    "nombre": "Julius-Raab-Platz",
+    "latitud": 48.2113306,
+    "longitud": 16.3828453
+  },
+  {
+    "id": 60200620,
+    "nombre": "Jungstraße",
+    "latitud": 48.2210872,
+    "longitud": 16.4057434
+  },
+  {
+    "id": 60200627,
+    "nombre": "Kagran",
+    "latitud": 48.2434666,
+    "longitud": 16.4335732
+  },
+  {
+    "id": 60200631,
+    "nombre": "Kagraner Brücke",
+    "latitud": 48.2393624,
+    "longitud": 16.4301686
+  },
+  {
+    "id": 60200633,
+    "nombre": "Kagraner Platz",
+    "latitud": 48.2503041,
+    "longitud": 16.4433019
+  },
+  {
+    "id": 60200637,
+    "nombre": "Kaiser-Franz-Josef-Straße",
+    "latitud": 48.1358964,
+    "longitud": 16.266765
+  },
+  {
+    "id": 60200639,
+    "nombre": "Kaiserebersdorf, Zinnergasse",
+    "latitud": 48.1600088,
+    "longitud": 16.4707365
+  },
+  {
+    "id": 60200646,
+    "nombre": "Kaiserstraße",
+    "latitud": 48.2018355,
+    "longitud": 16.3405257
+  },
+  {
+    "id": 60200778,
+    "nombre": "Kapellenweg",
+    "latitud": 48.2187949,
+    "longitud": 16.4703053
+  },
+  {
+    "id": 60200657,
+    "nombre": "Karlsplatz",
+    "latitud": 48.2009554,
+    "longitud": 16.3689484
+  },
+  {
+    "id": 60200659,
+    "nombre": "Karmeliterplatz",
+    "latitud": 48.2157602,
+    "longitud": 16.380348
+  },
+  {
+    "id": 60201317,
+    "nombre": "Kendlerstraße",
+    "latitud": 48.2047094,
+    "longitud": 16.3090847
+  },
+  {
+    "id": 60201237,
+    "nombre": "Kirchengasse",
+    "latitud": 48.2022067,
+    "longitud": 16.3517726
+  },
+  {
+    "id": 60200688,
+    "nombre": "Kleistgasse",
+    "latitud": 48.1935424,
+    "longitud": 16.3906068
+  },
+  {
+    "id": 60200689,
+    "nombre": "Kliebergasse",
+    "latitud": 48.1828042,
+    "longitud": 16.3644658
+  },
+  {
+    "id": 60200710,
+    "nombre": "Klinik Hietzing",
+    "latitud": 48.1691342,
+    "longitud": 16.279045
+  },
+  {
+    "id": 60201444,
+    "nombre": "Klosterneuburger Str., Wallensteinstr.",
+    "latitud": 48.2286279,
+    "longitud": 16.3683375
+  },
+  {
+    "id": 60201060,
+    "nombre": "Knöllgasse",
+    "latitud": 48.1774013,
+    "longitud": 16.3581057
+  },
+  {
+    "id": 60201392,
+    "nombre": "Knöllgasse, Troststraße",
+    "latitud": 48.1727767,
+    "longitud": 16.353704
+  },
+  {
+    "id": 60200736,
+    "nombre": "Kölblgasse",
+    "latitud": 48.191129,
+    "longitud": 16.385711
+  },
+  {
+    "id": 60200699,
+    "nombre": "Koloniestraße",
+    "latitud": 48.2658242,
+    "longitud": 16.3932658
+  },
+  {
+    "id": 60200701,
+    "nombre": "Konstanziagasse",
+    "latitud": 48.2281192,
+    "longitud": 16.4577918
+  },
+  {
+    "id": 60201918,
+    "nombre": "Krakauer Straße",
+    "latitud": 48.2244687,
+    "longitud": 16.3931939
+  },
+  {
+    "id": 60200716,
+    "nombre": "Kraygasse",
+    "latitud": 48.2485395,
+    "longitud": 16.4492668
+  },
+  {
+    "id": 60200732,
+    "nombre": "Kutschkergasse",
+    "latitud": 48.2261863,
+    "longitud": 16.3448286
+  },
+  {
+    "id": 60201505,
+    "nombre": "Lainz, Wolkersbergenstraße",
+    "latitud": 48.1760176,
+    "longitud": 16.2737449
+  },
+  {
+    "id": 60200742,
+    "nombre": "Landesgerichtsstraße",
+    "latitud": 48.2144972,
+    "longitud": 16.3569828
+  },
+  {
+    "id": 60206055,
+    "nombre": "Landesklinikum",
+    "latitud": 47.999436,
+    "longitud": 16.2557068
+  },
+  {
+    "id": 60200747,
+    "nombre": "Lange Gasse",
+    "latitud": 48.2149761,
+    "longitud": 16.3509551
+  },
+  {
+    "id": 60200749,
+    "nombre": "Langobardenstraße",
+    "latitud": 48.2244926,
+    "longitud": 16.4547375
+  },
+  {
+    "id": 60200753,
+    "nombre": "Laudongasse",
+    "latitud": 48.2132461,
+    "longitud": 16.3490058
+  },
+  {
+    "id": 60200754,
+    "nombre": "Laurentiusplatz",
+    "latitud": 48.2019313,
+    "longitud": 16.3083121
+  },
+  {
+    "id": 60200755,
+    "nombre": "Laurenzgasse",
+    "latitud": 48.1855473,
+    "longitud": 16.3626961
+  },
+  {
+    "id": 60200136,
+    "nombre": "Laxenburger Straße, Gudrunstraße",
+    "latitud": 48.1783597,
+    "longitud": 16.3737544
+  },
+  {
+    "id": 60200760,
+    "nombre": "Laxenburger Straße, Troststraße",
+    "latitud": 48.1690922,
+    "longitud": 16.3705743
+  },
+  {
+    "id": 60200762,
+    "nombre": "Lazarettgasse",
+    "latitud": 48.2189744,
+    "longitud": 16.3517546
+  },
+  {
+    "id": 60201670,
+    "nombre": "Leberberg",
+    "latitud": 48.1551369,
+    "longitud": 16.4590135
+  },
+  {
+    "id": 60201699,
+    "nombre": "Leberweg",
+    "latitud": 48.150684,
+    "longitud": 16.4558514
+  },
+  {
+    "id": 60201559,
+    "nombre": "Lederergasse",
+    "latitud": 48.2096305,
+    "longitud": 16.3487632
+  },
+  {
+    "id": 60203142,
+    "nombre": "Leesdorf",
+    "latitud": 47.9995922,
+    "longitud": 16.251296
+  },
+  {
+    "id": 60200780,
+    "nombre": "Leyserstraße",
+    "latitud": 48.1981232,
+    "longitud": 16.3023832
+  },
+  {
+    "id": 60200784,
+    "nombre": "Liebknechtgasse",
+    "latitud": 48.2226254,
+    "longitud": 16.306794
+  },
+  {
+    "id": 60200786,
+    "nombre": "Liechtenwerder Platz",
+    "latitud": 48.2327508,
+    "longitud": 16.3562013
+  },
+  {
+    "id": 60201158,
+    "nombre": "Linzer Straße",
+    "latitud": 48.1924465,
+    "longitud": 16.3163161
+  },
+  {
+    "id": 60200113,
+    "nombre": "Linzer Straße, Hochsatzengasse",
+    "latitud": 48.1968538,
+    "longitud": 16.2771046
+  },
+  {
+    "id": 60200819,
+    "nombre": "Linzer Straße, Lützowgasse",
+    "latitud": 48.1943448,
+    "longitud": 16.295601
+  },
+  {
+    "id": 60200805,
+    "nombre": "Litfaßstraße",
+    "latitud": 48.1839961,
+    "longitud": 16.4055368
+  },
+  {
+    "id": 60205001,
+    "nombre": "Lokalbahn",
+    "latitud": 48.0152484,
+    "longitud": 16.2905973
+  },
+  {
+    "id": 60204304,
+    "nombre": "Lokalbahn",
+    "latitud": 48.0278119,
+    "longitud": 16.3001554
+  },
+  {
+    "id": 60203615,
+    "nombre": "Lokalbahn",
+    "latitud": 48.0485342,
+    "longitud": 16.3123006
+  },
+  {
+    "id": 60204331,
+    "nombre": "Lokalbahn",
+    "latitud": 48.0637312,
+    "longitud": 16.3135403
+  },
+  {
+    "id": 60200821,
+    "nombre": "Ludwig-Koeßler-Platz",
+    "latitud": 48.19577,
+    "longitud": 16.4089683
+  },
+  {
+    "id": 60200472,
+    "nombre": "Lützowgasse",
+    "latitud": 48.197243,
+    "longitud": 16.2948913
+  },
+  {
+    "id": 60200827,
+    "nombre": "Margaretengürtel",
+    "latitud": 48.1882903,
+    "longitud": 16.342502
+  },
+  {
+    "id": 60200833,
+    "nombre": "Mariahilfer Gürtel",
+    "latitud": 48.1929855,
+    "longitud": 16.3388369
+  },
+  {
+    "id": 60200838,
+    "nombre": "Marienbrücke",
+    "latitud": 48.2132581,
+    "longitud": 16.3774554
+  },
+  {
+    "id": 60200840,
+    "nombre": "Maroltingergasse",
+    "latitud": 48.2134616,
+    "longitud": 16.3065245
+  },
+  {
+    "id": 60201570,
+    "nombre": "Marsanogasse, Bhf. Gürtel",
+    "latitud": 48.2308121,
+    "longitud": 16.3507216
+  },
+  {
+    "id": 60200843,
+    "nombre": "Martinstraße",
+    "latitud": 48.2266231,
+    "longitud": 16.3422505
+  },
+  {
+    "id": 60200844,
+    "nombre": "Marx-Meidlinger-Straße",
+    "latitud": 48.1804562,
+    "longitud": 16.3442357
+  },
+  {
+    "id": 60200845,
+    "nombre": "Marxergasse",
+    "latitud": 48.207613,
+    "longitud": 16.3866183
+  },
+  {
+    "id": 60200909,
+    "nombre": "Märzstraße",
+    "latitud": 48.1966143,
+    "longitud": 16.3119952
+  },
+  {
+    "id": 60200848,
+    "nombre": "Matthäus-Jiszda-Straße",
+    "latitud": 48.2538092,
+    "longitud": 16.3948468
+  },
+  {
+    "id": 60201900,
+    "nombre": "Matthäusgasse",
+    "latitud": 48.2109055,
+    "longitud": 16.3883071
+  },
+  {
+    "id": 60200849,
+    "nombre": "Matzleinsdorfer Platz",
+    "latitud": 48.1806,
+    "longitud": 16.3591478
+  },
+  {
+    "id": 60200854,
+    "nombre": "Maurer Hauptplatz",
+    "latitud": 48.1505522,
+    "longitud": 16.2688401
+  },
+  {
+    "id": 60200859,
+    "nombre": "Mayerhofgasse",
+    "latitud": 48.1925962,
+    "longitud": 16.3669721
+  },
+  {
+    "id": 60200861,
+    "nombre": "Mayssengasse",
+    "latitud": 48.2159996,
+    "longitud": 16.325461
+  },
+  {
+    "id": 60205809,
+    "nombre": "Melkergründe",
+    "latitud": 48.0040642,
+    "longitud": 16.2585185
+  },
+  {
+    "id": 60200874,
+    "nombre": "Michelbeuern-AKH",
+    "latitud": 48.2209855,
+    "longitud": 16.3439393
+  },
+  {
+    "id": 60200743,
+    "nombre": "Mitte-Landstraße",
+    "latitud": 48.2060445,
+    "longitud": 16.3845881
+  },
+  {
+    "id": 60200885,
+    "nombre": "Molitorgasse",
+    "latitud": 48.1818099,
+    "longitud": 16.408061
+  },
+  {
+    "id": 60200899,
+    "nombre": "Mühlfeldgasse",
+    "latitud": 48.2205785,
+    "longitud": 16.3900498
+  },
+  {
+    "id": 60200914,
+    "nombre": "Neilreichgasse",
+    "latitud": 48.1761493,
+    "longitud": 16.3655887
+  },
+  {
+    "id": 60201393,
+    "nombre": "Neilreichgasse, Troststraße",
+    "latitud": 48.1700029,
+    "longitud": 16.3643939
+  },
+  {
+    "id": 60200918,
+    "nombre": "Neu Erlaa",
+    "latitud": 48.1406262,
+    "longitud": 16.3280122
+  },
+  {
+    "id": 60200935,
+    "nombre": "Neuwaldegg",
+    "latitud": 48.2335467,
+    "longitud": 16.2911004
+  },
+  {
+    "id": 60200941,
+    "nombre": "Nordbahnstraße",
+    "latitud": 48.2236308,
+    "longitud": 16.389403
+  },
+  {
+    "id": 60200943,
+    "nombre": "Nordbrücke",
+    "latitud": 48.2611418,
+    "longitud": 16.3953768
+  },
+  {
+    "id": 60200944,
+    "nombre": "Nordwestbahnstraße",
+    "latitud": 48.2280235,
+    "longitud": 16.3809679
+  },
+  {
+    "id": 60200948,
+    "nombre": "Nußdorf",
+    "latitud": 48.2602148,
+    "longitud": 16.3676548
+  },
+  {
+    "id": 60200116,
+    "nombre": "Nußdorf, Beethovengang",
+    "latitud": 48.259545,
+    "longitud": 16.3630554
+  },
+  {
+    "id": 60200950,
+    "nombre": "Nußdorfer Straße",
+    "latitud": 48.2314823,
+    "longitud": 16.3528865
+  },
+  {
+    "id": 60200959,
+    "nombre": "Oberdöbling",
+    "latitud": 48.2443998,
+    "longitud": 16.3442717
+  },
+  {
+    "id": 60200961,
+    "nombre": "Obere Augartenstraße",
+    "latitud": 48.222757,
+    "longitud": 16.3753085
+  },
+  {
+    "id": 60200962,
+    "nombre": "Obere Donaustraße",
+    "latitud": 48.2196747,
+    "longitud": 16.3713379
+  },
+  {
+    "id": 60201595,
+    "nombre": "Oberfeldgasse",
+    "latitud": 48.2430299,
+    "longitud": 16.4687602
+  },
+  {
+    "id": 60200461,
+    "nombre": "Oberzellergasse",
+    "latitud": 48.1918656,
+    "longitud": 16.3949636
+  },
+  {
+    "id": 60200975,
+    "nombre": "Oper, Karlsplatz",
+    "latitud": 48.2022965,
+    "longitud": 16.3695772
+  },
+  {
+    "id": 60200981,
+    "nombre": "Ottakring",
+    "latitud": 48.212025,
+    "longitud": 16.3116718
+  },
+  {
+    "id": 60200986,
+    "nombre": "Otto-Probst-Platz",
+    "latitud": 48.1538304,
+    "longitud": 16.3490238
+  },
+  {
+    "id": 60200987,
+    "nombre": "Otto-Probst-Straße",
+    "latitud": 48.1561736,
+    "longitud": 16.3550964
+  },
+  {
+    "id": 60200988,
+    "nombre": "Palffygasse",
+    "latitud": 48.2176277,
+    "longitud": 16.3368336
+  },
+  {
+    "id": 60200704,
+    "nombre": "Panikengasse",
+    "latitud": 48.20805,
+    "longitud": 16.3243201
+  },
+  {
+    "id": 60200992,
+    "nombre": "Paradisgasse",
+    "latitud": 48.2489283,
+    "longitud": 16.3418372
+  },
+  {
+    "id": 60200246,
+    "nombre": "Parlament, U Volkstheater",
+    "latitud": 48.2067808,
+    "longitud": 16.3598574
+  },
+  {
+    "id": 60200996,
+    "nombre": "Paulanergasse",
+    "latitud": 48.1960334,
+    "longitud": 16.3671518
+  },
+  {
+    "id": 60201005,
+    "nombre": "Penzinger Straße",
+    "latitud": 48.1903325,
+    "longitud": 16.3152381
+  },
+  {
+    "id": 60201008,
+    "nombre": "Perntergasse",
+    "latitud": 48.2491496,
+    "longitud": 16.3550245
+  },
+  {
+    "id": 60201030,
+    "nombre": "Pokornygasse",
+    "latitud": 48.2411513,
+    "longitud": 16.3554916
+  },
+  {
+    "id": 60201031,
+    "nombre": "Polgarstraße",
+    "latitud": 48.2312489,
+    "longitud": 16.449698
+  },
+  {
+    "id": 60201263,
+    "nombre": "Polkorabplatz",
+    "latitud": 48.1745439,
+    "longitud": 16.411789
+  },
+  {
+    "id": 60201056,
+    "nombre": "Pötzleinsdorf",
+    "latitud": 48.2409,
+    "longitud": 16.3111957
+  },
+  {
+    "id": 60201735,
+    "nombre": "Prandaugasse",
+    "latitud": 48.2464218,
+    "longitud": 16.4301506
+  },
+  {
+    "id": 60201040,
+    "nombre": "Praterstern",
+    "latitud": 48.2185136,
+    "longitud": 16.3923315
+  },
+  {
+    "id": 60201283,
+    "nombre": "Preyergasse",
+    "latitud": 48.1737292,
+    "longitud": 16.2858812
+  },
+  {
+    "id": 60201048,
+    "nombre": "Prinzgasse",
+    "latitud": 48.239877,
+    "longitud": 16.4817319
+  },
+  {
+    "id": 60201346,
+    "nombre": "Quartier Belvedere",
+    "latitud": 48.1880208,
+    "longitud": 16.3813631
+  },
+  {
+    "id": 60201058,
+    "nombre": "Quellenplatz",
+    "latitud": 48.1756222,
+    "longitud": 16.3734939
+  },
+  {
+    "id": 60201063,
+    "nombre": "Radetzkyplatz",
+    "latitud": 48.2109355,
+    "longitud": 16.3901486
+  },
+  {
+    "id": 60201068,
+    "nombre": "Rampengasse",
+    "latitud": 48.2409599,
+    "longitud": 16.360603
+  },
+  {
+    "id": 60201489,
+    "nombre": "Rankgasse",
+    "latitud": 48.2108996,
+    "longitud": 16.3056172
+  },
+  {
+    "id": 60201072,
+    "nombre": "Rathaus",
+    "latitud": 48.2100256,
+    "longitud": 16.3553479
+  },
+  {
+    "id": 60200192,
+    "nombre": "Rathausplatz, Burgtheater",
+    "latitud": 48.2104446,
+    "longitud": 16.3606569
+  },
+  {
+    "id": 60201077,
+    "nombre": "Rauscherstraße",
+    "latitud": 48.2307582,
+    "longitud": 16.3752097
+  },
+  {
+    "id": 60201078,
+    "nombre": "Raxstraße",
+    "latitud": 48.1656771,
+    "longitud": 16.3634866
+  },
+  {
+    "id": 60201079,
+    "nombre": "Rebhanngasse",
+    "latitud": 48.2278439,
+    "longitud": 16.3882622
+  },
+  {
+    "id": 60201080,
+    "nombre": "Redtenbachergasse",
+    "latitud": 48.213324,
+    "longitud": 16.3146902
+  },
+  {
+    "id": 60201084,
+    "nombre": "Reinlgasse",
+    "latitud": 48.1932789,
+    "longitud": 16.3114293
+  },
+  {
+    "id": 60204536,
+    "nombre": "Rennplatz",
+    "latitud": 48.0081632,
+    "longitud": 16.2609799
+  },
+  {
+    "id": 60201091,
+    "nombre": "Rennweg",
+    "latitud": 48.194764,
+    "longitud": 16.3862769
+  },
+  {
+    "id": 60201094,
+    "nombre": "Resselgasse",
+    "latitud": 48.1983627,
+    "longitud": 16.3676638
+  },
+  {
+    "id": 60200107,
+    "nombre": "Rettichgasse",
+    "latitud": 48.201584,
+    "longitud": 16.2622465
+  },
+  {
+    "id": 60201095,
+    "nombre": "Reumannplatz",
+    "latitud": 48.1741545,
+    "longitud": 16.3781921
+  },
+  {
+    "id": 60201100,
+    "nombre": "Riedelgasse",
+    "latitud": 48.1632685,
+    "longitud": 16.279602
+  },
+  {
+    "id": 60201105,
+    "nombre": "Rodaun",
+    "latitud": 48.1328148,
+    "longitud": 16.2627765
+  },
+  {
+    "id": 60201695,
+    "nombre": "Rodaunbrücke",
+    "latitud": 48.1390796,
+    "longitud": 16.2679688
+  },
+  {
+    "id": 60201136,
+    "nombre": "Römergasse",
+    "latitud": 48.2168975,
+    "longitud": 16.3135942
+  },
+  {
+    "id": 60201114,
+    "nombre": "Rosenhügelstraße",
+    "latitud": 48.1688526,
+    "longitud": 16.3024281
+  },
+  {
+    "id": 60201115,
+    "nombre": "Rosensteingasse",
+    "latitud": 48.2191001,
+    "longitud": 16.3271677
+  },
+  {
+    "id": 60200067,
+    "nombre": "Rudolfsheim, Anschützgasse",
+    "latitud": 48.1903745,
+    "longitud": 16.3230535
+  },
+  {
+    "id": 60201130,
+    "nombre": "Rueppgasse",
+    "latitud": 48.2204049,
+    "longitud": 16.3859625
+  },
+  {
+    "id": 60201135,
+    "nombre": "Rußbergstraße",
+    "latitud": 48.2874249,
+    "longitud": 16.3831328
+  },
+  {
+    "id": 60201132,
+    "nombre": "Rustengasse",
+    "latitud": 48.1913506,
+    "longitud": 16.3274822
+  },
+  {
+    "id": 60201140,
+    "nombre": "Sahulkastraße",
+    "latitud": 48.1622079,
+    "longitud": 16.362211
+  },
+  {
+    "id": 60201141,
+    "nombre": "Saikogasse",
+    "latitud": 48.2506331,
+    "longitud": 16.436331
+  },
+  {
+    "id": 60201145,
+    "nombre": "Salztorbrücke",
+    "latitud": 48.2140064,
+    "longitud": 16.373943
+  },
+  {
+    "id": 60201121,
+    "nombre": "Sandleitengasse",
+    "latitud": 48.2178133,
+    "longitud": 16.3075485
+  },
+  {
+    "id": 60200596,
+    "nombre": "Scheedgasse",
+    "latitud": 48.240571,
+    "longitud": 16.4875709
+  },
+  {
+    "id": 60201202,
+    "nombre": "Scheibenbergstraße",
+    "latitud": 48.2388599,
+    "longitud": 16.3181487
+  },
+  {
+    "id": 60201199,
+    "nombre": "Schlachthausgasse",
+    "latitud": 48.1940334,
+    "longitud": 16.4074502
+  },
+  {
+    "id": 60201169,
+    "nombre": "Schlickgasse",
+    "latitud": 48.218741,
+    "longitud": 16.3643131
+  },
+  {
+    "id": 60201174,
+    "nombre": "Schloss Hetzendorf",
+    "latitud": 48.1672829,
+    "longitud": 16.3090308
+  },
+  {
+    "id": 60201176,
+    "nombre": "Schloss Schönbrunn",
+    "latitud": 48.1881227,
+    "longitud": 16.3132349
+  },
+  {
+    "id": 60201210,
+    "nombre": "Schöffelgasse",
+    "latitud": 48.2314524,
+    "longitud": 16.3260089
+  },
+  {
+    "id": 60200759,
+    "nombre": "Schönbrunner Allee",
+    "latitud": 48.1359743,
+    "longitud": 16.3251555
+  },
+  {
+    "id": 60201214,
+    "nombre": "Schöpfwerk",
+    "latitud": 48.1634542,
+    "longitud": 16.3316683
+  },
+  {
+    "id": 60201182,
+    "nombre": "Schottenring",
+    "latitud": 48.2169214,
+    "longitud": 16.3711313
+  },
+  {
+    "id": 60201184,
+    "nombre": "Schottentor",
+    "latitud": 48.2139405,
+    "longitud": 16.3622649
+  },
+  {
+    "id": 60200001,
+    "nombre": "Schrankenberggasse",
+    "latitud": 48.1738011,
+    "longitud": 16.3898073
+  },
+  {
+    "id": 60201969,
+    "nombre": "Schukowitzgasse",
+    "latitud": 48.237041,
+    "longitud": 16.4977758
+  },
+  {
+    "id": 60201193,
+    "nombre": "Schwarzenbergplatz",
+    "latitud": 48.2015302,
+    "longitud": 16.3743113
+  },
+  {
+    "id": 60201197,
+    "nombre": "Schwarzspanierstraße",
+    "latitud": 48.2172267,
+    "longitud": 16.3591927
+  },
+  {
+    "id": 60201198,
+    "nombre": "Schwedenplatz",
+    "latitud": 48.2117496,
+    "longitud": 16.3778956
+  },
+  {
+    "id": 60201200,
+    "nombre": "Schweglerstraße",
+    "latitud": 48.1978897,
+    "longitud": 16.3283984
+  },
+  {
+    "id": 60205132,
+    "nombre": "SCS",
+    "latitud": 48.1115567,
+    "longitud": 16.3155435
+  },
+  {
+    "id": 60201218,
+    "nombre": "Sechskrügelgasse",
+    "latitud": 48.2020331,
+    "longitud": 16.3873279
+  },
+  {
+    "id": 60201014,
+    "nombre": "Seckendorfstraße",
+    "latitud": 48.1968718,
+    "longitud": 16.287058
+  },
+  {
+    "id": 60200371,
+    "nombre": "Seegasse",
+    "latitud": 48.2229725,
+    "longitud": 16.3614115
+  },
+  {
+    "id": 60201229,
+    "nombre": "Shuttleworthstraße",
+    "latitud": 48.2715466,
+    "longitud": 16.4058692
+  },
+  {
+    "id": 60201231,
+    "nombre": "Sickenberggasse",
+    "latitud": 48.2580319,
+    "longitud": 16.3669721
+  },
+  {
+    "id": 60200238,
+    "nombre": "Siebeckstraße",
+    "latitud": 48.2418333,
+    "longitud": 16.4346512
+  },
+  {
+    "id": 60201088,
+    "nombre": "Siebensterngasse",
+    "latitud": 48.2019672,
+    "longitud": 16.3490597
+  },
+  {
+    "id": 60201252,
+    "nombre": "Sieveringer Straße",
+    "latitud": 48.2461467,
+    "longitud": 16.3426457
+  },
+  {
+    "id": 60201253,
+    "nombre": "Silbergasse",
+    "latitud": 48.2427726,
+    "longitud": 16.3487632
+  },
+  {
+    "id": 60201255,
+    "nombre": "Sillerplatz",
+    "latitud": 48.1595953,
+    "longitud": 16.2763411
+  },
+  {
+    "id": 60201260,
+    "nombre": "Simmering",
+    "latitud": 48.1701586,
+    "longitud": 16.4200086
+  },
+  {
+    "id": 60201526,
+    "nombre": "Simonygasse",
+    "latitud": 48.2276285,
+    "longitud": 16.3283715
+  },
+  {
+    "id": 60201272,
+    "nombre": "Sommarugagasse",
+    "latitud": 48.2261683,
+    "longitud": 16.3316324
+  },
+  {
+    "id": 60201276,
+    "nombre": "Sonnergasse",
+    "latitud": 48.1677742,
+    "longitud": 16.3191638
+  },
+  {
+    "id": 60200966,
+    "nombre": "Spargelfeldstraße",
+    "latitud": 48.241259,
+    "longitud": 16.4734853
+  },
+  {
+    "id": 60200504,
+    "nombre": "Speising, Hermesstraße",
+    "latitud": 48.1681995,
+    "longitud": 16.2840217
+  },
+  {
+    "id": 60201288,
+    "nombre": "Spitalgasse",
+    "latitud": 48.2222842,
+    "longitud": 16.3532458
+  },
+  {
+    "id": 60201062,
+    "nombre": "Spittelau",
+    "latitud": 48.235611,
+    "longitud": 16.3583662
+  },
+  {
+    "id": 60201425,
+    "nombre": "St. Marx",
+    "latitud": 48.1880747,
+    "longitud": 16.3995181
+  },
+  {
+    "id": 60200763,
+    "nombre": "St. Marx, Leberstraße",
+    "latitud": 48.1876016,
+    "longitud": 16.3996079
+  },
+  {
+    "id": 60201894,
+    "nombre": "Stadion",
+    "latitud": 48.2110792,
+    "longitud": 16.4197661
+  },
+  {
+    "id": 60202502,
+    "nombre": "Stadion U, Handelskai",
+    "latitud": 48.2116658,
+    "longitud": 16.4232066
+  },
+  {
+    "id": 60201296,
+    "nombre": "Stadionbad",
+    "latitud": 48.204404,
+    "longitud": 16.4165142
+  },
+  {
+    "id": 60201304,
+    "nombre": "Stadlergasse",
+    "latitud": 48.1815823,
+    "longitud": 16.2857824
+  },
+  {
+    "id": 60201306,
+    "nombre": "Staglgasse",
+    "latitud": 48.1941711,
+    "longitud": 16.3352077
+  },
+  {
+    "id": 60201308,
+    "nombre": "Stammersdorf",
+    "latitud": 48.2976451,
+    "longitud": 16.420359
+  },
+  {
+    "id": 60201312,
+    "nombre": "Stefan-Fadinger-Platz",
+    "latitud": 48.1678401,
+    "longitud": 16.3542789
+  },
+  {
+    "id": 60201963,
+    "nombre": "Stemolakgasse",
+    "latitud": 48.2386804,
+    "longitud": 16.493401
+  },
+  {
+    "id": 60201323,
+    "nombre": "Sternwartestraße",
+    "latitud": 48.2291844,
+    "longitud": 16.3499939
+  },
+  {
+    "id": 60201325,
+    "nombre": "Stiftgasse",
+    "latitud": 48.2023923,
+    "longitud": 16.3546023
+  },
+  {
+    "id": 60200260,
+    "nombre": "Strebersdorf, Meriangasse",
+    "latitud": 48.2914057,
+    "longitud": 16.3865464
+  },
+  {
+    "id": 60200245,
+    "nombre": "Stubentor",
+    "latitud": 48.2070682,
+    "longitud": 16.3802761
+  },
+  {
+    "id": 60204164,
+    "nombre": "Südstadt Bahnhof",
+    "latitud": 48.0965178,
+    "longitud": 16.3147979
+  },
+  {
+    "id": 60201671,
+    "nombre": "Svetelskystraße",
+    "latitud": 48.1540462,
+    "longitud": 16.466191
+  },
+  {
+    "id": 60201891,
+    "nombre": "Taborstraße",
+    "latitud": 48.2189744,
+    "longitud": 16.3808331
+  },
+  {
+    "id": 60201371,
+    "nombre": "Tesarekplatz",
+    "latitud": 48.1553646,
+    "longitud": 16.3506497
+  },
+  {
+    "id": 60201385,
+    "nombre": "Traisengasse",
+    "latitud": 48.2340373,
+    "longitud": 16.3841748
+  },
+  {
+    "id": 60201630,
+    "nombre": "Trondheimgasse",
+    "latitud": 48.2178192,
+    "longitud": 16.4771235
+  },
+  {
+    "id": 60201397,
+    "nombre": "Türkenschanzplatz",
+    "latitud": 48.2349468,
+    "longitud": 16.3272306
+  },
+  {
+    "id": 60200929,
+    "nombre": "Ungargasse, Neulinggasse",
+    "latitud": 48.1990453,
+    "longitud": 16.3873818
+  },
+  {
+    "id": 60200558,
+    "nombre": "Unter St. Veit, Hummelgasse",
+    "latitud": 48.1856791,
+    "longitud": 16.2818657
+  },
+  {
+    "id": 60201422,
+    "nombre": "Unter St. Veit, Verbindungsbahn",
+    "latitud": 48.1873321,
+    "longitud": 16.2818657
+  },
+  {
+    "id": 60201407,
+    "nombre": "Unteres Belvedere",
+    "latitud": 48.1971712,
+    "longitud": 16.3800336
+  },
+  {
+    "id": 60201413,
+    "nombre": "Urban-Loritz-Platz",
+    "latitud": 48.2011769,
+    "longitud": 16.3376062
+  },
+  {
+    "id": 60200855,
+    "nombre": "Valentingasse",
+    "latitud": 48.1474715,
+    "longitud": 16.2681844
+  },
+  {
+    "id": 60201418,
+    "nombre": "Valiergasse",
+    "latitud": 48.1573662,
+    "longitud": 16.4691016
+  },
+  {
+    "id": 60201419,
+    "nombre": "Van-Swieten-Kaserne",
+    "latitud": 48.2931748,
+    "longitud": 16.4180952
+  },
+  {
+    "id": 60201424,
+    "nombre": "Versorgungsheimplatz",
+    "latitud": 48.1728665,
+    "longitud": 16.2760267
+  },
+  {
+    "id": 60203134,
+    "nombre": "Viadukt",
+    "latitud": 48.0036555,
+    "longitud": 16.2413337
+  },
+  {
+    "id": 60201148,
+    "nombre": "Viehmarktgasse",
+    "latitud": 48.1904882,
+    "longitud": 16.4010901
+  },
+  {
+    "id": 60201426,
+    "nombre": "Vinzenzgasse",
+    "latitud": 48.2250013,
+    "longitud": 16.3344172
+  },
+  {
+    "id": 60201430,
+    "nombre": "Volkstheater",
+    "latitud": 48.2051404,
+    "longitud": 16.357971
+  },
+  {
+    "id": 60201433,
+    "nombre": "Vorgartenstraße",
+    "latitud": 48.2240916,
+    "longitud": 16.4018896
+  },
+  {
+    "id": 60205133,
+    "nombre": "Vösendorf-Siebenhirten",
+    "latitud": 48.1255179,
+    "longitud": 16.319029
+  },
+  {
+    "id": 60201510,
+    "nombre": "Währinger Straße-Volksoper",
+    "latitud": 48.2252706,
+    "longitud": 16.3493292
+  },
+  {
+    "id": 60201438,
+    "nombre": "Waidhausenstraße",
+    "latitud": 48.1975783,
+    "longitud": 16.2806979
+  },
+  {
+    "id": 60201443,
+    "nombre": "Wallensteinplatz",
+    "latitud": 48.2299145,
+    "longitud": 16.3710415
+  },
+  {
+    "id": 60201568,
+    "nombre": "Wasserwiese",
+    "latitud": 48.1996082,
+    "longitud": 16.4145469
+  },
+  {
+    "id": 60201453,
+    "nombre": "Wattmanngasse",
+    "latitud": 48.1709015,
+    "longitud": 16.2914238
+  },
+  {
+    "id": 60201460,
+    "nombre": "Weihburggasse",
+    "latitud": 48.2044639,
+    "longitud": 16.377698
+  },
+  {
+    "id": 60201461,
+    "nombre": "Weinhauser Gasse",
+    "latitud": 48.2302436,
+    "longitud": 16.3314078
+  },
+  {
+    "id": 60201865,
+    "nombre": "Weinheimergasse",
+    "latitud": 48.2136771,
+    "longitud": 16.3111867
+  },
+  {
+    "id": 60201463,
+    "nombre": "Weißenböckstraße",
+    "latitud": 48.16213,
+    "longitud": 16.4286504
+  },
+  {
+    "id": 60201466,
+    "nombre": "Wenzgasse",
+    "latitud": 48.1869548,
+    "longitud": 16.2934989
+  },
+  {
+    "id": 60201468,
+    "nombre": "Westbahnhof",
+    "latitud": 48.1966562,
+    "longitud": 16.3376511
+  },
+  {
+    "id": 60201566,
+    "nombre": "Westbahnhof, Gerstnerstraße",
+    "latitud": 48.1953089,
+    "longitud": 16.3378218
+  },
+  {
+    "id": 60201533,
+    "nombre": "Westbahnstraße, Zieglergasse",
+    "latitud": 48.2018176,
+    "longitud": 16.3449724
+  },
+  {
+    "id": 60201470,
+    "nombre": "Wexstraße",
+    "latitud": 48.235958,
+    "longitud": 16.3658851
+  },
+  {
+    "id": 60201669,
+    "nombre": "Widholzgasse",
+    "latitud": 48.1546155,
+    "longitud": 16.4551417
+  },
+  {
+    "id": 60201477,
+    "nombre": "Wienerbergbrücke",
+    "latitud": 48.1722734,
+    "longitud": 16.3272935
+  },
+  {
+    "id": 60201480,
+    "nombre": "Wienerfeldgasse",
+    "latitud": 48.158259,
+    "longitud": 16.3602886
+  },
+  {
+    "id": 60201486,
+    "nombre": "Wildgansplatz",
+    "latitud": 48.1861882,
+    "longitud": 16.3967962
+  },
+  {
+    "id": 60201490,
+    "nombre": "Wilhelminenstraße",
+    "latitud": 48.2162151,
+    "longitud": 16.3194692
+  },
+  {
+    "id": 60201493,
+    "nombre": "Winckelmannstraße",
+    "latitud": 48.1900571,
+    "longitud": 16.3204304
+  },
+  {
+    "id": 60201494,
+    "nombre": "Windtenstraße",
+    "latitud": 48.1705001,
+    "longitud": 16.351539
+  },
+  {
+    "id": 60201495,
+    "nombre": "Winkeläckerstraße",
+    "latitud": 48.2732387,
+    "longitud": 16.389933
+  },
+  {
+    "id": 60201684,
+    "nombre": "Wopenkastraße",
+    "latitud": 48.1508758,
+    "longitud": 16.4634242
+  },
+  {
+    "id": 60200124,
+    "nombre": "Yppengasse",
+    "latitud": 48.2147127,
+    "longitud": 16.3356658
+  },
+  {
+    "id": 60201517,
+    "nombre": "Zehetnergasse",
+    "latitud": 48.1945963,
+    "longitud": 16.2861776
+  },
+  {
+    "id": 60201520,
+    "nombre": "Zentralfriedhof 1.Tor",
+    "latitud": 48.15905,
+    "longitud": 16.4333396
+  },
+  {
+    "id": 60201521,
+    "nombre": "Zentralfriedhof 2.Tor",
+    "latitud": 48.1545616,
+    "longitud": 16.4420533
+  },
+  {
+    "id": 60201522,
+    "nombre": "Zentralfriedhof 3.Tor",
+    "latitud": 48.1527517,
+    "longitud": 16.4487996
+  },
+  {
+    "id": 60201523,
+    "nombre": "Zentralfriedhof 4.Tor",
+    "latitud": 48.1515471,
+    "longitud": 16.4532553
+  },
+  {
+    "id": 60200965,
+    "nombre": "Ziegelhofstraße",
+    "latitud": 48.2399308,
+    "longitud": 16.4780398
+  },
+  {
+    "id": 60200399,
+    "nombre": "Zippererstraße",
+    "latitud": 48.1794978,
+    "longitud": 16.4111243
   }
 ]
