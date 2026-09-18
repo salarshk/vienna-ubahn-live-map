@@ -758,6 +758,7 @@ const MapView = ({
   replaySnapshot = null,
   reliabilityScores = [],
   gridCells = [], cellGridVisible = false,
+  onSelectCell,
 }) => {
   const containerRef    = useRef(null);
   const mapRef          = useRef(null);
@@ -782,6 +783,7 @@ const MapView = ({
   const selectStRef     = useRef(onSelectStation);
   const selectVehicleRef= useRef(onSelectVehicle);
   const selectAlertRef  = useRef(onSelectDisruption);
+  const selectCellRef   = useRef(onSelectCell);
   const selectedVehicleRef = useRef(selectedVehicleId);
   const trainCountRef   = useRef(null);
   const focusMarkerRef  = useRef(null); // the expanded node for the Station in focus
@@ -799,6 +801,7 @@ const MapView = ({
   useEffect(() => { selectStRef.current = onSelectStation; }, [onSelectStation]);
   useEffect(() => { selectVehicleRef.current = onSelectVehicle; }, [onSelectVehicle]);
   useEffect(() => { selectAlertRef.current = onSelectDisruption; }, [onSelectDisruption]);
+  useEffect(() => { selectCellRef.current = onSelectCell; }, [onSelectCell]);
   useEffect(() => { selectedVehicleRef.current = selectedVehicleId; }, [selectedVehicleId]);
   useEffect(() => { hoverRef.current = hoverLine; }, [hoverLine]);
   useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
@@ -1393,6 +1396,13 @@ const MapView = ({
     // a click that lands squarely on a Station marker is handled by the marker's
     // own handler and never gets here — so this is purely the near-miss case.
     map.on('click', (event) => {
+      if (cellGridVisibleRef.current && map.getLayer('cell-intelligence-fill')) {
+        const cellFeature = map.queryRenderedFeatures(event.point, { layers: ['cell-intelligence-fill'] })[0];
+        if (cellFeature?.properties?.id) {
+          selectCellRef.current?.(String(cellFeature.properties.id));
+          return;
+        }
+      }
       // Below this scale the Station markers are hidden, and nothing invisible
       // should be tappable.
       if (zoomScaleRef.current < 0.55) return;

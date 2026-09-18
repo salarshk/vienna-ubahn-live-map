@@ -21,6 +21,7 @@ import networkIntelligenceStore from './services/networkIntelligence';
 import officialSnapshotStore from './services/officialSnapshotStore';
 import delayReportStore from './services/delayReportStore';
 import { buildCellIntelligence } from './services/gridIntelligence';
+import CellDetailPanel from './components/CellDetailPanel';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { mobilityContextStore } from './services/mobilityContextStore';
 import { notificationState, notifyDisruption } from './services/notifications';
@@ -37,6 +38,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [selectedCell, setSelectedCell] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
@@ -259,6 +261,7 @@ function App() {
 
   // Station click — just opens the detail card, does NOT move the map
   const handleSelectStation = (station) => {
+    setSelectedCell(null);
     setSelectedVehicle(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
@@ -271,6 +274,7 @@ function App() {
   };
 
   const handleSelectVehicle = (vehicle) => {
+    setSelectedCell(null);
     setSelectedStation(null);
     setSelectedAlert(null);
     setAlertsOpen(false);
@@ -280,6 +284,11 @@ function App() {
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
     setSelectedVehicle(vehicle);
+  };
+
+  const handleSelectCell = (cellId) => {
+    const cell = cellGridSnapshot.cells.find((candidate) => candidate.id === cellId);
+    if (cell) setSelectedCell(cell);
   };
 
   // A Station panel departure is a timetable object, while the map owns the
@@ -542,6 +551,7 @@ function App() {
         reliabilityScores={intelligenceSnapshot.reliability}
         gridCells={cellGridSnapshot.cells}
         cellGridVisible={mapVisibility.cellGrid}
+        onSelectCell={handleSelectCell}
       />
 
       {/* Collapsible Sidebar */}
@@ -726,6 +736,8 @@ function App() {
         onLocate={handleLocate}
         onHide={handleHideLocation}
       />
+
+      <CellDetailPanel cell={selectedCell} onClose={() => setSelectedCell(null)} />
 
       {userLocation && <button
         className={`follow-gps-button glass-panel ${isFollowingGPS ? 'active' : ''}`}
