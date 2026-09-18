@@ -1,4 +1,4 @@
-// 50 x 50 metre spatial intelligence for the Vienna network.
+// 200 x 200 metre spatial intelligence for Vienna and the airport corridor.
 //
 // A cell is deliberately a reporting unit, not a claim that a train has a
 // continuous GPS fix.  Most Wiener Linien positions are inferred from live
@@ -9,12 +9,20 @@ import tramData from '../data/tram_network.json';
 import { persistBrowserArchive, readBrowserArchive } from './browserArchive';
 import { estimateEnvironmentalComfort, parseTrafficContext, predictAirportArrivalWave, predictEventCrowding } from './transportIntelligence';
 
-export const GRID_SIZE_METRES = 50;
-export const GRID_KEY = 'vienna_cell_intelligence_v1';
+export const GRID_SIZE_METRES = 200;
+export const GRID_KEY = 'vienna_cell_intelligence_200m_v2';
 const LATITUDE_METRES = 111320;
 const VIENNA_LATITUDE = 48.2082;
 const LONGITUDE_METRES = LATITUDE_METRES * Math.cos(VIENNA_LATITUDE * Math.PI / 180);
 const ORIGIN = [16.1, 47.9];
+// Vienna plus the S7 airport/Fischamend corridor. This stable envelope lets
+// the map show quiet areas even when no train is currently observed there.
+export const VIENNA_GRID_BOUNDS = Object.freeze({ west: 16.10, east: 16.67, south: 48.05, north: 48.37 });
+const isInsideGridBounds = (coordinates) => Array.isArray(coordinates)
+  && Number(coordinates[0]) >= VIENNA_GRID_BOUNDS.west
+  && Number(coordinates[0]) <= VIENNA_GRID_BOUNDS.east
+  && Number(coordinates[1]) >= VIENNA_GRID_BOUNDS.south
+  && Number(coordinates[1]) <= VIENNA_GRID_BOUNDS.north;
 
 const finite = (value, fallback = null) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
@@ -34,7 +42,7 @@ const stations = [...new Map(stationFeatures.map((feature) => {
     lines: [...new Set((p.lines || []).map(String).filter(Boolean))],
     mode: p.mode || (String(p.lines?.[0] || '').startsWith('S') ? 'sbahn' : String(p.lines?.[0] || '').match(/^\d/) ? 'tram' : 'ubahn'),
   }];
-}).filter(([key]) => key))].map(([, station]) => station);
+}).filter(([key, station]) => key && isInsideGridBounds(station.coordinates)))].map(([, station]) => station);
 
 const stationByName = new Map(stations.map((station) => [normalise(station.name), station]));
 
@@ -141,9 +149,11 @@ const toCellList = (cells) => [...cells.values()].map((cell) => {
   const etaMinutes = Number.isFinite(cell.nextArrivalSeconds) ? Number((Math.max(0, cell.nextArrivalSeconds) / 60).toFixed(1)) : null;
   const walkingMinutes = Number.isFinite(cell.userDistanceMetres) ? Number((cell.userDistanceMetres / 80).toFixed(1)) : null;
   const anomalyScore = Math.round(clamp(cell.positionStale * 25 + cell.conflictCount * 25 + cell.dwellRisk * 0.35 + Math.max(0, delayTrend) * 18));
+  const active = Boolean(lines.length || stationNames.length || cell.liveTrainCount || cell.arrivalCount || cell.scheduledTrainCount);
 
   return {
     ...cell,
+    active,
     lines,
     modes: [...cell.modes].sort(),
     stations: stationNames,
@@ -181,6 +191,18 @@ export const buildCellIntelligence = ({
     if (!cells.has(base.id)) cells.set(base.id, newCell(base));
     return cells.get(base.id);
   };
+  // Pre-seed the complete Vienna coverage envelope.  The live signals below
+  // enrich these cells; quiet cells remain visible as low-intensity squares.
+  const coverageStart = coordinatesToCell([VIENNA_GRID_BOUNDS.west, VIENNA_GRID_BOUNDS.south]);
+  const coverageEnd = coordinatesToCell([VIENNA_GRID_BOUNDS.east, VIENNA_GRID_BOUNDS.north]);
+  for (let x = coverageStart.x; x <= coverageEnd.x; x += 1) {
+    for (let y = coverageStart.y; y <= coverageEnd.y; y += 1) {
+      const west = ORIGIN[0] + x * GRID_SIZE_METRES / LONGITUDE_METRES;
+      const south = ORIGIN[1] + y * GRID_SIZE_METRES / LATITUDE_METRES;
+      const base = coordinatesToCell([west + GRID_SIZE_METRES / (2 * LONGITUDE_METRES), south + GRID_SIZE_METRES / (2 * LATITUDE_METRES)]);
+      if (base && !cells.has(base.id)) cells.set(base.id, newCell(base));
+    }
+  }
   const addStation = (station) => {
     const cell = ensure(station.coordinates);
     if (!cell) return null;
@@ -279,19 +301,20 @@ export const buildCellIntelligence = ({
   }
 
   const result = toCellList(cells)
-    .filter((cell) => cell.lines.length || cell.stations.length || cell.liveTrainCount || cell.arrivalCount)
     .sort((a, b) => b.riskScore - a.riskScore || b.meanDelaySeconds - a.meanDelaySeconds);
+  const activeCells = result.filter((cell) => cell.active);
   return {
     generatedAt: now,
     cellSizeMetres: GRID_SIZE_METRES,
     cells: result,
+    activeCells,
     nearestUserCell: userCell ? result.find((cell) => cell.id === userCell.id) || null : null,
     rankings: {
-      delay: result.filter((cell) => cell.meanDelaySeconds > 0).slice().sort((a, b) => b.meanDelaySeconds - a.meanDelaySeconds),
-      crowd: result.slice().sort((a, b) => b.crowdPressure - a.crowdPressure),
-      reliability: result.slice().sort((a, b) => a.reliability - b.reliability),
-      recovery: result.slice().sort((a, b) => b.recoveryMinutes - a.recoveryMinutes),
-      access: result.filter((cell) => cell.accessibilityIssues > 0),
+      delay: activeCells.filter((cell) => cell.meanDelaySeconds > 0).slice().sort((a, b) => b.meanDelaySeconds - a.meanDelaySeconds),
+      crowd: activeCells.slice().sort((a, b) => b.crowdPressure - a.crowdPressure),
+      reliability: activeCells.slice().sort((a, b) => a.reliability - b.reliability),
+      recovery: activeCells.slice().sort((a, b) => b.recoveryMinutes - a.recoveryMinutes),
+      access: activeCells.filter((cell) => cell.accessibilityIssues > 0),
     },
   };
 };
@@ -303,6 +326,7 @@ export const cellsToGeoJSON = (cells = [], visible = true) => ({
     geometry: cell.geometry,
     properties: {
       id: cell.id,
+      active: cell.active,
       severity: cell.severity,
       delay: cell.meanDelaySeconds,
       risk: cell.riskScore,
@@ -347,7 +371,9 @@ class GridReportStore {
     Object.entries(PERIODS).forEach(([period, config]) => {
       const key = config.key(new Date(at));
       const bucket = this.state.buckets[period][key] || { at, cells: {} };
-      cells.forEach((cell) => aggregateCell(bucket.cells, cell, at));
+      // Empty coverage squares are useful on the live map but should not
+      // create thousands of meaningless historical records.
+      cells.filter((cell) => cell.active !== false).forEach((cell) => aggregateCell(bucket.cells, cell, at));
       bucket.at = Math.min(Number(bucket.at) || at, at);
       this.state.buckets[period][key] = bucket;
       const keys = Object.keys(this.state.buckets[period]).sort().slice(-config.retention);

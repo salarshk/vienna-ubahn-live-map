@@ -56,14 +56,14 @@ const CellIntelligencePanel = ({
   const topRecovery = ranked.recovery.slice(0, compact ? 3 : 8);
 
   if (compact) return <section className="intelligence-section cell-intelligence-panel cell-intelligence-compact">
-    <div className="intelligence-section-title"><Grid2X2 size={14} /><strong>50 m cell intelligence</strong><em>Live spatial layer</em></div>
+    <div className="intelligence-section-title"><Grid2X2 size={14} /><strong>200 m cell intelligence</strong><em>Vienna-wide spatial layer</em></div>
     {topDelay.length ? <div className="cell-intelligence-list">{topDelay.map((cell) => <CellRow key={cell.id} cell={cell} metric="delay" />)}</div> : <p className="advanced-empty">Waiting for live cell observations.</p>}
-    <div className="cell-intelligence-summary"><span>{grid.cells.length} active cells</span><span>{grid.nearestUserCell ? `Nearest: ${grid.nearestUserCell.displayName}` : 'GPS not active'}</span></div>
+    <div className="cell-intelligence-summary"><span>{grid.activeCells?.length || 0} active · {grid.cells.length} covered</span><span>{grid.nearestUserCell ? `Nearest: ${grid.nearestUserCell.displayName}` : 'GPS not active'}</span></div>
     <button className={`cell-grid-toggle ${cellGridVisible ? 'active' : ''}`} onClick={onToggleCellGrid} aria-pressed={cellGridVisible}><Grid2X2 size={12} /> {cellGridVisible ? 'Hide map grid' : 'Show delay grid on map'}</button>
   </section>;
 
   return <section className="intelligence-section cell-intelligence-panel">
-    <div className="intelligence-section-title"><Grid2X2 size={15} /><strong>50 × 50 m cell intelligence</strong><em>{grid.cells.length} active cells</em></div>
+    <div className="intelligence-section-title"><Grid2X2 size={15} /><strong>200 × 200 m Vienna grid</strong><em>{grid.activeCells?.length || 0} active · {grid.cells.length} covered</em></div>
     <p className="intelligence-note">Each cell combines measured live timing with clearly labelled position, crowd and recovery proxies. Raw GPS is never stored as a user history.</p>
     <div className="cell-intelligence-controls">
       <div className="cell-intelligence-tabs">

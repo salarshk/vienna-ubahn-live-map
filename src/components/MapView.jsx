@@ -473,8 +473,8 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
         'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
-        'fill-opacity': 0.22,
-        'fill-outline-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
+        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.22, 0.035],
+        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#83918a'],
       },
     },
     ...structuredClone(metroLayers),
@@ -511,8 +511,8 @@ const buildVectorStyle = (flavour) => ({
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
         'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
-        'fill-opacity': 0.22,
-        'fill-outline-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
+        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.22, 0.035],
+        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#83918a'],
       },
     },
     ...structuredClone(metroLayers),
@@ -1398,7 +1398,7 @@ const MapView = ({
     // win the hit test even though the finger is visibly inside a cell.
     const selectCellFromEvent = (event) => {
       if (!cellGridVisibleRef.current || !map.getLayer('cell-intelligence-fill')) return false;
-      // At the normal city-wide zoom a real 50 m square is only a few pixels
+      // At the normal city-wide zoom a real 200 m square is still compact;
       // wide. Query a forgiving touch box as a fallback so a finger does not
       // need to land on the exact centre pixel of the coloured cell.
       const point = event.point;

@@ -10,9 +10,9 @@ const minutes = (seconds) => {
 const CellDetailPanel = ({ cell, onClose }) => {
   if (!cell) return null;
   const context = cell.contextModels || {};
-  return <aside className="glass-panel cell-detail-panel" aria-label={`50 metre cell details for ${cell.displayName}`}>
+  return <aside className="glass-panel cell-detail-panel" aria-label={`200 metre cell details for ${cell.displayName}`}>
     <header className="cell-detail-header">
-      <div className="cell-detail-title"><Grid2X2 size={17} /><div><strong>{cell.displayName}</strong><span>50 × 50 m cell · {cell.id}</span></div></div>
+      <div className="cell-detail-title"><Grid2X2 size={17} /><div><strong>{cell.displayName}</strong><span>200 × 200 m cell · {cell.id}</span></div></div>
       <button className="panel-close-button" onClick={onClose} aria-label="Close cell details"><X size={16} /></button>
     </header>
     <div className="cell-detail-kpis">
