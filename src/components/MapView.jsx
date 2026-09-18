@@ -473,8 +473,8 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
         'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
-        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.24, 0.095],
-        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#6f8178'],
+        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.27, 0.14],
+        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#82958b'],
       },
     },
     ...structuredClone(metroLayers),
@@ -511,8 +511,8 @@ const buildVectorStyle = (flavour) => ({
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
         'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
-        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.24, 0.095],
-        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#6f8178'],
+        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.27, 0.14],
+        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#82958b'],
       },
     },
     ...structuredClone(metroLayers),
