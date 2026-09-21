@@ -7,6 +7,9 @@
     "OPENAI_MODEL": "gpt-5.4-mini",
     "ALLOWED_ORIGINS": "https://salarshk.github.io,http://localhost:5173,http://127.0.0.1:5173"
   },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "r2_buckets": [
     {
       "binding": "RAIL_ARCHIVE",

@@ -1,8 +1,11 @@
 # Operational model training
 
 `scripts/ml/train_operational_models.mjs` runs beside the U-Bahn delay
-trainer. It writes `public/ml/operational-models.json`, which is consumed by
-the Prediction Lab training registry.
+trainer. It writes `data/ml/operational-models.json`; the workflow publishes
+that file as `public/ml/operational-models.json`, which is consumed by the
+Prediction Lab training registry. `scripts/ml/validate_operational_models.mjs`
+then adds a chronological, newest-day holdout report to the same registry and
+publishes the standalone `public/ml/operational-validation.json` copy.
 
 The registry covers the 17 experimental outputs:
 
@@ -22,3 +25,8 @@ The U-Bahn workflow restores the durable archive, collects the latest snapshot,
 trains the delay model, refreshes this registry, and publishes both reports.
 The registry is also saved with the rolling artifact so a short GitHub Actions
 retention window does not erase its evidence.
+
+Frequent edge snapshots are handled by the Cloudflare Worker cron (`*/5 * * *
+*`) and written to the R2 `worker-snapshots/` prefix. GitHub Actions runs the
+heavier collection/training job once per day, using the Worker feed proxy to
+avoid intermittent direct-runner HTTP 403 responses from Wiener Linien.

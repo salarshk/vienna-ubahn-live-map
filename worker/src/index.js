@@ -75,6 +75,30 @@ const corsHeaders = (origin) => ({
 
 const FEED_PATHS = new Set(['/monitor', '/trafficInfoList', '/trafficInfo', '/newsList']);
 
+const sleep = (milliseconds) => new Promise((resolveSleep) => setTimeout(resolveSleep, milliseconds));
+
+const fetchWienerLinienFeed = async (upstream, fetchImpl) => {
+  // The public feed occasionally returns a transient 403/429 to one edge.
+  // Retry at the Worker edge so browser clients and the scheduled collector
+  // do not need to repeat a whole snapshot themselves.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetchImpl(upstream, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'vienna-rail-advisor/1.0 (+https://github.com/salarshk/vienna-ubahn-live-map)',
+      },
+    });
+    if (response.ok || ![403, 429, 500, 502, 503, 504].includes(response.status) || attempt === 2) return response;
+    await response.body?.cancel();
+    const retryAfter = Number(response.headers.get('retry-after'));
+    const delay = Number.isFinite(retryAfter)
+      ? Math.min(5000, Math.max(100, retryAfter * 1000))
+      : 250 * (2 ** attempt);
+    await sleep(delay);
+  }
+  return new Response('Wiener Linien feed unavailable', { status: 502 });
+};
+
 const json = (body, status, origin) => new Response(JSON.stringify(body), {
   status,
   headers: { 'Content-Type': 'application/json; charset=utf-8', ...(origin ? corsHeaders(origin) : {}) },
@@ -158,7 +182,7 @@ export const handleRequest = async (request, env, fetchImpl = fetch, executionCo
     const upstream = new URL(`https://www.wienerlinien.at/ogd_realtime${url.pathname}`);
     upstream.search = url.search;
     try {
-      const response = await fetchImpl(upstream, { headers: { Accept: 'application/json' } });
+      const response = await fetchWienerLinienFeed(upstream, fetchImpl);
       const headers = new Headers(corsHeaders(origin));
       headers.set('Content-Type', response.headers.get('Content-Type') || 'application/json; charset=utf-8');
       return new Response(response.body, { status: response.status, headers });
@@ -216,5 +240,19 @@ export const handleRequest = async (request, env, fetchImpl = fetch, executionCo
 
 // Cloudflare supplies an execution context as the third handler argument. Keep
 // the injected fetch function explicit so production calls use global fetch,
-// while unit tests can still provide a mock.
-export default { fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext) };
+// while unit tests can still provide a mock. The scheduled edge poll archives
+// the same shared snapshot used by the map every five minutes, while GitHub
+// Actions remains responsible for the heavier daily model training.
+const scheduledSnapshot = async (env, executionContext) => {
+  const request = new Request('https://worker.internal/network-snapshot', {
+    method: 'GET',
+    headers: { Origin: 'https://salarshk.github.io', Accept: 'application/json' },
+  });
+  const response = await handleNetworkSnapshot(request, env, fetch, executionContext);
+  if (!response?.ok) console.error('Scheduled network snapshot failed', response?.status || 'unknown');
+};
+
+export default {
+  fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext),
+  scheduled: (controller, env, executionContext) => executionContext.waitUntil(scheduledSnapshot(env, executionContext)),
+};

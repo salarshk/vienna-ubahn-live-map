@@ -6,7 +6,9 @@ on:
       - 'scripts/ml/**'
       - '.github/workflows/collect-ubahn-delays.yml'
   schedule:
-    - cron: '*/5 * * * *'
+    # Cloudflare Worker owns the five-minute edge snapshots. GitHub Actions
+    # restores those archives and performs the heavier daily training.
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -62,6 +64,10 @@ jobs:
         run: node scripts/ml/sync_ubahn_incidents.mjs
 
       - name: Collect one Wiener Linien snapshot
+        env:
+          # Route collection through the Cloudflare edge proxy. Direct GitHub
+          # runner requests are intermittently rejected with HTTP 403.
+          VIENNA_API_BASE: https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev
         run: node scripts/ml/collect_ubahn_delays.mjs
 
       - name: Train preliminary or validated model with a chronological holdout
@@ -74,6 +80,12 @@ jobs:
         env:
           OPERATIONAL_MODELS_PATH: data/ml/operational-models.json
         run: node scripts/ml/train_operational_models.mjs
+
+      - name: Validate operational candidates on a chronological holdout
+        env:
+          OPERATIONAL_MODELS_PATH: data/ml/operational-models.json
+          OPERATIONAL_VALIDATION_PATH: data/ml/operational-validation.json
+        run: node scripts/ml/validate_operational_models.mjs
 
       - name: Publish daily progress or a new online-model stage
         id: publish
@@ -91,6 +103,8 @@ jobs:
             cp data/ml/candidate-model.json public/ml/delay-model.json
             cp data/ml/candidate-metrics.json public/ml/delay-metrics.json
             cp data/ml/operational-models.json public/ml/operational-models.json
+            cp data/ml/operational-validation.json public/ml/operational-validation.json
+            cp data/ml/collection-health.json public/ml/collection-health.json
             echo "$today" > data/ml/last-published-day.txt
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -135,7 +149,7 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add public/ml/delay-model.json public/ml/delay-metrics.json
+          git add public/ml/delay-model.json public/ml/delay-metrics.json public/ml/operational-models.json public/ml/operational-validation.json public/ml/collection-health.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update U-Bahn delay model report"
           git push
