@@ -230,7 +230,7 @@ describe('live vehicle reconstruction', () => {
     expect(jump.distanceAlongTrack).toBe(1025);
   });
 
-  it('updates a selected train to its new fresh distance immediately', () => {
+  it('smooths a selected train correction while retaining its fresh data status', () => {
     const now = Date.now();
     const base = {
       id: 'live-focused', line: 'U1', isLive: true, isForward: true,
@@ -247,7 +247,10 @@ describe('live vehicle reconstruction', () => {
       lastDataAgeSeconds: 1,
     }, now + 2500);
 
-    expect(fresh.distanceAlongTrack).toBe(1400);
+    expect(fresh.distanceAlongTrack).toBeGreaterThan(1000);
+    expect(fresh.distanceAlongTrack).toBeLessThanOrEqual(1075);
+    expect(fresh.lastDataAgeSeconds).toBe(1);
+    expect(fresh.positionAdjustmentMetres).toBe(75);
   });
 
   it('fuses keyless Wiener Linien sightings by their projected terminus time', () => {

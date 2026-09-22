@@ -252,9 +252,13 @@ export const parseMonitorArrivals = (monitors, fetchTime, feedServerTime = null)
   ).filter((arrival) => Number.isFinite(arrival.targetTimestamp));
 
   // A DIVA query can return the same platform through more than one monitor
-  // object. Collapse repeats without merging real trains.
+  // object. Collapse exact repeats without merging real trains. The old
+  // 30-second bucket could merge two consecutive departures when the feed
+  // omitted a vehicle id; that produced impossible cross-station joins and
+  // visible marker corrections. A 15-second bucket is still enough to remove
+  // duplicate monitor objects while preserving separate trains.
   return [...new Map(arrivals.map((arrival) => [
-    `${arrival.line}|${arrival.directionCode || 'unknown'}|${arrival.destination}|${Math.round(arrival.targetTimestamp / 30000)}`,
+    `${arrival.line}|${arrival.directionCode || 'unknown'}|${arrival.destination}|${arrival.vehicleId || 'no-vehicle'}|${Math.round((arrival.plannedTargetTimestamp || arrival.targetTimestamp) / 15000)}`,
     arrival,
   ])).values()];
 };

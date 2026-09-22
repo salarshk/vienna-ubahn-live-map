@@ -93,14 +93,19 @@ const MAX_STATION_OFFSET_METRES = 250;
 // or below this ceiling rather than teleporting a marker.
 const MAX_RENDER_SPEED_METRES_PER_SECOND = 25;
 const TRUSTED_CORRECTION_MAX_AGE_SECONDS = 10;
-const TRUSTED_CORRECTION_SPEED_METRES_PER_SECOND = 60;
+// Even a fully cross-checked correction must remain within a plausible rail
+// speed. The former 60 m/s ceiling made a single noisy feed update visibly
+// jump a marker several hundred metres in one frame.
+const TRUSTED_CORRECTION_SPEED_METRES_PER_SECOND = 30;
+const FOCUSED_CORRECTION_SPEED_METRES_PER_SECOND = 30;
+const MAX_EXACT_GPS_OFFSET_METRES = 180;
 
 // The API has no vehicle or trip id. Timetabled segment sums and the feed's
 // planned platform times can differ by a few seconds per stop, so the same
 // train observed at distant reference stations does not always land in the
-// exact same minute bucket. Ninety seconds joins that accumulated timetable
-// error while remaining well below half the normal 3:45 U-Bahn headway.
-const SYNTHETIC_TRIP_MATCH_WINDOW_MS = 90000;
+// exact same minute bucket. A 45-second window covers that local timetable
+// error while staying well below half the normal 3:45 U-Bahn headway.
+const SYNTHETIC_TRIP_MATCH_WINDOW_MS = 45000;
 
 // ─── How much to trust a placed train ────────────────────────────────────────
 //
@@ -191,12 +196,21 @@ export const assessSightingConsistency = (engine, lineId, sightings = [], isForw
     errors.push(Math.abs(observed - expected));
   }
   if (!errors.length) return { score: 0.5, status: 'single observation', pairCount: 0, meanErrorSeconds: null };
-  const meanErrorSeconds = errors.reduce((sum, value) => sum + value, 0) / errors.length;
+  // One malformed station prediction should not make every other observation
+  // look bad. Use the median error to identify inliers, then report the mean of
+  // those inliers. With only one pair this naturally remains strict.
+  const orderedErrors = [...errors].sort((a, b) => a - b);
+  const medianError = orderedErrors[Math.floor(orderedErrors.length / 2)];
+  const inlierLimit = Math.max(45, medianError * 2.5);
+  const inliers = errors.filter((error) => error <= inlierLimit);
+  const stableErrors = inliers.length ? inliers : errors;
+  const meanErrorSeconds = stableErrors.reduce((sum, value) => sum + value, 0) / stableErrors.length;
   const score = Math.max(0, Math.min(1, 1 - meanErrorSeconds / 180));
   return {
     score: Number(score.toFixed(3)),
     status: score >= 0.65 ? 'consistent' : 'inconsistent sightings',
-    pairCount: errors.length,
+    pairCount: stableErrors.length,
+    rawPairCount: errors.length,
     meanErrorSeconds: Math.round(meanErrorSeconds),
   };
 };
@@ -681,6 +695,9 @@ class TrainPositionEngine {
           station,
           secondsRemaining,
           fetchedAt,
+          exactGpsCoordinates: Array.isArray(arrival.exactGpsCoordinates)
+            ? arrival.exactGpsCoordinates : null,
+          exactGpsAvailable: Boolean(arrival.exactGpsAvailable),
           feedAgeSeconds: Number.isFinite(Number(arrival.feedAgeSeconds))
             ? Number(arrival.feedAgeSeconds) : 0,
           officialDelaySeconds: Number.isFinite(Number(arrival.reportedDelaySeconds))
@@ -723,13 +740,18 @@ class TrainPositionEngine {
       const clusters = [];
 
       for (const candidate of candidates) {
-        let cluster = clusters.find((item) =>
-          Math.abs(candidate.destinationTimestamp - item.centreTimestamp)
-            <= SYNTHETIC_TRIP_MATCH_WINDOW_MS
-        );
+        // Join to the nearest trip slot rather than the first matching slot.
+        // This prevents transitive 90-second chains from collapsing adjacent
+        // trains into one synthetic vehicle when a line is busy.
+        const cluster = clusters
+          .map((item) => ({ item, distance: Math.abs(candidate.destinationTimestamp - item.centreTimestamp) }))
+          .filter(({ distance }) => distance <= SYNTHETIC_TRIP_MATCH_WINDOW_MS)
+          .sort((a, b) => a.distance - b.distance)[0]?.item;
         if (!cluster) {
-          cluster = { centreTimestamp: candidate.destinationTimestamp, candidates: [] };
-          clusters.push(cluster);
+          const newCluster = { centreTimestamp: candidate.destinationTimestamp, candidates: [] };
+          clusters.push(newCluster);
+          newCluster.candidates.push(candidate);
+          continue;
         }
         cluster.candidates.push(candidate);
         const orderedTimes = cluster.candidates
@@ -763,7 +785,14 @@ class TrainPositionEngine {
     const vehicles = [];
 
     for (const train of this.collectVehicleSightings(now).values()) {
-      const sightings = train.sightings.sort(
+      // A vehicle can appear twice in one station response when a platform
+      // is returned through two monitor objects. Keep only the best sighting
+      // per station before doing cross-station geometry; duplicate stations
+      // otherwise skew the consistency check and the synthetic anchor.
+      const sightings = [...new Map(train.sightings.map((candidate) => [
+        candidate.station.id,
+        candidate,
+      ])).values()].sort(
         (a, b) => Math.abs(a.secondsRemaining) - Math.abs(b.secondsRemaining)
       );
       // Usually every sighting comes from the same monitor response. When a
@@ -799,16 +828,64 @@ class TrainPositionEngine {
 
       const consistency = assessSightingConsistency(this, train.lineId, sightings, isForward);
 
-      const walked = this.walkFromStation(
-        train.lineId, anchor.station, anchor.secondsRemaining, isForward
-      );
+      // Build a position from every station prediction and choose the one
+      // closest to their median track distance. This rejects a single bad
+      // countdown instead of letting it move the marker back and forth when
+      // the freshest station changes between network polls.
+      const walkedCandidates = sightings.map((candidate) => ({
+        candidate,
+        walked: this.walkFromStation(
+          train.lineId, candidate.station, candidate.secondsRemaining, isForward
+        ),
+      })).filter(({ walked }) => walked && !walked.isPreDeparture);
+      const exactGpsCandidates = walkedCandidates.map(({ candidate, walked }) => {
+        if (!candidate.exactGpsCoordinates) return null;
+        const projected = projectPointOntoPolyline(
+          candidate.exactGpsCoordinates,
+          this.getLineTrack(train.lineId)?.coords || [],
+          this.getLineTrack(train.lineId)?.cumDists || [],
+        );
+        return projected.perpDistance <= MAX_EXACT_GPS_OFFSET_METRES
+          ? { candidate, walked, projected } : null;
+      }).filter(Boolean);
+      const medianTrackDistance = walkedCandidates.length
+        ? [...walkedCandidates].map(({ walked }) => walked.trackDist).sort((a, b) => a - b)
+          [Math.floor(walkedCandidates.length / 2)]
+        : null;
+      const selectedCandidate = walkedCandidates
+        .slice()
+        .sort((a, b) => {
+          const aDistance = medianTrackDistance === null ? Infinity : Math.abs(a.walked.trackDist - medianTrackDistance);
+          const bDistance = medianTrackDistance === null ? Infinity : Math.abs(b.walked.trackDist - medianTrackDistance);
+          if (aDistance !== bDistance) return aDistance - bDistance;
+          return Number(b.candidate.fetchedAt) - Number(a.candidate.fetchedAt);
+        })[0];
+      const positionCandidate = selectedCandidate || {
+        candidate: anchor,
+        walked: this.walkFromStation(
+          train.lineId, anchor.station, anchor.secondsRemaining, isForward
+        ),
+      };
+      const positionAnchor = positionCandidate.candidate;
+      const walked = positionCandidate.walked;
       if (!walked || walked.isPreDeparture) continue;
 
-      const { coordinates, bearing } = this.getCoordsAndBearingAtDistance(
+      const inferredPosition = this.getCoordsAndBearingAtDistance(
         train.lineId, walked.trackDist, isForward
       );
+      const exactGps = exactGpsCandidates
+        .sort((a, b) => Number(b.candidate.fetchedAt) - Number(a.candidate.fetchedAt))[0];
+      const gpsPosition = exactGps
+        ? this.getCoordsAndBearingAtDistance(train.lineId, exactGps.projected.distAlongTrack, isForward)
+        : null;
+      const coordinates = gpsPosition?.coordinates || inferredPosition.coordinates;
+      const bearing = gpsPosition?.bearing ?? inferredPosition.bearing;
+      const distanceAlongTrack = gpsPosition
+        ? exactGps.projected.distAlongTrack
+        : walked.trackDist;
+      const hasExactGps = Boolean(gpsPosition);
 
-      const secondsUnheard = Math.max(0, (now - anchor.fetchedAt) / 1000);
+      const secondsUnheard = Math.max(0, (now - positionAnchor.fetchedAt) / 1000);
       const latestFetchedAt = sightings.reduce(
         (latest, sighting) => Math.max(latest, Number(sighting.fetchedAt) || 0),
         0,
@@ -823,7 +900,7 @@ class TrainPositionEngine {
         (now - latestFetchedAt) / 1000,
         feedAgeSeconds,
       );
-      const uncertaintyMetres = estimatePositionUncertainty(
+      const uncertaintyMetres = hasExactGps ? 40 : estimatePositionUncertainty(
         walked.segmentsWalked, observationAgeSeconds, this.getLineTrack(train.lineId).fallbackSpeed
       );
       // Dead Reckoning is the sharpest loss of confidence there is, and it is
@@ -851,17 +928,17 @@ class TrainPositionEngine {
         direction: train.destination,
         coordinates,
         bearing,
-        distanceAlongTrack: walked.trackDist,
+        distanceAlongTrack,
         isForward,
         isLive: true,
-        positionSource: 'inferred-from-official-departure',
+        positionSource: hasExactGps ? 'official-vehicle-gps' : 'inferred-from-official-departure',
         timingSource: officialSighting?.timingSource || 'official-wiener-linien-realtime',
         officialDelaySeconds: Number.isFinite(officialDelay) ? officialDelay : null,
         officialObservedAt: officialSighting?.fetchedAt || null,
         status: walked.status,
         sightingCount: sightings.length,
         positionUncertaintyMetres: Math.round(uncertaintyMetres),
-        positionConfidence,
+        positionConfidence: hasExactGps ? 1 : positionConfidence,
         isDeadReckoned,
         secondsUnheard: Math.round(observationAgeSeconds),
         observationAgeSeconds: Math.round(observationAgeSeconds),
@@ -879,7 +956,7 @@ class TrainPositionEngine {
         sourceStationName: anchor.station.name,
         sourceStationTrackDist: anchor.station.trackDist,
         secondsToSourceStation: Math.max(0, Math.round(anchor.secondsRemaining)),
-        targetStation: walked.nextStation ? walked.nextStation.name : anchor.station.name,
+        targetStation: walked.nextStation ? walked.nextStation.name : positionAnchor.station.name,
         secondsToTarget: Math.max(0, Math.round(walked.secondsToNext ?? anchor.secondsRemaining)),
       });
     }
@@ -982,25 +1059,6 @@ class TrainPositionEngine {
       && hasNewSourceObservation
       && Number(vehicle.lastDataAgeSeconds) <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS;
 
-    // A clicked train has a direct, focused station refresh. Once that response
-    // is fresh, do not leave its marker at the pre-refresh rendered distance
-    // while the detail card says the feed is within three seconds. The regular
-    // fleet still follows the conservative smoothing below, so one correction
-    // cannot make every marker jump or appear to reverse.
-    if (focusedFreshUpdate) {
-      const { coordinates, bearing } = this.getCoordsAndBearingAtDistance(
-        vehicle.line,
-        vehicle.distanceAlongTrack,
-        vehicle.isForward !== false,
-      );
-      this.renderState.set(vehicle.id, {
-        trackDist: vehicle.distanceAlongTrack,
-        at: now,
-        sourceDataAt,
-      });
-      return { ...vehicle, coordinates, bearing };
-    }
-
     const sign = vehicle.isForward === false ? -1 : 1;
     const elapsedSeconds = Math.max(0, (now - previous.at) / 1000);
     const requestedAdvance = (vehicle.distanceAlongTrack - previous.trackDist) * sign;
@@ -1014,7 +1072,9 @@ class TrainPositionEngine {
       && !vehicle.isDeadReckoned;
     const maxSpeed = trustedCorrection
       ? TRUSTED_CORRECTION_SPEED_METRES_PER_SECOND
-      : MAX_RENDER_SPEED_METRES_PER_SECOND;
+      : focusedFreshUpdate
+        ? FOCUSED_CORRECTION_SPEED_METRES_PER_SECOND
+        : MAX_RENDER_SPEED_METRES_PER_SECOND;
     const maxAdvance = maxSpeed * elapsedSeconds;
     const appliedAdvance = Math.min(forwardAdvance, maxAdvance);
     const eased = previous.trackDist + sign * appliedAdvance;
@@ -1027,7 +1087,19 @@ class TrainPositionEngine {
       at: now,
       sourceDataAt: Number.isFinite(sourceDataAt) ? sourceDataAt : previous.sourceDataAt || null,
     });
-    return { ...vehicle, coordinates, bearing, distanceAlongTrack: eased };
+    return {
+      ...vehicle,
+      coordinates,
+      bearing,
+      distanceAlongTrack: eased,
+      // Diagnostics for the dashboard and telemetry. These describe the
+      // rendered correction, not a claim that the operator supplied GPS.
+      positionAdjustmentMetres: Math.round(appliedAdvance),
+      positionAdjustmentRateMetresPerSecond: Number((
+        appliedAdvance / Math.max(elapsedSeconds, 0.1)
+      ).toFixed(1)),
+      positionCorrectionRemainingMetres: Math.round(Math.abs(vehicle.distanceAlongTrack - eased)),
+    };
   }
 
   /**
