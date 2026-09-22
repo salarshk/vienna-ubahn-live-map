@@ -827,7 +827,13 @@ class TrainPositionEngine {
       const freshestAgeSeconds = freshest
         ? Math.max(0, (now - Number(freshest.fetchedAt)) / 1000)
         : Infinity;
+      const nearestCountdown = sightings[0];
+      const focused = this.focusedVehicleId === `live-${train.key}`;
+      const freshAnchorIsNearby = freshest && nearestCountdown
+        ? Math.abs(freshest.secondsRemaining - nearestCountdown.secondsRemaining) <= 120
+        : false;
       const anchor = freshest && freshestAgeSeconds <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS
+        && (focused || freshAnchorIsNearby)
         ? freshest : sightings[0];
 
       // The feed's H/R value is authoritative. Older cached entries without it
