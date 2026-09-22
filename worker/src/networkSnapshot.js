@@ -223,10 +223,22 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
 
   const batch = await fetchMonitorBatch(MONITOR_STATIONS);
   let payload = batch.payload;
-  if (!batch.ok) {
-    // The upstream endpoint occasionally rejects a long multi-station URL.
-    // Retry as four smaller requests so a single bad batch does not blank the
-    // network-wide map. Successful chunks are merged into one monitor payload.
+  const initialMonitors = asArray(payload?.data?.monitors || payload?.monitors);
+  const initialStationIds = new Set(initialMonitors.map((monitor) => {
+    const properties = monitor?.locationStop?.properties || monitor?.stop?.properties || {};
+    return String(properties.name || properties.id || monitor?.diva || '');
+  }).filter(Boolean));
+  // The Wiener Linien endpoint can return HTTP 200 with only the first ten
+  // requested stations (instead of rejecting the long URL). Treat that as a
+  // partial response; otherwise a valid-looking snapshot would evict most
+  // trains from the browser every few seconds. Smaller batches are merged
+  // below so one partial upstream response can never become the network view.
+  const looksPartial = !batch.ok
+    || initialStationIds.size < Math.ceil(MONITOR_STATIONS.length * 0.75);
+  if (looksPartial) {
+    // Retry as four smaller requests so a single bad/limited batch does not
+    // blank the network-wide map. Successful chunks are merged into one
+    // monitor payload.
     const chunks = [];
     for (let index = 0; index < MONITOR_STATIONS.length; index += 10) {
       chunks.push(MONITOR_STATIONS.slice(index, index + 10));
@@ -249,12 +261,27 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
   const generatedAt = Date.now();
   const observations = parseMonitorPayload(payload, generatedAt);
   const models = buildSharedModels({ observations, fetchedAt: generatedAt });
+  const returnedMonitors = asArray(payload?.data?.monitors || payload?.monitors);
+  const returnedStationIds = new Set(returnedMonitors.map((monitor) => {
+    const properties = monitor?.locationStop?.properties || monitor?.stop?.properties || {};
+    return String(properties.name || properties.id || monitor?.diva || '');
+  }).filter(Boolean));
+  const completeness = {
+    requestedStations: MONITOR_STATIONS.length,
+    returnedStations: returnedStationIds.size,
+    // A station can legitimately have no qualifying live departure, so use a
+    // conservative coverage floor rather than requiring every requested id.
+    // Anything below it is a partial upstream response and must not evict the
+    // browser's last complete station set.
+    complete: returnedStationIds.size >= Math.ceil(MONITOR_STATIONS.length * 0.65),
+  };
   const snapshot = {
     generatedAt,
     source: 'wiener-linien-monitor',
     sourceServerTime: payload?.message?.serverTime || payload?.data?.message?.serverTime || null,
     observations,
     models,
+    completeness,
   };
   if (executionContext?.waitUntil) executionContext.waitUntil(archiveSnapshot(env, snapshot).catch(() => null));
   return json(snapshot, 200, origin, {

@@ -55,9 +55,12 @@ describe('advisor worker', () => {
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=1');
     expect(Number(response.headers.get('X-Snapshot-Generated-At'))).toBe(result.generatedAt);
     expect(result.source).toBe('wiener-linien-monitor');
-    expect(result.observations).toHaveLength(2);
+    // A singleton monitor is a partial long-URL response, so the worker
+    // deliberately retries in smaller chunks and merges the successful
+    // payloads instead of publishing an incomplete network view.
+    expect(result.observations).toHaveLength(8);
     expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it('falls back to smaller monitor batches when the full request fails', async () => {

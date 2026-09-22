@@ -125,6 +125,12 @@ const MAX_EXACT_GPS_OFFSET_METRES = 180;
 // participate in the geometry of a train that also has a newer response;
 // otherwise one stale stop can make a correct train look contradictory.
 const MAX_ACTIVE_SIGHTING_AGE_SECONDS = 20;
+// A partial monitor response can introduce a second station anchor for the
+// same synthetic trip. Prefer the candidate that remains near the marker's
+// last rendered position; do not let a newly selected station teleport the
+// train hundreds of metres or make its station/distance fields disagree.
+const MAX_POSITION_REANCHOR_METRES = 750;
+const MAX_BACKWARD_REANCHOR_METRES = 150;
 
 // The API has no vehicle or trip id. Timetabled segment sums and the feed's
 // planned platform times can differ by a few seconds per stop, so the same
@@ -1015,9 +1021,23 @@ class TrainPositionEngine {
         return projected.perpDistance <= MAX_EXACT_GPS_OFFSET_METRES
           ? { candidate, walked, projected } : null;
       }).filter(Boolean);
-      const selectedCandidate = walkedCandidates
+      const previousRender = this.renderState.get(`live-${train.key}`);
+      const directionSign = isForward ? 1 : -1;
+      const continuityCandidates = previousRender
+        ? walkedCandidates.filter(({ walked }) => {
+          const delta = (walked.trackDist - previousRender.trackDist) * directionSign;
+          return delta >= -MAX_BACKWARD_REANCHOR_METRES && delta <= MAX_POSITION_REANCHOR_METRES;
+        })
+        : walkedCandidates;
+      const candidatePool = continuityCandidates.length ? continuityCandidates : walkedCandidates;
+      const selectedCandidate = candidatePool
         .slice()
         .sort((a, b) => {
+          if (previousRender) {
+            const aDistance = Math.abs(a.walked.trackDist - previousRender.trackDist);
+            const bDistance = Math.abs(b.walked.trackDist - previousRender.trackDist);
+            if (aDistance !== bDistance) return aDistance - bDistance;
+          }
           const aCountdown = Math.abs(a.candidate.secondsRemaining);
           const bCountdown = Math.abs(b.candidate.secondsRemaining);
           if (aCountdown !== bCountdown) return aCountdown - bCountdown;

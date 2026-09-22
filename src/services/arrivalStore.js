@@ -275,6 +275,8 @@ class ArrivalStore {
     this.isSyncingNetwork = false;
     this.lastNetworkSyncAt = 0;
     this.sharedSnapshotAt = 0;
+    this.sharedSnapshotObservationCount = 0;
+    this.sharedSnapshotStationCount = 0;
 
     // Hydrate from sessionStorage if available
     this.hydrateFromSessionStorage();
@@ -600,6 +602,24 @@ class ArrivalStore {
       grouped.set(key, arrivals);
     }
 
+    const previousObservationCount = this.sharedSnapshotObservationCount;
+    const previousStationCount = this.sharedSnapshotStationCount;
+    const explicitCompleteness = snapshot?.completeness;
+    const isExplicitlyComplete = snapshot?.complete === true
+      || explicitCompleteness?.complete === true;
+    const hasExplicitCompleteness = snapshot?.complete !== undefined
+      || explicitCompleteness !== undefined;
+    // Older Workers did not expose completeness metadata. Their large,
+    // network-sized snapshots can still be protected from a sudden partial
+    // response by comparing it with the previous sweep; tiny unit-test or
+    // direct-station snapshots remain legacy-complete by default.
+    const looksLikePartialSnapshot = hasExplicitCompleteness
+      ? !isExplicitlyComplete
+      : previousObservationCount >= 100
+        && previousStationCount >= 8
+        && (observations.length < previousObservationCount * 0.65
+          || grouped.size < previousStationCount * 0.65);
+
     // A snapshot is a complete network view, not a partial station update.
     // Remove shared entries that disappeared from the newest response so a
     // train cannot remain on the map with an old station sighting after the
@@ -607,7 +627,8 @@ class ArrivalStore {
     // are newer, user-requested observations and should not be overwritten by
     // a network sweep that happened a few milliseconds earlier.
     for (const [key, previous] of this.memory) {
-      if (previous?.sharedSnapshot
+      if (!looksLikePartialSnapshot
+        && previous?.sharedSnapshot
         && Number(previous.fetchedAt) < fetchedAt
         && !grouped.has(String(key))) {
         this.memory.delete(key);
@@ -635,6 +656,8 @@ class ArrivalStore {
       });
     }
     this.sharedSnapshotAt = fetchedAt;
+    this.sharedSnapshotObservationCount = observations.length;
+    this.sharedSnapshotStationCount = grouped.size;
     this.lastNetworkSyncAt = fetchedAt;
     this.notify();
     return grouped.size;

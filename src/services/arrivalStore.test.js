@@ -21,6 +21,8 @@ describe('batched live synchronization', () => {
     arrivalStore.memory.clear();
     arrivalStore.lastRequestTimestamp = 0;
     arrivalStore.sharedSnapshotAt = 0;
+    arrivalStore.sharedSnapshotObservationCount = 0;
+    arrivalStore.sharedSnapshotStationCount = 0;
   });
 
   it('requests multiple DIVA stations at once and stores their live departures', async () => {
@@ -123,6 +125,7 @@ describe('batched live synchronization', () => {
     });
     arrivalStore.hydrateSharedSnapshot({
       generatedAt: first + 5000,
+      completeness: { complete: true },
       observations: [
         { stationId: 60201320, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', realtimeTimestamp: first + 125000, isLive: true },
       ],
@@ -130,5 +133,28 @@ describe('batched live synchronization', () => {
 
     expect(arrivalStore.memory.has('60201320')).toBe(true);
     expect(arrivalStore.memory.has('60201182')).toBe(false);
+  });
+
+  it('retains the previous network stations when the Worker marks a snapshot partial', () => {
+    const first = Date.parse('2026-09-09T18:08:00.000+0200');
+    arrivalStore.hydrateSharedSnapshot({
+      generatedAt: first,
+      completeness: { complete: true },
+      observations: [
+        { stationId: 60201320, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', realtimeTimestamp: first + 120000, isLive: true },
+        { stationId: 60201182, stationName: 'Schottenring', line: 'U2', destination: 'Karlsplatz', realtimeTimestamp: first + 120000, isLive: true },
+      ],
+    });
+    arrivalStore.hydrateSharedSnapshot({
+      generatedAt: first + 5000,
+      completeness: { complete: false },
+      observations: [
+        { stationId: 60201320, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', realtimeTimestamp: first + 125000, isLive: true },
+      ],
+    });
+
+    expect(arrivalStore.memory.has('60201320')).toBe(true);
+    expect(arrivalStore.memory.has('60201182')).toBe(true);
+    expect(arrivalStore.memory.get('60201182').fetchedAt).toBe(first);
   });
 });
