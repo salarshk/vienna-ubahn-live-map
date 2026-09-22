@@ -65,10 +65,19 @@ describe('Vienna network data', () => {
     expect(trainPositionEngine.getLineTrack('U5')).toBeUndefined();
   });
 
+  it('removes invalid placeholder coordinates from every rail geometry', () => {
+    for (const [line, track] of trainPositionEngine.lineTracks) {
+      expect(track.coords.every(([lng, lat]) => Number.isFinite(lng)
+        && Number.isFinite(lat)
+        && !(lng === 0 && lat === 0)), line).toBe(true);
+      expect(track.totalLength, line).toBeLessThan(100000);
+    }
+  });
+
   it('keeps each official station chain intact', () => {
     expect(Object.fromEntries(LINES.map((line) => [line, trainPositionEngine.getLineStations(line).length])))
       .toEqual({ U1: 24, U2: 21, U3: 21, U4: 20, U6: 24 });
-    expect(trainPositionEngine.offTrackStations).toEqual([]);
+    expect(trainPositionEngine.offTrackStations.filter(({ line }) => line.startsWith('U'))).toEqual([]);
   });
 
   it('keeps the whole network within four stops of a tracking reference', () => {

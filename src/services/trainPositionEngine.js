@@ -31,6 +31,15 @@ export const haversineDistance = (c1, c2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+const isUsableCoordinate = (coordinate) => Array.isArray(coordinate)
+  && coordinate.length >= 2
+  && Number.isFinite(Number(coordinate[0]))
+  && Number.isFinite(Number(coordinate[1]))
+  && Math.abs(Number(coordinate[0])) <= 180
+  && Math.abs(Number(coordinate[1])) <= 90
+  // Vienna rail data uses [0, 0] as a missing geometry placeholder.
+  && !(Number(coordinate[0]) === 0 && Number(coordinate[1]) === 0);
+
 // Project a geographical coordinate onto a polyline to find its cumulative distance along the track
 export const projectPointOntoPolyline = (point, coords, cumDists) => {
   let minPerpDist = Infinity;
@@ -42,13 +51,21 @@ export const projectPointOntoPolyline = (point, coords, cumDists) => {
     const segLen = cumDists[i + 1] - cumDists[i];
     if (segLen === 0) continue;
 
-    const dx = p2[0] - p1[0];
+    // Project in a local equirectangular frame. Longitude and latitude
+    // degrees have different physical scales in Vienna; treating them as
+    // equal skews the perpendicular and can move a station anchor on diagonal
+    // segments.
+    const cosLatitude = Math.cos((((p1[1] + p2[1] + point[1]) / 3) * Math.PI) / 180);
+    const deltaLongitude = p2[0] - p1[0];
+    const dx = deltaLongitude * cosLatitude;
     const dy = p2[1] - p1[1];
     const lenSq = dx * dx + dy * dy;
-    let t = lenSq === 0 ? 0 : ((point[0] - p1[0]) * dx + (point[1] - p1[1]) * dy) / lenSq;
+    let t = lenSq === 0
+      ? 0
+      : (((point[0] - p1[0]) * cosLatitude) * dx + (point[1] - p1[1]) * dy) / lenSq;
     t = Math.max(0, Math.min(1, t));
 
-    const proj = [p1[0] + t * dx, p1[1] + t * dy];
+    const proj = [p1[0] + t * deltaLongitude, p1[1] + t * dy];
     const d = haversineDistance(point, proj);
     if (d < minPerpDist) {
       minPerpDist = d;
@@ -86,6 +103,11 @@ export const CLICKED_TRAIN_REFRESH_INTERVAL_MS = 2500;
 // A platform must sit close to its line geometry before it participates in the
 // walk. This protects the station order if an upstream geometry ever changes.
 const MAX_STATION_OFFSET_METRES = 250;
+// Surface rail station points often describe a platform/entrance beside the
+// simplified centreline rather than the exact rail coordinate. Keep those
+// stations in the chain, but carry their larger measured offset into the
+// position range instead of dropping the route endpoint entirely.
+const MAX_SURFACE_STATION_OFFSET_METRES = 1500;
 
 // Rendering must remain physically plausible when the upstream prediction is
 // corrected. Vienna U-Bahn trains do not reverse between stations, and 25 m/s
@@ -182,6 +204,17 @@ export const confidenceFromUncertainty = (uncertaintyMetres) => {
   return Math.max(MIN_WALKED_CONFIDENCE, Math.min(1, 1 - lost));
 };
 
+const initialBearing = (from, to) => {
+  const toRadians = (value) => value * Math.PI / 180;
+  const phi1 = toRadians(from[1]);
+  const phi2 = toRadians(to[1]);
+  const deltaLambda = toRadians(to[0] - from[0]);
+  const y = Math.sin(deltaLambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2)
+    - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+};
+
 /**
  * Compare multiple station predictions for the same train. The feed normally
  * gives future arrival times, so a forward train has a larger countdown at a
@@ -270,7 +303,10 @@ class TrainPositionEngine {
       );
       if (!feature) continue;
 
-      const coords = feature.geometry.coordinates;
+      // A few imported tram geometries contain [0, 0] placeholders. Keeping
+      // one would make cumulative distance jump across the globe and
+      // invalidate every interpolated position on that route.
+      const coords = feature.geometry.coordinates.filter(isUsableCoordinate);
       if (!coords || coords.length < 2) continue;
 
       // 1. Calculate cumulative track distances
@@ -316,8 +352,12 @@ class TrainPositionEngine {
         };
       });
 
+      const stationOffsetLimit = lineId.startsWith('U')
+        ? MAX_STATION_OFFSET_METRES
+        : MAX_SURFACE_STATION_OFFSET_METRES;
+
       for (const station of projectedStations) {
-        if (station.offTrackMetres > MAX_STATION_OFFSET_METRES) {
+        if (station.offTrackMetres > stationOffsetLimit) {
           this.offTrackStations.push({
             line: lineId,
             name: station.name,
@@ -327,7 +367,7 @@ class TrainPositionEngine {
       }
 
       this.lineStations.set(lineId, projectedStations
-        .filter(st => st.offTrackMetres <= MAX_STATION_OFFSET_METRES)
+        .filter(st => st.offTrackMetres <= stationOffsetLimit)
         .sort((a, b) => a.trackDist - b.trackDist));
     }
   }
@@ -414,11 +454,9 @@ class TrainPositionEngine {
     const lng = p1[0] + t * (p2[0] - p1[0]);
     const lat = p1[1] + t * (p2[1] - p1[1]);
 
-    // Bearing
-    const dx = isForward ? (p2[0] - p1[0]) : (p1[0] - p2[0]);
-    const dy = isForward ? (p2[1] - p1[1]) : (p1[1] - p2[1]);
-    const rad = Math.atan2(dx, dy);
-    const bearing = (rad * 180 / Math.PI + 360) % 360;
+    // Use a geodesic initial bearing rather than treating longitude and
+    // latitude degrees as equally scaled Cartesian axes.
+    const bearing = isForward ? initialBearing(p1, p2) : initialBearing(p2, p1);
 
     return { coordinates: [lng, lat], bearing };
   }
@@ -928,12 +966,23 @@ class TrainPositionEngine {
       );
       const quantisationSeconds = positionAnchor.timingSource === 'official-wiener-linien-realtime'
         ? 8 : QUANTISATION_SECONDS;
-      const uncertaintyMetres = hasExactGps ? 40 : estimatePositionUncertainty(
+      const timingUncertaintyMetres = estimatePositionUncertainty(
         walked.segmentsWalked,
         observationAgeSeconds,
         this.getLineTrack(train.lineId).fallbackSpeed,
         quantisationSeconds,
       );
+      // Station coordinates can sit away from the imported rail centreline
+      // (for example, a surface entrance versus the underground track). Add
+      // that measured geometry offset so a small timing range is not mistaken
+      // for GPS-level positional accuracy.
+      const stationGeometryOffsetMetres = Math.max(
+        0,
+        ...sightings.map((sighting) => Number(sighting.station.offTrackMetres) || 0),
+      );
+      const uncertaintyMetres = hasExactGps
+        ? 40
+        : Math.hypot(timingUncertaintyMetres, stationGeometryOffsetMetres);
       // Dead Reckoning is the sharpest loss of confidence there is, and it is
       // not about age at all — a prediction fetched a second ago can already be
       // in it — so it goes straight to the floor rather than through the walk's
@@ -969,6 +1018,7 @@ class TrainPositionEngine {
         status: walked.status,
         sightingCount: sightings.length,
         positionUncertaintyMetres: Math.round(uncertaintyMetres),
+        stationGeometryOffsetMetres: Math.round(stationGeometryOffsetMetres),
         positionConfidence: hasExactGps ? 1 : positionConfidence,
         isDeadReckoned,
         secondsUnheard: Math.round(observationAgeSeconds),
