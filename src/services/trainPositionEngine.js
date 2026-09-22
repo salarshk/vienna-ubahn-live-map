@@ -99,6 +99,10 @@ const TRUSTED_CORRECTION_MAX_AGE_SECONDS = 10;
 const TRUSTED_CORRECTION_SPEED_METRES_PER_SECOND = 30;
 const FOCUSED_CORRECTION_SPEED_METRES_PER_SECOND = 30;
 const MAX_EXACT_GPS_OFFSET_METRES = 180;
+// A network sweep is every five seconds. Do not let an old station response
+// participate in the geometry of a train that also has a newer response;
+// otherwise one stale stop can make a correct train look contradictory.
+const MAX_ACTIVE_SIGHTING_AGE_SECONDS = 20;
 
 // The API has no vehicle or trip id. Timetabled segment sums and the feed's
 // planned platform times can differ by a few seconds per stop, so the same
@@ -156,8 +160,13 @@ export const MIN_POSITION_CONFIDENCE = 0.35;
 /**
  * Metres of doubt around a walked position.
  */
-export const estimatePositionUncertainty = (segmentsWalked, secondsUnheard, metresPerSecond) => {
-  const quantisation = Math.sqrt(Math.max(0, segmentsWalked)) * QUANTISATION_SECONDS;
+export const estimatePositionUncertainty = (
+  segmentsWalked,
+  secondsUnheard,
+  metresPerSecond,
+  quantisationSeconds = QUANTISATION_SECONDS,
+) => {
+  const quantisation = Math.sqrt(Math.max(0, segmentsWalked)) * quantisationSeconds;
   const beyondOneSync = Math.max(0, secondsUnheard - NETWORK_SYNC_INTERVAL_MS / 1000);
   const drift = beyondOneSync * DRIFT_SECONDS_PER_SECOND_UNHEARD;
   return (quantisation + drift) * metresPerSecond;
@@ -785,11 +794,20 @@ class TrainPositionEngine {
     const vehicles = [];
 
     for (const train of this.collectVehicleSightings(now).values()) {
+      const activeSightings = train.sightings.filter((candidate) => (
+        Number.isFinite(Number(candidate.fetchedAt))
+        && Math.max(0, (now - Number(candidate.fetchedAt)) / 1000) <= MAX_ACTIVE_SIGHTING_AGE_SECONDS
+      ));
+      // If at least one current station response exists, never let older
+      // cached stops influence its anchor, consistency score, or uncertainty.
+      // A train with no current response is retained as a continuity estimate
+      // so the map does not blink while the feed is recovering.
+      const sourceSightings = activeSightings.length ? activeSightings : train.sightings;
       // A vehicle can appear twice in one station response when a platform
       // is returned through two monitor objects. Keep only the best sighting
       // per station before doing cross-station geometry; duplicate stations
       // otherwise skew the consistency check and the synthetic anchor.
-      const sightings = [...new Map(train.sightings.map((candidate) => [
+      const sightings = [...new Map(sourceSightings.map((candidate) => [
         candidate.station.id,
         candidate,
       ])).values()].sort(
@@ -890,18 +908,23 @@ class TrainPositionEngine {
         (latest, sighting) => Math.max(latest, Number(sighting.fetchedAt) || 0),
         0,
       );
-      const feedAgeSeconds = sightings.reduce(
-        (maximum, sighting) => Math.max(maximum, Number(sighting.feedAgeSeconds) || 0),
-        0,
-      );
+      // The newest/selected station is the relevant feed age. Taking the
+      // maximum across all cached stations made one old stop label an
+      // otherwise current train as stale and expanded its range unnecessarily.
+      const feedAgeSeconds = Number(positionAnchor.feedAgeSeconds) || 0;
       const observationAgeSeconds = Math.max(secondsUnheard, feedAgeSeconds);
       const lastDataAgeSeconds = Math.max(
         0,
         (now - latestFetchedAt) / 1000,
         feedAgeSeconds,
       );
+      const quantisationSeconds = positionAnchor.timingSource === 'official-wiener-linien-realtime'
+        ? 8 : QUANTISATION_SECONDS;
       const uncertaintyMetres = hasExactGps ? 40 : estimatePositionUncertainty(
-        walked.segmentsWalked, observationAgeSeconds, this.getLineTrack(train.lineId).fallbackSpeed
+        walked.segmentsWalked,
+        observationAgeSeconds,
+        this.getLineTrack(train.lineId).fallbackSpeed,
+        quantisationSeconds,
       );
       // Dead Reckoning is the sharpest loss of confidence there is, and it is
       // not about age at all — a prediction fetched a second ago can already be
