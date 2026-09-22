@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildOpenAIRequest, handleRequest } from './index';
-import { parseMonitorPayload } from './networkSnapshot';
+import { monitorStationIds, parseMonitorPayload } from './networkSnapshot';
 
 const origin = 'https://salarshk.github.io';
 const env = { OPENAI_API_KEY: 'test-key', OPENAI_MODEL: 'gpt-5.4-mini' };
@@ -44,7 +44,9 @@ describe('advisor worker', () => {
       data: { monitors: [{ locationStop: { properties: { name: '60201320', title: 'Stephansplatz' } }, lines: [{ name: 'U1', towards: 'Leopoldau', departures: { departure: [
         { departureTime: { timePlanned: '2026-09-17T12:01:00+0200', timeReal: '2026-09-17T12:03:00+0200', countdown: '1' }, vehicle: { towards: 'Leopoldau' } },
         { departureTime: { timePlanned: '2026-09-17T12:05:00+0200', timeReal: '2026-09-17T12:05:00+0200', countdown: '5' }, vehicle: { towards: 'Leopoldau' } },
-      ] } }] }] },
+      ] } }] }, ...monitorStationIds.slice(1).map((id) => ({
+        locationStop: { properties: { name: String(id), title: `Station ${id}` } }, lines: [],
+      }))] },
     };
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     const response = await handleRequest(new Request('https://worker.example/network-snapshot', {
@@ -55,12 +57,9 @@ describe('advisor worker', () => {
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=1');
     expect(Number(response.headers.get('X-Snapshot-Generated-At'))).toBe(result.generatedAt);
     expect(result.source).toBe('wiener-linien-monitor');
-    // A singleton monitor is a partial long-URL response, so the worker
-    // deliberately retries in smaller chunks and merges the successful
-    // payloads instead of publishing an incomplete network view.
-    expect(result.observations).toHaveLength(8);
+    expect(result.observations).toHaveLength(2);
     expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to smaller monitor batches when the full request fails', async () => {
@@ -75,7 +74,7 @@ describe('advisor worker', () => {
     const response = await handleRequest(new Request('https://worker.example/network-snapshot', {
       method: 'GET', headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() },
     }), env, fetchMock);
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(502);
     expect(calls).toBe(5);
   });
 

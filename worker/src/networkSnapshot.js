@@ -275,6 +275,16 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     // browser's last complete station set.
     complete: returnedStationIds.size >= Math.ceil(MONITOR_STATIONS.length * 0.65),
   };
+  if (!completeness.complete) {
+    // Do not publish a partial network as if it were current. The browser's
+    // snapshot store will retain its last complete response and retry on the
+    // next poll, which is safer than dropping trains or recalculating their
+    // positions from an incomplete station set.
+    return json({
+      error: 'Wiener Linien returned an incomplete station snapshot.',
+      completeness,
+    }, 502, origin);
+  }
   const snapshot = {
     generatedAt,
     source: 'wiener-linien-monitor',
