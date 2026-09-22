@@ -846,10 +846,11 @@ class TrainPositionEngine {
 
       const consistency = assessSightingConsistency(this, train.lineId, sightings, isForward);
 
-      // Build a position from every station prediction and choose the one
-      // closest to their median track distance. This rejects a single bad
-      // countdown instead of letting it move the marker back and forth when
-      // the freshest station changes between network polls.
+      // Build a position from every station prediction, but anchor on the
+      // nearest current station prediction. A long countdown from a distant
+      // station carries much more accumulated timetable error than a nearby
+      // one; using the median track distance here made most otherwise healthy
+      // trains report 600–1000 m ranges even when a close station was fresh.
       const walkedCandidates = sightings.map((candidate) => ({
         candidate,
         walked: this.walkFromStation(
@@ -866,16 +867,12 @@ class TrainPositionEngine {
         return projected.perpDistance <= MAX_EXACT_GPS_OFFSET_METRES
           ? { candidate, walked, projected } : null;
       }).filter(Boolean);
-      const medianTrackDistance = walkedCandidates.length
-        ? [...walkedCandidates].map(({ walked }) => walked.trackDist).sort((a, b) => a - b)
-          [Math.floor(walkedCandidates.length / 2)]
-        : null;
       const selectedCandidate = walkedCandidates
         .slice()
         .sort((a, b) => {
-          const aDistance = medianTrackDistance === null ? Infinity : Math.abs(a.walked.trackDist - medianTrackDistance);
-          const bDistance = medianTrackDistance === null ? Infinity : Math.abs(b.walked.trackDist - medianTrackDistance);
-          if (aDistance !== bDistance) return aDistance - bDistance;
+          const aCountdown = Math.abs(a.candidate.secondsRemaining);
+          const bCountdown = Math.abs(b.candidate.secondsRemaining);
+          if (aCountdown !== bCountdown) return aCountdown - bCountdown;
           return Number(b.candidate.fetchedAt) - Number(a.candidate.fetchedAt);
         })[0];
       const positionCandidate = selectedCandidate || {
