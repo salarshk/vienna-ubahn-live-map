@@ -92,6 +92,7 @@ if (!credentialsAvailable) {
 if (mode === 'download-ubahn') {
   await mkdir(DATA_DIR, { recursive: true });
   await runAws(['s3', 'sync', s3Path('rolling', 'ubahn'), DATA_DIR]);
+  await runAws(['s3', 'sync', s3Path('archive', 'ubahn', 'context'), resolve(DATA_DIR, 'context')]);
   const restored = await hasFiles(DATA_DIR);
   console.log(restored
     ? 'Restored the rolling U-Bahn dataset from Cloudflare R2.'
@@ -107,6 +108,7 @@ if (mode === 'upload-ubahn') {
   await syncDirectory(resolve(DATA_DIR, 'observations'), s3Path('archive', 'ubahn', 'observations'));
   await syncDirectory(resolve(DATA_DIR, 'raw'), s3Path('archive', 'ubahn', 'raw'));
   await syncDirectory(resolve(DATA_DIR, 'headway-events'), s3Path('archive', 'ubahn', 'headway-events'));
+  await syncDirectory(resolve(DATA_DIR, 'context'), s3Path('archive', 'ubahn', 'context'));
   await writeArchiveHealth('ubahn');
   console.log('Archived the U-Bahn rolling dataset and dated partitions to Cloudflare R2.');
   process.exit(0);

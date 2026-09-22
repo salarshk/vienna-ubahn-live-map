@@ -30,3 +30,12 @@ Frequent edge snapshots are handled by the Cloudflare Worker cron (`*/5 * * *
 *`) and written to the R2 `worker-snapshots/` prefix. GitHub Actions runs the
 heavier collection/training job once per day, using the Worker feed proxy to
 avoid intermittent direct-runner HTTP 403 responses from Wiener Linien.
+
+The daily job also archives Open-Meteo hourly weather rows and joins them to
+official delay observations. When Wiener Linien omits a vehicle ID, repeated
+line/direction/destination/planned-time observations provide a clearly marked
+synthetic journey key for ETA opportunities; it is not treated as official
+vehicle identity. Gap, station-hour pressure, incident overlap, and transfer
+opportunity rows are retained as proxies, while the registry continues to say
+when actual cancellation, passenger-count, attendance, or passenger-outcome
+labels are still missing.

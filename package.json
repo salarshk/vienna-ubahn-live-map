@@ -12,6 +12,7 @@
     "build:vienna-data": "node scripts/build_vienna_data.cjs",
     "build:sbahn": "node scripts/build_sbahn_data.cjs",
     "ml:collect": "node scripts/ml/collect_ubahn_delays.mjs",
+    "ml:collect-context": "node scripts/ml/collect_context_labels.mjs",
     "ml:oebb": "node scripts/ml/ingest_oebb_open_data.mjs",
     "ml:archive-r2": "node scripts/ml/archive_r2.mjs",
     "ml:incidents": "node scripts/ml/sync_ubahn_incidents.mjs",

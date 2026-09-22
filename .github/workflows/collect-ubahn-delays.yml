@@ -70,6 +70,10 @@ jobs:
           VIENNA_API_BASE: https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev
         run: node scripts/ml/collect_ubahn_delays.mjs
 
+      - name: Archive weather labels for model joins
+        continue-on-error: true
+        run: node scripts/ml/collect_context_labels.mjs
+
       - name: Train preliminary or validated model with a chronological holdout
         env:
           DELAY_MODEL_PATH: data/ml/candidate-model.json

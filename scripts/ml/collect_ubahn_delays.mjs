@@ -54,6 +54,18 @@ const eventKey = (row) => [
   row.plannedTime,
 ].join('|');
 
+// Wiener Linien's public monitor normally omits a stable vehicle/trip id.
+// A planned departure plus line, direction and destination is therefore the
+// most conservative cross-station journey key available. It is used only for
+// repeated-observation labels (ETA/transfer opportunities), never presented as
+// an official vehicle identity.
+const journeyKey = (row) => [
+  row.line,
+  row.direction || 'unknown',
+  row.destination || 'unknown',
+  row.plannedTime,
+].join('|');
+
 const readExistingRows = async (outputPath) => {
   try {
     const text = await readFile(outputPath, 'utf8');
@@ -208,6 +220,7 @@ const rowsFromMonitors = (monitors, observedAt, incidents, feedServerTime = null
         ...incidentContext,
       };
       row.eventKey = eventKey(row);
+      row.journeyKey = journeyKey(row);
       // We need an early feature observation and a near-departure label. Rows
       // farther away cannot contribute to either and only inflate storage.
       return row.secondsToReal >= -120 && row.secondsToReal <= 900 ? [row] : [];
