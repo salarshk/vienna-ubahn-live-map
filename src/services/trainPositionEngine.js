@@ -798,10 +798,16 @@ class TrainPositionEngine {
         Number.isFinite(Number(candidate.fetchedAt))
         && Math.max(0, (now - Number(candidate.fetchedAt)) / 1000) <= MAX_ACTIVE_SIGHTING_AGE_SECONDS
       ));
+      const focused = this.focusedVehicleId === `live-${train.key}`;
+      // Never present a keyless/synthetic train from an old station response
+      // as a current live vehicle. It has no stable vehicle identity that can
+      // justify continuity, and retaining it was the main source of markers
+      // whose displayed data age exceeded the freshness target. An identified
+      // vehicle or focused train remains visible so the UI can explicitly
+      // report stale data while the feed recovers.
+      if (!activeSightings.length && !train.vehicleId && !focused) continue;
       // If at least one current station response exists, never let older
       // cached stops influence its anchor, consistency score, or uncertainty.
-      // A train with no current response is retained as a continuity estimate
-      // so the map does not blink while the feed is recovering.
       const sourceSightings = activeSightings.length ? activeSightings : train.sightings;
       // A vehicle can appear twice in one station response when a platform
       // is returned through two monitor objects. Keep only the best sighting
@@ -828,7 +834,6 @@ class TrainPositionEngine {
         ? Math.max(0, (now - Number(freshest.fetchedAt)) / 1000)
         : Infinity;
       const nearestCountdown = sightings[0];
-      const focused = this.focusedVehicleId === `live-${train.key}`;
       const freshAnchorIsNearby = freshest && nearestCountdown
         ? Math.abs(freshest.secondsRemaining - nearestCountdown.secondsRemaining) <= 120
         : false;

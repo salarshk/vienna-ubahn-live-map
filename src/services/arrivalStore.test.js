@@ -111,4 +111,24 @@ describe('batched live synchronization', () => {
     expect(arrivalStore.memory.get('60201320')).toMatchObject({ sharedSnapshot: true, stationName: 'Stephansplatz' });
     expect(arrivalStore.memory.get('60201320').arrivals[0]).toMatchObject({ line: 'U1', reportedDelaySeconds: 60, isLive: true });
   });
+
+  it('evicts shared stations that disappear from a newer complete snapshot', () => {
+    const first = Date.parse('2026-09-09T18:08:00.000+0200');
+    arrivalStore.hydrateSharedSnapshot({
+      generatedAt: first,
+      observations: [
+        { stationId: 60201320, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', realtimeTimestamp: first + 120000, isLive: true },
+        { stationId: 60201182, stationName: 'Schottenring', line: 'U2', destination: 'Karlsplatz', realtimeTimestamp: first + 120000, isLive: true },
+      ],
+    });
+    arrivalStore.hydrateSharedSnapshot({
+      generatedAt: first + 5000,
+      observations: [
+        { stationId: 60201320, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', realtimeTimestamp: first + 125000, isLive: true },
+      ],
+    });
+
+    expect(arrivalStore.memory.has('60201320')).toBe(true);
+    expect(arrivalStore.memory.has('60201182')).toBe(false);
+  });
 });

@@ -572,7 +572,7 @@ class ArrivalStore {
   hydrateSharedSnapshot(snapshot) {
     const observations = Array.isArray(snapshot?.observations) ? snapshot.observations : [];
     const fetchedAt = Number(snapshot?.generatedAt) || Date.now();
-    if (!observations.length || fetchedAt <= this.sharedSnapshotAt) return 0;
+    if (fetchedAt <= this.sharedSnapshotAt) return 0;
     const grouped = new Map();
     for (const item of observations) {
       if (!item?.stationId || !item.line || !Number.isFinite(Number(item.realtimeTimestamp))) continue;
@@ -599,6 +599,24 @@ class ArrivalStore {
       });
       grouped.set(key, arrivals);
     }
+
+    // A snapshot is a complete network view, not a partial station update.
+    // Remove shared entries that disappeared from the newest response so a
+    // train cannot remain on the map with an old station sighting after the
+    // feed has moved on.  Keep direct/focused station fetches intact: those
+    // are newer, user-requested observations and should not be overwritten by
+    // a network sweep that happened a few milliseconds earlier.
+    for (const [key, previous] of this.memory) {
+      if (previous?.sharedSnapshot
+        && Number(previous.fetchedAt) < fetchedAt
+        && !grouped.has(String(key))) {
+        this.memory.delete(key);
+      }
+    }
+
+    // An empty but newer snapshot is still meaningful: it says the shared
+    // feed currently has no observations. Clear only shared entries; direct
+    // station data remains available to the station panel as a fallback.
     for (const [stationId, arrivals] of grouped) {
       const previous = this.memory.get(stationId);
       // A focused train refresh can be newer than a Worker snapshot.
