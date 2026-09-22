@@ -48,6 +48,12 @@ describe('advisor worker', () => {
         locationStop: { properties: { name: String(id), title: `Station ${id}` } }, lines: [],
       }))] },
     };
+    for (const [line, destination] of [['U2', 'Karlsplatz'], ['U3', 'Simmering'], ['U4', 'Heiligenstadt'], ['U6', 'Floridsdorf']]) {
+      payload.data.monitors[0].lines.push({ name: line, towards: destination, departures: { departure: [{
+        departureTime: { timePlanned: '2026-09-17T12:05:00+0200', timeReal: '2026-09-17T12:05:00+0200', countdown: '5' },
+        vehicle: { towards: destination },
+      }] } });
+    }
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     const response = await handleRequest(new Request('https://worker.example/network-snapshot', {
       method: 'GET', headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() },
@@ -57,7 +63,7 @@ describe('advisor worker', () => {
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=1');
     expect(Number(response.headers.get('X-Snapshot-Generated-At'))).toBe(result.generatedAt);
     expect(result.source).toBe('wiener-linien-monitor');
-    expect(result.observations).toHaveLength(2);
+    expect(result.observations).toHaveLength(6);
     expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

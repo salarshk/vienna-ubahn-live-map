@@ -266,14 +266,21 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     const properties = monitor?.locationStop?.properties || monitor?.stop?.properties || {};
     return String(properties.name || properties.id || monitor?.diva || '');
   }).filter(Boolean));
+  const returnedLines = new Set(observations
+    .map((item) => String(item.line || '').toUpperCase())
+    .filter((line) => LINES.includes(line)));
+  const missingLines = LINES.filter((line) => !returnedLines.has(line));
   const completeness = {
     requestedStations: MONITOR_STATIONS.length,
     returnedStations: returnedStationIds.size,
+    returnedLines: [...returnedLines],
+    missingLines,
     // A station can legitimately have no qualifying live departure, so use a
     // conservative coverage floor rather than requiring every requested id.
     // Anything below it is a partial upstream response and must not evict the
     // browser's last complete station set.
-    complete: returnedStationIds.size >= Math.ceil(MONITOR_STATIONS.length * 0.65),
+    complete: returnedStationIds.size >= Math.ceil(MONITOR_STATIONS.length * 0.65)
+      && missingLines.length === 0,
   };
   if (!completeness.complete) {
     // Do not publish a partial network as if it were current. The browser's
