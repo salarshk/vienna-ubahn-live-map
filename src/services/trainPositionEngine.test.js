@@ -173,6 +173,7 @@ describe('live vehicle reconstruction', () => {
   beforeEach(() => {
     arrivalStore.memory.clear();
     trainPositionEngine.renderState.clear();
+    trainPositionEngine.syntheticContinuity.clear();
     trainPositionEngine.setFocusedVehicleId(null);
   });
 
@@ -218,6 +219,26 @@ describe('live vehicle reconstruction', () => {
       secondsFromNow: 240, plannedSecondsFromNow: 300, now,
     });
     expect(trainPositionEngine.getLiveVehiclesFromMemory(now)[0].id).toBe(firstId);
+  });
+
+  it('keeps a keyless train visible through one missing network snapshot only', () => {
+    const now = Date.now();
+    sighting({ key: 'a', stationName: 'Stephansplatz', directionCode: 'H', secondsFromNow: 120, now });
+    const [first] = trainPositionEngine.getLiveVehiclesFromMemory(now);
+    expect(first).toBeTruthy();
+
+    // A complete sweep can briefly omit a station while the upstream list is
+    // being rebuilt. The marker should retain its identity for the short
+    // handoff and truthfully expose the age of the last source observation.
+    arrivalStore.memory.clear();
+    const [continuity] = trainPositionEngine.getLiveVehiclesFromMemory(now + 5000);
+    expect(continuity.id).toBe(first.id);
+    expect(continuity.isContinuityEstimate).toBe(true);
+    expect(continuity.lastDataAgeSeconds).toBe(5);
+
+    // It must still disappear once the bounded handoff window has expired;
+    // this prevents an old departure from becoming a phantom train.
+    expect(trainPositionEngine.getLiveVehiclesFromMemory(now + 9000)).toEqual([]);
   });
 
   it('never renders a live train moving backward or teleporting', () => {

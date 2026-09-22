@@ -132,6 +132,12 @@ const MAX_ACTIVE_SIGHTING_AGE_SECONDS = 20;
 // exact same minute bucket. A 45-second window covers that local timetable
 // error while staying well below half the normal 3:45 U-Bahn headway.
 const SYNTHETIC_TRIP_MATCH_WINDOW_MS = 45000;
+// The public feed has no vehicle id, and a single five-second snapshot can
+// briefly omit one station while its departure list is being rebuilt. Keep a
+// train that was just rendered for one short handoff window so it does not
+// blink off the map, but never turn this into a long-lived stale cache.
+const SYNTHETIC_CONTINUITY_GRACE_MS = 8000;
+const SYNTHETIC_CONTINUITY_RETENTION_MS = 30000;
 
 // ─── How much to trust a placed train ────────────────────────────────────────
 //
@@ -281,6 +287,11 @@ class TrainPositionEngine {
     // Per-vehicle render position, so a fresh fetch eases the marker to its new
     // anchor instead of teleporting it.
     this.renderState = new Map();
+    // Stable identities for keyless Wiener Linien departures. The raw cluster
+    // key can move when planned times are corrected between snapshots; this
+    // cache lets the marker keep its identity through that correction and a
+    // short missing-snapshot handoff.
+    this.syntheticContinuity = new Map();
     // A selected train is allowed to use its newest fresh observation directly.
     // This keeps the detail panel and the highlighted marker in agreement when
     // the focused 2.5-second refresh produces a new distance estimate.
@@ -807,18 +818,106 @@ class TrainPositionEngine {
         cluster.centreTimestamp = orderedTimes[Math.floor(orderedTimes.length / 2)];
       }
 
+      const previousRecords = this.syntheticContinuity.get(serviceKey) || [];
+      const usedPreviousKeys = new Set();
+      const nextRecords = [];
+
       for (const cluster of clusters) {
         const first = cluster.candidates[0];
         const tripSlot = Math.round(cluster.centreTimestamp / 15000);
-        const key = `${serviceKey}|${tripSlot}`;
-        byVehicle.set(key, {
+        const matchedRecord = previousRecords
+          .filter((record) => !usedPreviousKeys.has(record.stableKey))
+          .map((record) => ({
+            record,
+            distance: Math.abs(cluster.centreTimestamp - record.centreTimestamp),
+          }))
+          // Allow one planned-time correction to move a little farther than
+          // the within-snapshot clustering window, while still preventing two
+          // adjacent trains from stealing each other's identity.
+          .filter(({ distance }) => distance <= SYNTHETIC_CONTINUITY_GRACE_MS * 10)
+          .sort((a, b) => a.distance - b.distance)[0]?.record;
+        const key = matchedRecord?.stableKey || `${serviceKey}|${tripSlot}`;
+        if (matchedRecord) usedPreviousKeys.add(matchedRecord.stableKey);
+        const train = {
           key,
           lineId: first.lineId,
           vehicleId: null,
           destination: first.destination,
           directionCode: first.directionCode,
           sightings: cluster.candidates.map((candidate) => candidate.sighting),
+          syntheticContinuity: false,
+        };
+        byVehicle.set(key, train);
+        nextRecords.push({
+          stableKey: key,
+          centreTimestamp: cluster.centreTimestamp,
+          train,
+          lastSeenAt: now,
+          lastProjectedAt: now,
         });
+      }
+
+      // If the latest network sweep briefly contains no matching departure,
+      // carry the last rendered synthetic train forward for only a few
+      // seconds. Project its countdown by the elapsed wall time so the marker
+      // continues moving, while keeping its original fetchedAt so the UI can
+      // truthfully show that this is older data.
+      for (const record of previousRecords) {
+        if (usedPreviousKeys.has(record.stableKey)) continue;
+        const ageMs = now - Number(record.lastSeenAt || 0);
+        if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > SYNTHETIC_CONTINUITY_GRACE_MS) continue;
+        const projectionDeltaMs = Math.max(0, now - Number(record.lastProjectedAt || record.lastSeenAt || now));
+        const elapsedSeconds = projectionDeltaMs / 1000;
+        const carriedTrain = {
+          ...record.train,
+          syntheticContinuity: true,
+          sightings: record.train.sightings.map((candidate) => ({
+            ...candidate,
+            secondsRemaining: candidate.secondsRemaining - elapsedSeconds,
+          })),
+        };
+        byVehicle.set(record.stableKey, carriedTrain);
+        nextRecords.push({
+          ...record,
+          train: carriedTrain,
+          lastProjectedAt: now,
+        });
+      }
+
+      this.syntheticContinuity.set(serviceKey, nextRecords.filter((record) => (
+        now - Number(record.lastSeenAt || 0) <= SYNTHETIC_CONTINUITY_RETENTION_MS
+      )));
+    }
+
+    // A service can disappear entirely from the current memory sweep. Prune
+    // its identity cache separately so it cannot resurrect much later.
+    for (const [serviceKey, records] of this.syntheticContinuity) {
+      if (syntheticByService.has(serviceKey)) continue;
+      const retained = records.filter((record) => (
+        now - Number(record.lastSeenAt || 0) <= SYNTHETIC_CONTINUITY_GRACE_MS
+      ));
+      if (retained.length) {
+        for (const record of retained) {
+          const ageMs = now - Number(record.lastSeenAt || 0);
+          const projectionDeltaMs = Math.max(0, now - Number(record.lastProjectedAt || record.lastSeenAt || now));
+          const elapsedSeconds = projectionDeltaMs / 1000;
+          const carriedTrain = {
+            ...record.train,
+            syntheticContinuity: true,
+            sightings: record.train.sightings.map((candidate) => ({
+              ...candidate,
+              secondsRemaining: candidate.secondsRemaining - elapsedSeconds,
+            })),
+          };
+          byVehicle.set(record.stableKey, carriedTrain);
+        }
+        this.syntheticContinuity.set(serviceKey, retained.map((record) => ({
+          ...record,
+          train: byVehicle.get(record.stableKey),
+          lastProjectedAt: now,
+        })));
+      } else {
+        this.syntheticContinuity.delete(serviceKey);
       }
     }
 
@@ -1005,6 +1104,7 @@ class TrainPositionEngine {
         line: train.lineId,
         mode: this.getLineTrack(train.lineId)?.mode || 'ubahn',
         vehicleId: train.vehicleId,
+        isContinuityEstimate: Boolean(train.syntheticContinuity),
         direction: train.destination,
         coordinates,
         bearing,
