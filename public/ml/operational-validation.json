@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T09:56:46.713Z",
+  "generatedAt": "2026-09-29T14:04:06.671Z",
   "methodology": "chronological holdout by calendar day; newest day(s) are never used to fit the reported baseline",
   "split": {
     "trainingDays": [
@@ -28,74 +28,74 @@
       "2026-09-29"
     ],
     "trainingRows": 64230,
-    "holdoutRows": 2804
+    "holdoutRows": 3825
   },
   "models": {
     "multi-horizon-delay": {
       "status": "validated-baseline",
-      "samples": 2804,
-      "maeMinutes": 2.16,
-      "rmseMinutes": 7.462,
+      "samples": 3825,
+      "maeMinutes": 1.964,
+      "rmseMinutes": 6.554,
       "note": "Uses a per-line historical median; the deployed ridge model remains the production delay model."
     },
     "delay-severity": {
       "status": "validated-baseline",
-      "samples": 2804,
-      "accuracyPercent": 78.4,
-      "macroF1": 0.22
+      "samples": 3825,
+      "accuracyPercent": 77,
+      "macroF1": 0.218
     },
     "delay-bands": {
       "status": "validated-baseline",
-      "samples": 2804,
-      "p10ToP90CoveragePercent": 77.7,
-      "meanIntervalWidthMinutes": 2.89
+      "samples": 3825,
+      "p10ToP90CoveragePercent": 76.5,
+      "meanIntervalWidthMinutes": 2.9
     },
     "route-reliability": {
       "status": "validated-descriptive",
-      "samples": 2804,
+      "samples": 3825,
       "lines": [
         {
           "line": "U1",
           "trainingOnTimeRate": 0.716,
-          "holdoutOnTimeRate": 0.542,
-          "samples": 664
+          "holdoutOnTimeRate": 0.59,
+          "samples": 935
         },
         {
           "line": "U2",
           "trainingOnTimeRate": 0.658,
-          "holdoutOnTimeRate": 0.724,
-          "samples": 457
+          "holdoutOnTimeRate": 0.611,
+          "samples": 632
         },
         {
           "line": "U3",
           "trainingOnTimeRate": 0.938,
-          "holdoutOnTimeRate": 0.917,
-          "samples": 577
+          "holdoutOnTimeRate": 0.924,
+          "samples": 800
         },
         {
           "line": "U4",
           "trainingOnTimeRate": 0.737,
-          "holdoutOnTimeRate": 0.82,
-          "samples": 478
+          "holdoutOnTimeRate": 0.767,
+          "samples": 617
         },
         {
           "line": "U6",
           "trainingOnTimeRate": 0.856,
-          "holdoutOnTimeRate": 0.933,
-          "samples": 628
+          "holdoutOnTimeRate": 0.946,
+          "samples": 841
         }
       ]
     },
     "headway-bunching": {
       "status": "validated-descriptive",
-      "eventSamples": 233,
-      "gapEvents": 74,
-      "bunchEvents": 159,
+      "eventSamples": 360,
+      "gapEvents": 94,
+      "bunchEvents": 266,
       "note": "Event lifecycle coverage is reported; a precision/recall score needs a complete no-event label stream."
     },
     "recovery-duration": {
       "status": "validated-descriptive",
-      "recoveredEventSamples": 75,
+      "recoveredEventSamples": 101,
       "medianRecoveryMinutes": 1441.22
     }
   }
