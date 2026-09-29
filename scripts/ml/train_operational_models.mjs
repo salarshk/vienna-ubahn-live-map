@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 
 /*
- * Build the training/readiness report for the 17 experimental models shown in
- * Prediction Lab.  This report is intentionally separate from the U-Bahn
+ * Build the training/readiness report for the 17 model outputs shown in
+ * Prediction Lab. This report is intentionally separate from the U-Bahn
  * delay model: it never promotes a heuristic to "trained" just because a
- * card has an output.  A model is marked candidate only when the archived
- * data contains a usable target; otherwise the report names the missing
- * label or feed.
+ * card has an output. Six guarded baselines are additionally marked
+ * monitored-production so they can be used with visible evidence and safe
+ * fallback while chronological validation continues.
  */
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import {
+  MONITORED_PRODUCTION_MODEL_IDS,
+  MONITORED_PRODUCTION_MODELS,
+} from '../../src/services/productionModelRegistry.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const OBSERVATION_DIR = resolve(ROOT, process.env.DELAY_OBSERVATIONS_DIR || 'data/ml/observations');
@@ -164,7 +168,7 @@ const empiricalFits = {
   'uncertainty-calibration': { method: 'residual coverage profile', lineProfiles: delayProfiles },
 };
 
-const models = [
+const baseModels = [
   model({ id: 'multi-horizon-delay', name: 'Multi-horizon delay', group: 'trainable-now', algorithm: 'horizon-specific ridge/quantile regression', target: 'final operator delay at 2, 5, 10 and 15 minutes', inputs: ['early reported delay', 'lead time', 'line', 'time of day', 'direction', 'incidents'], status: enoughDelayLabels ? 'candidate' : 'collecting-labels', examples: labels.length, holdoutExamples: delayMetric.sampleCount || 0, scores: delayMetric.maeMinutes == null ? null : { maeMinutes: delayMetric.maeMinutes, rmseMinutes: delayMetric.rmseMinutes }, blocker: enoughDelayLabels ? null : 'Needs at least two days and 150 labelled journeys.', evidence }),
   model({ id: 'next-station-eta', name: 'Next-station ETA', group: 'trainable-now', algorithm: 'calibrated ETA regression with synthetic journey joins', target: 'operator-reported arrival countdown', inputs: ['seconds to real arrival', 'line', 'station', 'direction', 'synthetic journey key', 'observation age'], status: etaLabelRows.length >= 150 ? 'candidate' : 'collecting-labels', examples: etaLabelRows.length, blocker: etaLabelRows.length >= 150 ? 'Journey keys are inferred from timetable fields; stable vehicle IDs would improve validation.' : 'Needs repeated cross-station observations; stable vehicle IDs are not consistently published.', evidence }),
   model({ id: 'dwell-time', name: 'Dwell time', group: 'trainable-now', algorithm: 'platform-stop duration model', target: 'platform arrival-to-departure duration', inputs: ['on-stop flag', 'station', 'line', 'time of day', 'vehicle identity'], status: platformObservations.length >= 100 ? 'candidate' : 'collecting-labels', examples: platformObservations.length, blocker: platformObservations.length >= 100 ? null : 'Needs repeated on-stop observations with stable vehicle IDs.', evidence }),
@@ -187,12 +191,32 @@ const models = [
   fittedParameters: empiricalFits[item.id] || null,
 }));
 
+// These models are allowed into the app as guarded monitored features. This
+// is deliberately separate from `status: candidate`: promotion here means
+// the output is useful with a visible caveat and rollback/fallback behavior,
+// not that it has become a fully trained causal model.
+const models = baseModels.map((item) => {
+  if (!MONITORED_PRODUCTION_MODEL_IDS.includes(item.id)) return item;
+  return {
+    ...item,
+    production: {
+      stage: 'monitored-production',
+      ...MONITORED_PRODUCTION_MODELS[item.id],
+    },
+  };
+});
+
 const candidateCount = models.filter((item) => item.status === 'candidate').length;
 const collectingCount = models.filter((item) => item.status === 'collecting-labels').length;
 const blockedCount = models.filter((item) => item.status === 'blocked').length;
 const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
+  production: {
+    stage: 'monitored-production',
+    modelIds: MONITORED_PRODUCTION_MODEL_IDS,
+    policy: 'Guarded live baselines are visible in the app with confidence, evidence and safe fallback; chronological validation continues independently.',
+  },
   data: {
     observationRows: rows.length,
     labelledDelayRows: labels.length,
@@ -210,7 +234,13 @@ const report = {
     coverageDays: daysBetween(rows),
     lineCounts: lineCounts(rows),
   },
-  summary: { total: models.length, candidate: candidateCount, collectingLabels: collectingCount, blocked: blockedCount },
+  summary: {
+    total: models.length,
+    candidate: candidateCount,
+    collectingLabels: collectingCount,
+    blocked: blockedCount,
+    monitoredProduction: models.filter((item) => item.production?.stage === 'monitored-production').length,
+  },
   models,
 };
 

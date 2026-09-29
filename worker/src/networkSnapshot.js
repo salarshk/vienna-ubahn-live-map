@@ -20,6 +20,11 @@ const MONITOR_STATIONS = [
 const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
 const round = (value, digits = 1) => Number((Number(value) || 0).toFixed(digits));
 const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+const monitoredProduction = (id, mode = 'guarded baseline') => ({
+  id,
+  stage: 'monitored-production',
+  mode,
+});
 // Wiener Linien normally returns arrays, but a one-item result is sometimes
 // encoded as a plain object. Treat both wire shapes identically so one unusual
 // station response cannot crash the whole shared snapshot.
@@ -130,6 +135,7 @@ const buildPredictionLabModels = ({ lines, observations }) => {
       samples: item.delay.labelledObservations,
       confidence: Math.round(clamp(35 + Math.min(45, item.delay.labelledObservations * 5) - (item.headway.risk >= 70 ? 8 : 0), 15, 85)),
       model: 'cloudflare shared multi-horizon delay', trainingStatus: 'shared baseline',
+      production: monitoredProduction('multi-horizon-delay'),
     };
   });
   const eta = observations.filter((item) => item.countdownSeconds >= 0).sort((a, b) => a.countdownSeconds - b.countdownSeconds).slice(0, 12).map((item, index) => ({
@@ -147,19 +153,19 @@ const buildPredictionLabModels = ({ lines, observations }) => {
     line: item.line, station: item.stationName, predictedMinutes: 1, confidence: item.isLive ? 60 : 30, evidence: 'shared platform observation',
   }));
   const severity = lines.map((item) => ({ line: item.line, category: item.severity, score: item.delay.meanDelayMinutes >= 3 ? 60 : item.delay.meanDelayMinutes >= 1 ? 30 : 0, meanMinutes: item.delay.meanDelayMinutes, samples: item.delay.labelledObservations, evidence: `${item.delay.labelledObservations} shared delay observations` }));
-  const delayBands = lines.map((item) => ({ line: item.line, low: Math.max(-2, round(item.delay.meanDelayMinutes - 1, 1)), typical: round(item.delay.meanDelayMinutes, 1), high: round(item.delay.meanDelayMinutes + 1, 1), confidence: 35 + Math.min(50, item.delay.labelledObservations * 4), evidence: 'shared line-level delay distribution' }));
+  const delayBands = lines.map((item) => ({ line: item.line, low: Math.max(-2, round(item.delay.meanDelayMinutes - 1, 1)), typical: round(item.delay.meanDelayMinutes, 1), high: round(item.delay.meanDelayMinutes + 1, 1), confidence: 35 + Math.min(50, item.delay.labelledObservations * 4), evidence: 'shared line-level delay distribution', production: monitoredProduction('delay-bands', 'calibrated range') }));
   const cancellations = lines.map((item) => ({ line: item.line, risk: item.delay.observations < 2 ? 40 : 5, status: item.delay.observations < 2 ? 'watch' : 'low', action: item.delay.observations < 2 ? 'check next departure' : 'routine monitoring' })).sort((a, b) => b.risk - a.risk);
-  const routes = lines.map((item) => ({ line: item.line, score: Math.round(clamp(100 - item.headway.risk * 0.45 - item.delay.meanDelayMinutes * 6)), risk: Math.round(clamp(item.headway.risk * 0.45 + item.delay.meanDelayMinutes * 6)), evidence: 'shared delay and headway signals' })).sort((a, b) => a.score - b.score);
+  const routes = lines.map((item) => ({ line: item.line, score: Math.round(clamp(100 - item.headway.risk * 0.45 - item.delay.meanDelayMinutes * 6)), risk: Math.round(clamp(item.headway.risk * 0.45 + item.delay.meanDelayMinutes * 6)), evidence: 'shared delay and headway signals', production: monitoredProduction('route-reliability', 'risk-adjusted score') })).sort((a, b) => a.score - b.score);
   const transfers = [];
-  const anomalies = lines.filter((item) => item.headway.risk >= 70 || item.delay.meanDelayMinutes >= 5).map((item) => ({ line: item.line, type: item.headway.risk >= 70 ? 'headway' : 'delay', detail: item.headway.location, severity: item.headway.risk >= 80 ? 'high' : 'watch' }));
+  const anomalies = lines.filter((item) => item.headway.risk >= 70 || item.delay.meanDelayMinutes >= 5).map((item) => ({ line: item.line, type: item.headway.risk >= 70 ? 'headway' : 'delay', detail: item.headway.location, severity: item.headway.risk >= 80 ? 'high' : 'watch', production: monitoredProduction('predictive-anomaly', 'monitored anomaly flag') }));
   const uncertainty = lines.map((item) => ({ line: item.line, intervalMinutes: round(0.8 + (item.delay.labelledObservations ? 1 / Math.sqrt(item.delay.labelledObservations) : 1.5), 1), calibration: item.delay.labelledObservations ? 65 : 30, status: 'shared baseline' }));
   return {
     multiHorizon, eta, dwell,
-    headways: lines.map((item) => ({ ...item.headway, line: item.line, probability: item.headway.risk, model: 'shared headway/bunching forecast', trainingStatus: 'shared baseline', evidence: item.headway.location })),
+    headways: lines.map((item) => ({ ...item.headway, line: item.line, probability: item.headway.risk, model: 'shared headway/bunching forecast', trainingStatus: 'shared baseline', evidence: item.headway.location, production: monitoredProduction('headway-bunching', 'early-warning signal') })),
     recovery: [{ status: 'clear', window: 'No active incident in shared monitor snapshot', confidence: 30, evidence: 'shared network feed', model: 'shared recovery baseline' }],
     impact: [], severity, delayBands, transfers, routes, cancellations,
     crowd: lines.map((item) => ({ line: item.line, score: item.crowding.score, level: item.crowding.level, window: 'next 30–60 min' })),
-    weather: { status: 'not connected', impact: 'Weather context remains a separate public feed', confidence: 0, horizon: '—' },
+    weather: { status: 'not connected', impact: 'Weather context remains a separate public feed', confidence: 0, horizon: '—', production: monitoredProduction('weather-impact', 'observational context') },
     events: { status: 'baseline', score: 0, confidence: 20, evidence: 'shared rail feed only' },
     sbahn: [], anomalies, uncertainty,
   };

@@ -860,6 +860,14 @@ button:active {
 .model-registry-status.candidate { color: #8be28b; background: rgba(64, 170, 85, .18); }
 .model-registry-status.collecting-labels { color: #ffd27a; background: rgba(220, 150, 35, .18); }
 .model-registry-status.blocked { color: #ff9f9f; background: rgba(210, 65, 65, .18); }
+.model-registry-status.monitored-production { color: #a7e8ad; background: rgba(36, 150, 88, .22); }
+.model-production-badge { display: inline-flex; align-items: center; gap: 4px; width: fit-content; margin: 4px 0 6px; padding: 3px 6px; border: 1px solid rgba(76, 175, 80, .28); border-radius: 999px; color: #a7e8ad; background: rgba(36, 150, 88, .12); font-size: .52rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.monitored-production-banner { display: flex; align-items: center; gap: 8px; margin: 8px 0 10px; padding: 9px 10px; border: 1px solid rgba(76, 175, 80, .28); border-radius: 9px; color: #b9eec0; background: linear-gradient(100deg, rgba(36, 150, 88, .17), rgba(36, 150, 88, .06)); }
+.monitored-production-banner > svg { flex: 0 0 auto; color: #76d681; }
+.monitored-production-banner > div { min-width: 0; display: grid; gap: 2px; }
+.monitored-production-banner strong { color: #d4f6d8; font-size: .65rem; }
+.monitored-production-banner span { color: #a9d6af; font-size: .55rem; line-height: 1.35; }
+.monitored-production-banner small { margin-left: auto; padding: 2px 5px; border-radius: 999px; color: #a7e8ad; background: rgba(76, 175, 80, .18); font-size: .5rem; font-weight: 900; text-transform: uppercase; }
 .data-model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 7px; }
 .data-model-tile { min-width: 0; padding: 7px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-card, var(--bg-primary)); }
 .data-model-tile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }

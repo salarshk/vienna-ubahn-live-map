@@ -5,6 +5,7 @@ import {
   predictDisruptionImpact, predictDwellForecast, predictEventDemand, predictHeadwayForecast, predictHeadwayRisk,
   predictMultiHorizonDelay, predictNextStationEta, predictRecoveryForecast, predictWeatherImpact,
 } from './predictionModels';
+import { MONITORED_PRODUCTION_MODEL_IDS, monitoredProductionMeta } from './productionModelRegistry';
 
 describe('prediction lab models', () => {
   it('flags prolonged dwell and headway risk from observable signals', () => {
@@ -66,5 +67,18 @@ describe('prediction lab models', () => {
     expect(predictHeadwayForecast({ issues: [{ line: 'U1', type: 'gap', severity: 200, station: 'Karlsplatz' }] })[0].model).toBe('headway/bunching forecast');
     expect(predictRecoveryForecast({ disruptions, issues: [], reliability: [] })[0].model).toBe('delay-recovery duration');
     expect(predictDisruptionImpact({ disruptions, arrivals, issues: [] })[0]).toMatchObject({ level: 'medium', model: 'disruption impact' });
+  });
+
+  it('marks all monitored production outputs with a guarded deployment contract', () => {
+    expect(MONITORED_PRODUCTION_MODEL_IDS).toEqual([
+      'multi-horizon-delay', 'delay-bands', 'route-reliability',
+      'headway-bunching', 'predictive-anomaly', 'weather-impact',
+    ]);
+    expect(monitoredProductionMeta('weather-impact')).toMatchObject({ stage: 'monitored-production', mode: 'observational context' });
+    const arrivals = [{ line: 'U1', isLive: true, reportedDelaySeconds: 120, seconds: 60 }];
+    const bands = predictDelayBands({ arrivals });
+    expect(bands.find((item) => item.line === 'U1').production.stage).toBe('monitored-production');
+    expect(detectPredictiveAnomalies({ arrivals })[0].production.stage).toBe('monitored-production');
+    expect(predictWeatherImpact({ weather: null }).production.stage).toBe('monitored-production');
   });
 });

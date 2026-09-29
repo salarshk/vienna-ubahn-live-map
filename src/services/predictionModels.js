@@ -1,6 +1,8 @@
-// Experimental prediction layer. These models deliberately consume the same
-// public departures, inferred positions and official notices already used by
-// the map. They are decision-support estimates, not dispatcher telemetry.
+// Prediction layer. The six monitored-production models below deliberately
+// consume the same public departures, inferred positions and official notices
+// already used by the map. They are guarded decision-support estimates, not
+// dispatcher telemetry.
+import { monitoredProductionMeta } from './productionModelRegistry';
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
 const round = (value, digits = 0) => Number(Number(value).toFixed(digits));
@@ -69,6 +71,7 @@ export const predictMultiHorizonDelay = ({ arrivals = [], linePredictions = [], 
     line, forecasts, samples: observations.length, incidentCount,
     confidence: clamp(Math.round(35 + Math.min(45, observations.length * 5) - incidentCount * 4), 15, 85),
     model: 'multi-horizon delay', trainingStatus: MODEL_STATUS,
+    production: monitoredProductionMeta('multi-horizon-delay'),
     evidence: observations.length ? `${observations.length} official delay observations` : 'live delay observations not available',
     generatedAt: now,
   };
@@ -168,6 +171,7 @@ export const predictHeadwayForecast = ({ issues = [], arrivals = [] } = {}) => p
     probability: item.risk,
     model: 'headway/bunching forecast',
     trainingStatus: MODEL_STATUS,
+    production: monitoredProductionMeta('headway-bunching'),
   }));
 
 export const predictDisruptionResolution = ({ disruptions = [], issues = [], reliability = [] } = {}) => {
@@ -269,6 +273,7 @@ export const predictDelayBands = ({ arrivals = [], linePredictions = [] } = {}) 
     samples: observed.length,
     horizon: 'next 15 min',
     evidence: observed.length ? `${observed.length} live delay observations` : 'model baseline only',
+    production: monitoredProductionMeta('delay-bands'),
   };
 });
 
@@ -282,7 +287,14 @@ export const scoreRouteReliability = ({ routeRisk = [], reliability = [] } = {})
   const historical = reliability.find((item) => item.line === route.line);
   const historicalScore = Number.isFinite(historical?.score) ? historical.score : 65;
   const score = clamp(Math.round(historicalScore * 0.6 + (100 - route.risk) * 0.4), 0, 100);
-  return { line: route.line, score, risk: 100 - score, alternative: route.alternative, evidence: historical?.observations ? `${historical.observations} local observations + live risk` : 'live risk only' };
+  return {
+    line: route.line,
+    score,
+    risk: 100 - score,
+    alternative: route.alternative,
+    evidence: historical?.observations ? `${historical.observations} local observations + live risk` : 'live risk only',
+    production: monitoredProductionMeta('route-reliability'),
+  };
 }).sort((a, b) => a.score - b.score);
 
 export const predictCancellationRisk = ({ arrivals = [], disruptions = [], issues = [] } = {}) => LINES.map((line) => {
@@ -304,11 +316,23 @@ export const forecastCrowding = ({ crowding = [], now = Date.now(), issues = [] 
 };
 
 export const predictWeatherImpact = ({ weather = null, now = Date.now() } = {}) => {
-  if (!weather) return { status: 'not connected', impact: 'No weather feed connected', confidence: 0, horizon: '—' };
+  if (!weather) return {
+    status: 'not connected',
+    impact: 'No weather feed connected',
+    confidence: 0,
+    horizon: '—',
+    production: monitoredProductionMeta('weather-impact', { available: false }),
+  };
   const precipitation = Number(weather.precipitation ?? weather.rain ?? 0);
   const wind = Number(weather.windSpeed ?? weather.wind ?? 0);
   const impact = clamp(Math.round(precipitation * 8 + Math.max(0, wind - 35) * 1.2), 0, 95);
-  return { status: impact >= 60 ? 'elevated' : impact >= 25 ? 'watch' : 'routine', impact, confidence: 55, horizon: new Date(now + 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+  return {
+    status: impact >= 60 ? 'elevated' : impact >= 25 ? 'watch' : 'routine',
+    impact,
+    confidence: 55,
+    horizon: new Date(now + 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    production: monitoredProductionMeta('weather-impact', { available: true }),
+  };
 };
 
 const EVENT_TERMS = /concert|konzert|stadion|match|spiel|festival|messe|parade|marathon|event|feuerwerk|demo/i;
@@ -356,7 +380,10 @@ export const detectPredictiveAnomalies = ({ vehicles = [], issues = [], arrivals
   }));
   const missingLines = LINES.filter((line) => !arrivals.some((arrival) => arrival.isLive && lineOf(arrival.line) === line));
   missingLines.forEach((line) => anomalies.push({ type: 'feed anomaly', line, detail: 'no live arrivals in current sweep', severity: 'watch' }));
-  return anomalies.slice(0, 10);
+  return anomalies.slice(0, 10).map((item) => ({
+    ...item,
+    production: monitoredProductionMeta('predictive-anomaly'),
+  }));
 };
 
 export const calibrateUncertainty = ({ vehicles = [], reliability = [] } = {}) => LINES.map((line) => {

@@ -18,6 +18,10 @@ import {
   predictEventCrowding,
   predictTrafficAwareTrams,
 } from '../services/transportIntelligence';
+import {
+  MONITORED_PRODUCTION_MODEL_IDS,
+  MONITORED_PRODUCTION_MODELS,
+} from '../services/productionModelRegistry';
 
 const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reliability = [], vehicles = [], arrivals = [], transfers = [], routeRisk = [], delayPredictions = [], weather = null, mobilitySnapshot = null, networkSnapshot = null, operationalModels = null, category = 'all' }) => {
   const shared = networkSnapshot?.data?.models?.predictionLab;
@@ -33,7 +37,13 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
   const routes = useMemo(() => shared?.routes || scoreRouteReliability({ routeRisk, reliability }), [shared, routeRisk, reliability]);
   const cancellations = useMemo(() => shared?.cancellations || predictCancellationRisk({ arrivals, disruptions, issues }), [shared, arrivals, disruptions, issues]);
   const crowd = useMemo(() => shared?.crowd || forecastCrowding({ crowding, issues, now }), [shared, crowding, issues, now]);
-  const weatherForecast = useMemo(() => shared?.weather || predictWeatherImpact({ weather, now }), [shared, weather, now]);
+  // The Worker currently has no weather input. Prefer its result only when it
+  // is connected; otherwise keep the browser's public weather feed available.
+  const weatherForecast = useMemo(() => (
+    shared?.weather && shared.weather.status !== 'not connected'
+      ? shared.weather
+      : predictWeatherImpact({ weather, now })
+  ), [shared, weather, now]);
   const events = useMemo(() => shared?.events || predictEventDemand({ alerts: disruptions, now }), [shared, disruptions, now]);
   const sbahn = useMemo(() => shared?.sbahn || predictSbahnConnections({ vehicles, now }), [shared, vehicles, now]);
   const anomalies = useMemo(() => shared?.anomalies || detectPredictiveAnomalies({ vehicles, issues, arrivals }), [shared, vehicles, issues, arrivals]);
@@ -61,15 +71,21 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
   const explain = (text) => <p className="prediction-description">{text}</p>;
   const show = (name) => category === 'all' || category === name;
   const categoryLabel = { models: 'Models', predictions: 'Live predictions', operations: 'Operations', context: 'Context & diagnostics' }[category];
+  const productionBadge = (id) => {
+    const model = MONITORED_PRODUCTION_MODELS[id];
+    return model ? <small className="model-production-badge"><ShieldCheck size={10} /> Monitored production · {model.mode}</small> : null;
+  };
 
   return <section className="intelligence-section prediction-lab">
-    <div className="intelligence-section-title"><Sparkles size={14} /><strong>Prediction lab{categoryLabel ? ` · ${categoryLabel}` : ''}</strong><em>Experimental</em></div>
-    <p className="intelligence-note advanced-intro">These models complement the main delay model. They use public timing, inferred positions and notices; where Wiener Linien or ÖBB do not publish a signal, the card says so instead of pretending it is measured.</p>
+    <div className="intelligence-section-title"><Sparkles size={14} /><strong>Prediction lab{categoryLabel ? ` · ${categoryLabel}` : ''}</strong><em className="model-ready">{MONITORED_PRODUCTION_MODEL_IDS.length} monitored · others experimental</em></div>
+    <p className="intelligence-note advanced-intro">The green-labeled features are guarded monitored-production outputs: they use public live evidence, expose confidence and fall back safely when a source is missing. Other cards remain experimental.</p>
 
-    {show('models') && operationalModels && <div className="advanced-card model-registry-card"><div className="advanced-card-title"><strong>Training registry</strong><span>{operationalModels.summary?.candidate || 0} candidates · {operationalModels.summary?.collectingLabels || 0} collecting</span></div>
-      {explain('This report distinguishes models with trainable labels from transparent baselines. A candidate is not promoted to live use until it passes a chronological holdout against the operator estimate.')}
+    <div className="monitored-production-banner"><ShieldCheck size={16} /><div><strong>Monitored production features</strong><span>{MONITORED_PRODUCTION_MODEL_IDS.map((id) => MONITORED_PRODUCTION_MODELS[id].name).join(' · ')}</span></div><small>guarded</small></div>
+
+    {show('models') && operationalModels && <div className="advanced-card model-registry-card"><div className="advanced-card-title"><strong>Training registry</strong><span>{operationalModels.summary?.monitoredProduction || MONITORED_PRODUCTION_MODEL_IDS.length} monitored · {operationalModels.summary?.candidate || 0} candidates · {operationalModels.summary?.collectingLabels || 0} collecting</span></div>
+      {explain('Monitored production features are guarded baselines that can be used in the app while their reports continue to be checked. A candidate without this label is not promoted to live use until it passes a chronological holdout against the operator estimate.')}
       <div className="quality-grid"><span>Observations<strong>{operationalModels.data?.observationRows || 0}</strong></span><span>Delay labels<strong>{operationalModels.data?.labelledDelayRows || 0}</strong></span><span>Headway events<strong>{operationalModels.data?.headwayEvents || 0}</strong></span><span>Calendar days<strong>{operationalModels.data?.calendarDays || 0}</strong></span></div>
-      <div className="advanced-evidence-list">{(operationalModels.models || []).map((item) => <div key={item.id} className="model-registry-row"><strong>{item.name}</strong><span>{item.algorithm} · {item.trainingExamples} examples</span><small className={`model-registry-status ${item.status}`}>{item.status === 'candidate' ? 'candidate' : item.status === 'blocked' ? 'blocked' : 'collecting labels'}</small>{item.blocker && <em>{item.blocker}</em>}</div>)}</div>
+      <div className="advanced-evidence-list">{(operationalModels.models || []).map((item) => <div key={item.id} className="model-registry-row"><strong>{item.name}</strong><span>{item.algorithm} · {item.trainingExamples} examples</span><small className={`model-registry-status ${item.production?.stage === 'monitored-production' ? 'monitored-production' : item.status}`}>{item.production?.stage === 'monitored-production' ? 'monitored production' : item.status === 'candidate' ? 'candidate' : item.status === 'blocked' ? 'blocked' : 'collecting labels'}</small>{item.production?.guardrail && <em>{item.production.guardrail}</em>}{!item.production?.guardrail && item.blocker && <em>{item.blocker}</em>}</div>)}</div>
     </div>}
 
     {show('models') && <div className="advanced-card data-models-card">
@@ -87,13 +103,14 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     </div>}
 
     {show('predictions') && <div className="advanced-card"><div className="advanced-card-title"><strong>Multi-horizon delay model</strong><span>2–15 min ahead</span></div>
+      {productionBadge('multi-horizon-delay')}
       {explain('Forecasts each U-Bahn line at several time horizons from current official delay observations, the published line estimate and active incidents.')}
       <div className="advanced-line-grid">{multiHorizon.map((item) => {
         const near = item.forecasts[0];
         const far = item.forecasts.at(-1);
         return <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong>{near.minutes}m → {far.minutes}m</strong><span>2–15 min · {item.confidence}% confidence</span><small>{item.samples} observations · {item.trainingStatus}</small></div>;
       })}</div>
-      <small className="advanced-caveat">The current implementation is a calibrated baseline; a dedicated multi-horizon learner will be promoted only after enough labelled history.</small>
+      <small className="advanced-caveat">Guarded monitored production: the current operator estimate remains the fallback while horizon-specific labels continue to be evaluated.</small>
     </div>}
 
     {show('predictions') && <div className="advanced-card"><div className="advanced-card-title"><strong>Next-station ETA model</strong><span>per live train</span></div>
@@ -136,6 +153,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     </div>}
 
     {show('predictions') && <div className="advanced-card"><div className="advanced-card-title"><strong><TrainFront size={13} /> Headway & bunching model</strong><span>next 20–30 min</span></div>
+      {productionBadge('headway-bunching')}
       {explain('Predicts service gaps and trains running too close together on each U-Bahn line.')}
       <div className="advanced-line-grid">{headways.map((item) => <div key={item.line}>
         <i style={{ background: lineColor(item.line) }}>{item.line}</i>
@@ -163,6 +181,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     </div>}
 
     {show('predictions') && <div className="advanced-card"><div className="advanced-card-title"><strong>Probabilistic delay bands</strong><span>next 15 min</span></div>
+      {productionBadge('delay-bands')}
       {explain('Shows a typical delay and a high-delay boundary, so a route is not represented by one falsely precise number.')}
       <div className="advanced-line-grid">{delayBands.map((item) => <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong>{item.low.toFixed(1)}–{item.high.toFixed(1)} min</strong><span>typical {item.typical.toFixed(1)}m · {item.confidence}% confidence</span><small>{item.evidence}</small></div>)}</div>
       <small className="advanced-caveat">Bands combine current operator-reported delay observations with the published model when it is available.</small>
@@ -174,6 +193,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     </div>}
 
     {show('operations') && <div className="advanced-card"><div className="advanced-card-title"><strong><GitBranch size={13} /> Route reliability</strong><span>risk-adjusted score</span></div>
+      {productionBadge('route-reliability')}
       {explain('Ranks lines by expected reliability and points to a lower-risk alternative when one is visible.')}
       <div className="advanced-line-grid">{routes.map((item) => <div key={item.line}><i style={{ background: lineColor(item.line) }}>{item.line}</i><strong className={`risk-label ${item.score < 50 ? 'high' : item.score < 70 ? 'medium' : 'low'}`}>{item.score}/100</strong><span>{item.alternative ? `Alternative ${item.alternative}` : item.evidence}</span></div>)}</div>
     </div>}
@@ -189,6 +209,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     </div>}
 
     {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong><CloudRain size={13} /> Weather impact</strong><span>external feed</span></div>
+      {productionBadge('weather-impact')}
       {explain('Would estimate additional disruption risk from rain, snow, wind and other weather conditions when a feed is connected.')}
       <div className="quality-grid"><span>Status<strong>{weatherForecast.status}</strong></span><span>Impact<strong>{weatherForecast.impact ?? '—'}</strong></span><span>Confidence<strong>{weatherForecast.confidence}%</strong></span><span>Horizon<strong>{weatherForecast.horizon}</strong></span></div>
       <small className="advanced-caveat">{weather?.description ? `${weather.description} in Vienna · ${weather.source}.` : 'Waiting for the keyless Vienna weather context feed.'}</small>
@@ -224,6 +245,7 @@ const PredictionLab = ({ now, issues = [], disruptions = [], crowding = [], reli
     </div>}
 
     {show('context') && <div className="advanced-card"><div className="advanced-card-title"><strong>Predictive anomaly detection</strong><span>early warning</span></div>
+      {productionBadge('predictive-anomaly')}
       {explain('Searches for unusual gaps, bunching, missing feeds or low-confidence train positions that may need attention.')}
       {anomalies.length ? <ul className="advanced-evidence-list">{anomalies.slice(0, 6).map((item, index) => <li key={`${item.type}-${item.line}-${index}`}><strong>{item.line} · {item.type}</strong><span>{item.detail}</span><small>{item.severity}</small></li>)}</ul> : <p className="advanced-empty">No unusual pattern detected.</p>}
     </div>}

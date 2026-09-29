@@ -16,6 +16,14 @@ The registry covers the 17 experimental outputs:
 - `blocked` means the required upstream feed is not available (currently the
   S-Bahn live vehicle/delay feed).
 
+Six candidates also carry `production.stage = monitored-production`: multi-
+horizon delay, probabilistic delay bands, route reliability, headway/bunching,
+predictive anomaly detection and weather impact. This is a guarded app
+promotion, not a claim that each is a fully trained causal model. Their cards
+show evidence and confidence, use the shared Worker when available, and fall
+back to the browser's transparent estimate when a source is missing. The
+chronological holdout and model-monitoring reports continue independently.
+
 The report deliberately keeps these states separate from the transparent
 baseline cards. A card can show a useful live estimate while its learned model
 is still collecting labels. A candidate is not promoted to the map until a
