@@ -12,6 +12,7 @@ import FleetTracker from './components/FleetTracker';
 import AlertCenter from './components/AlertCenter';
 import StationDeparturesHub from './components/StationDeparturesHub';
 import ScenarioSimulator from './components/ScenarioSimulator';
+import ViennaNetworkPulse from './components/ViennaNetworkPulse';
 import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
@@ -26,7 +27,7 @@ import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/n
 import { mobilityContextStore } from './services/mobilityContextStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3 } from 'lucide-react';
+import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3, Radio } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -47,6 +48,8 @@ function App() {
   const [alertCenterOpen, setAlertCenterOpen] = useState(false);
   const [stationHubOpen, setStationHubOpen] = useState(false);
   const [scenarioSimulatorOpen, setScenarioSimulatorOpen] = useState(false);
+  const [networkPulseOpen, setNetworkPulseOpen] = useState(false);
+  const [networkPulseSnapshot, setNetworkPulseSnapshot] = useState({ vehicles: [], updatedAt: 0 });
   const [replayOffset, setReplayOffset] = useState(0);
   const [intelligenceSnapshot, setIntelligenceSnapshot] = useState(
     networkIntelligenceStore.getSnapshot()
@@ -270,6 +273,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setSelectedStation(station);
   };
 
@@ -283,6 +287,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setSelectedVehicle(vehicle);
   };
 
@@ -438,6 +443,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setIntelligenceInitialTab('forecast');
     setIntelligenceOpen((open) => !open);
   };
@@ -451,6 +457,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setCommuteOpen(false);
     setReplayOffset(0);
     setIntelligenceInitialTab('delays');
@@ -467,6 +474,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setFleetTrackerOpen(true);
   };
 
@@ -480,6 +488,7 @@ function App() {
     setFleetTrackerOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setAlertCenterOpen(true);
   };
 
@@ -493,6 +502,7 @@ function App() {
     setFleetTrackerOpen(false);
     setAlertCenterOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setStationHubOpen(true);
   };
 
@@ -506,6 +516,7 @@ function App() {
     setFleetTrackerOpen(false);
     setAlertCenterOpen(false);
     setStationHubOpen(false);
+    setNetworkPulseOpen(false);
     setScenarioSimulatorOpen(true);
   };
 
@@ -519,6 +530,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setCommuteOpen((open) => !open);
   };
 
@@ -528,7 +540,39 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
     setReplayOffset(0);
+  };
+
+  // The pulse panel owns a lightweight five-second snapshot while it is open.
+  // This keeps the animated view aligned with the map without adding another
+  // permanent network poll for users who never open it.
+  useEffect(() => {
+    if (!networkPulseOpen) return undefined;
+    const update = () => {
+      const updatedAt = Date.now();
+      setNetworkPulseSnapshot({
+        vehicles: trainPositionEngine.getAllVehicles(updatedAt),
+        updatedAt,
+      });
+    };
+    update();
+    const timer = setInterval(update, 5000);
+    return () => clearInterval(timer);
+  }, [networkPulseOpen]);
+
+  const openNetworkPulse = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setCommuteOpen(false);
+    setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen((open) => !open);
   };
 
   return (
@@ -606,6 +650,16 @@ function App() {
             aria-label="Open all-trains live tracker"
           >
             <TrainFront size={18} />
+          </button>
+          <button
+            onClick={openNetworkPulse}
+            className={`top-action-button pulse-action ${networkPulseOpen ? 'top-action-active' : ''}`}
+            data-label="Pulse"
+            title="Show Vienna live network pulse"
+            aria-label="Show Vienna live network pulse"
+            aria-pressed={networkPulseOpen}
+          >
+            <Radio size={18} />
           </button>
           <button
             onClick={openDelayPanel}
@@ -689,6 +743,15 @@ function App() {
           </button>
         </div>
       </div>
+
+      {networkPulseOpen && (
+        <ViennaNetworkPulse
+          vehicles={networkPulseSnapshot.vehicles}
+          alerts={disruptionSnapshot.alerts}
+          updatedAt={networkPulseSnapshot.updatedAt || Date.now()}
+          onClose={() => setNetworkPulseOpen(false)}
+        />
+      )}
 
 
       {/* Active Line Filter Banner */}

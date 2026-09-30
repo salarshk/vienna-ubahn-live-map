@@ -265,6 +265,7 @@ body {
 .top-action-button.scenario-action { color: #b388ff; }
 .top-action-button.intelligence-action { color: #4caf50; }
 .top-action-button.commute-action { color: #ffd166; }
+.top-action-button.pulse-action { color: #64d8cb; }
 .top-action-button.theme-action { color: var(--text-secondary); }
 @media (hover: hover) and (pointer: fine) {
   .top-action-button[data-label]::after { content: attr(data-label); position: absolute; top: calc(100% + 7px); left: 50%; z-index: 220; padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 5px; color: var(--text-primary); background: var(--bg-panel-solid); box-shadow: var(--shadow-panel); font-size: .52rem; font-weight: 800; line-height: 1; opacity: 0; pointer-events: none; transform: translate(-50%, -3px); transition: opacity .12s ease, transform .12s ease; white-space: nowrap; }
@@ -1771,6 +1772,63 @@ button:active {
   color: var(--text-primary);
 }
 
+/* ── Vienna adaptation of the live all-trains video view ──────────────── */
+.vienna-network-pulse {
+  position: fixed;
+  z-index: 58;
+  top: calc(78px + env(safe-area-inset-top, 0px));
+  left: 18px;
+  width: min(402px, calc(100vw - 36px));
+  max-height: calc(var(--app-height) - 98px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 15px;
+  border: 1px solid rgba(100, 216, 203, .38);
+  border-radius: 15px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-panel-solid) 90%, #071e27 10%);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .42), 0 0 0 1px rgba(100, 216, 203, .06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: slideUp 260ms cubic-bezier(.16, 1, .3, 1);
+  scrollbar-width: thin;
+}
+.vienna-pulse-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.vienna-pulse-heading { min-width: 0; }
+.vienna-pulse-kicker { display: flex; align-items: center; gap: 6px; color: #64d8cb; font-size: .56rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.vienna-pulse-heading h2 { margin: 5px 0 3px; font-size: 1.25rem; letter-spacing: -.025em; }
+.vienna-pulse-heading p { margin: 0; color: var(--text-secondary); font-size: .62rem; line-height: 1.4; }
+.vienna-pulse-close { flex: 0 0 auto; width: 29px; height: 29px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-secondary); background: var(--bg-hover); }
+.vienna-pulse-close:hover, .vienna-pulse-close:focus-visible { color: var(--text-primary); background: var(--bg-hover-active); }
+.vienna-pulse-clock { display: flex; align-items: baseline; gap: 7px; margin: 13px 0 10px; padding: 9px 10px; border: 1px solid rgba(100, 216, 203, .22); border-radius: 9px; color: #64d8cb; background: rgba(100, 216, 203, .06); }
+.vienna-pulse-clock strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.vienna-pulse-clock span { margin-left: auto; color: var(--text-secondary); font-size: .56rem; }
+.vienna-pulse-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.vienna-pulse-stats > div { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; align-items: center; min-width: 0; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; color: #80a8ff; background: var(--bg-hover); }
+.vienna-pulse-stats > div > svg, .vienna-pulse-stats > div > span:first-child { grid-row: span 2; }
+.vienna-pulse-stats > div > span { color: var(--text-secondary); font-size: .54rem; }
+.vienna-pulse-stats > div > strong { color: var(--text-primary); font-size: .86rem; font-variant-numeric: tabular-nums; }
+.vienna-pulse-stats .fresh { color: #64d8cb; }
+.vienna-pulse-stats .fresh > span:first-child { color: #64d8cb; font-size: .7rem; }
+.vienna-pulse-stat-mark { width: 17px; height: 17px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; color: #fff !important; background: #6f7f99; font-size: .57rem !important; font-weight: 900; }
+.vienna-pulse-section { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--border-color); }
+.vienna-pulse-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.vienna-pulse-section-title strong { font-size: .68rem; }
+.vienna-pulse-section-title span { overflow: hidden; color: var(--text-secondary); font-size: .54rem; text-overflow: ellipsis; white-space: nowrap; }
+.vienna-pulse-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.vienna-pulse-legend span { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--text-secondary); font-size: .54rem; }
+.vienna-pulse-legend i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; }
+.vienna-pulse-legend b { margin-left: auto; color: var(--text-primary); font-size: .62rem; font-variant-numeric: tabular-nums; }
+.vienna-pulse-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 9px; }
+.vienna-pulse-lines span { min-width: 24px; padding: 3px 5px; border: 1px solid; border-radius: 5px; font-size: .54rem; font-weight: 900; text-align: center; }
+.vienna-pulse-lines small { color: var(--text-secondary); font-size: .55rem; }
+.vienna-pulse-chart { height: 90px; display: flex; align-items: flex-end; gap: 3px; padding: 8px 4px 0; border-bottom: 1px solid var(--border-color); background: repeating-linear-gradient(to top, transparent 0, transparent 29px, rgba(128, 168, 255, .09) 30px); }
+.vienna-pulse-chart button { min-width: 4px; flex: 1 1 0; padding: 0; border: 0; border-radius: 3px 3px 0 0; background: rgba(128, 168, 255, .35); transition: background .15s ease, transform .15s ease; }
+.vienna-pulse-chart button:hover, .vienna-pulse-chart button.active { background: #64d8cb; transform: translateY(-2px); }
+.vienna-pulse-slider { width: 100%; margin: 8px 0 1px; accent-color: #64d8cb; }
+.vienna-pulse-chart-scale { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: .5rem; font-variant-numeric: tabular-nums; }
+.vienna-pulse-note { margin: 8px 0 0; color: var(--text-secondary); font-size: .55rem; line-height: 1.4; }
+
 /* Responsive Rules for Mobile */
 @media (max-width: 768px) {
   .sidebar {
@@ -1861,6 +1919,10 @@ button:active {
 
   .nearby-stations, .commute-dashboard { right: 12px; width: calc(100vw - 24px); }
   .follow-gps-button { right: 12px; }
+
+  .vienna-network-pulse { top: calc(68px + env(safe-area-inset-top, 0px)); left: 10px; width: calc(100vw - 20px); max-height: calc(100dvh - 82px - env(safe-area-inset-top, 0px)); padding: 13px; }
+  .vienna-pulse-heading h2 { font-size: 1.1rem; }
+  .vienna-pulse-clock strong { font-size: 1.2rem; }
 }
 
 @media (max-width: 819px) {
