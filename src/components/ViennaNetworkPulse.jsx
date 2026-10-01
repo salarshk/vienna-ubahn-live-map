@@ -52,7 +52,7 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
   const latestVehiclesRef = useRef(vehicles);
   const latestAlertsRef = useRef(alerts);
   const latestTimeRef = useRef(updatedAt);
-  const [samples, setSamples] = useState(() => [sampleFrom(vehicles, alerts, updatedAt)]);
+  const [samples, setSamples] = useState(() => (updatedAt ? [sampleFrom(vehicles, alerts, updatedAt)] : []));
   const [cursor, setCursor] = useState(0);
 
   useEffect(() => {

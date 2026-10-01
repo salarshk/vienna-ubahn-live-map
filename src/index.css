@@ -1815,8 +1815,8 @@ button:active {
 .vienna-pulse-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 9px; }
 .vienna-pulse-lines span { min-width: 24px; padding: 3px 5px; border: 1px solid; border-radius: 5px; font-size: .54rem; font-weight: 900; text-align: center; }
 .vienna-pulse-lines small { color: var(--text-secondary); font-size: .55rem; }
-.vienna-pulse-chart { height: 90px; display: flex; align-items: flex-end; gap: 3px; padding: 8px 4px 0; border-bottom: 1px solid var(--border-color); background: repeating-linear-gradient(to top, transparent 0, transparent 29px, rgba(128, 168, 255, .09) 30px); }
-.vienna-pulse-chart button { min-width: 4px; flex: 1 1 0; padding: 0; border: 0; border-radius: 3px 3px 0 0; background: rgba(128, 168, 255, .35); transition: background .15s ease, transform .15s ease; }
+.vienna-pulse-chart { height: 90px; display: flex; align-items: flex-end; justify-content: flex-end; gap: 3px; padding: 8px 4px 0; border-bottom: 1px solid var(--border-color); background: repeating-linear-gradient(to top, transparent 0, transparent 29px, rgba(128, 168, 255, .09) 30px); }
+.vienna-pulse-chart button { min-width: 4px; max-width: 18px; flex: 1 1 18px; padding: 0; border: 0; border-radius: 3px 3px 0 0; background: rgba(128, 168, 255, .35); transition: background .15s ease, transform .15s ease; }
 .vienna-pulse-chart button:hover, .vienna-pulse-chart button.active { background: #64d8cb; transform: translateY(-2px); }
 .vienna-pulse-slider { width: 100%; margin: 8px 0 1px; accent-color: #64d8cb; }
 .vienna-pulse-chart-scale { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: .5rem; font-variant-numeric: tabular-nums; }
