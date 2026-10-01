@@ -59,6 +59,19 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
     latestVehiclesRef.current = vehicles;
     latestAlertsRef.current = alerts;
     latestTimeRef.current = updatedAt;
+
+    // App receives the first live snapshot asynchronously. Capture that
+    // snapshot immediately instead of leaving the panel on its initial empty
+    // placeholder until the next five-second interval.
+    if (!updatedAt) return;
+    const next = sampleFrom(vehicles, alerts, updatedAt);
+    setSamples((previous) => {
+      const last = previous[previous.length - 1];
+      if (last && next.at <= last.at) return previous;
+      const bounded = [...previous, next].slice(-SAMPLE_LIMIT);
+      setCursor(bounded.length - 1);
+      return bounded;
+    });
   }, [vehicles, alerts, updatedAt]);
 
   useEffect(() => {
@@ -72,7 +85,6 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
         return bounded;
       });
     };
-    capture();
     const timer = setInterval(capture, 5000);
     return () => clearInterval(timer);
   }, []);
@@ -95,33 +107,35 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
 
   return (
     <section className="vienna-network-pulse" role="dialog" aria-label="Vienna live network pulse">
-      <header className="vienna-pulse-header">
-        <div className="vienna-pulse-heading">
-          <span className="vienna-pulse-kicker"><Radio size={13} /> Vienna · live rail pulse</span>
-          <h2>Every service in motion</h2>
-          <p>Wiener Linien and ÖBB positions currently visible on the map.</p>
+      <div className="vienna-pulse-card">
+        <header className="vienna-pulse-header">
+          <div className="vienna-pulse-heading">
+            <span className="vienna-pulse-kicker"><Radio size={13} /> Vienna · live rail pulse</span>
+            <h2>Every service in motion</h2>
+            <p>Wiener Linien and ÖBB positions currently visible on the map.</p>
+          </div>
+          <button className="vienna-pulse-close" onClick={onClose} aria-label="Close Vienna network pulse" title="Close pulse"><X size={17} /></button>
+        </header>
+
+        <div className="vienna-pulse-clock"><Clock3 size={16} /><strong>{formatClock(updatedAt)}</strong><span>Europe/Vienna</span></div>
+
+        <div className="vienna-pulse-stats">
+          <div><TrainFront size={16} /><span>Trains in view</span><strong>{list.length}</strong></div>
+          <div><Activity size={16} /><span>Live positions</span><strong>{live.length}</strong></div>
+          <div className="fresh"><span>●</span><span>Fresh under 3s</span><strong>{fresh.length}</strong></div>
+          <div><span className="vienna-pulse-stat-mark">L</span><span>Active lines</span><strong>{lines.length}</strong></div>
         </div>
-        <button className="vienna-pulse-close" onClick={onClose} aria-label="Close Vienna network pulse" title="Close pulse"><X size={17} /></button>
-      </header>
 
-      <div className="vienna-pulse-clock"><Clock3 size={16} /><strong>{formatClock(updatedAt)}</strong><span>Europe/Vienna</span></div>
-
-      <div className="vienna-pulse-stats">
-        <div><TrainFront size={16} /><span>Trains in view</span><strong>{list.length}</strong></div>
-        <div><Activity size={16} /><span>Live positions</span><strong>{live.length}</strong></div>
-        <div className="fresh"><span>●</span><span>Fresh under 3s</span><strong>{fresh.length}</strong></div>
-        <div><span className="vienna-pulse-stat-mark">L</span><span>Active lines</span><strong>{lines.length}</strong></div>
-      </div>
-
-      <div className="vienna-pulse-section">
-        <div className="vienna-pulse-section-title"><strong>Network mix</strong><span>{meanAge === null ? 'No age signal' : `mean feed age ${formatAge(meanAge)}`}</span></div>
-        <div className="vienna-pulse-legend">
-          {categories.map((category) => <span key={category.id}><i style={{ background: category.color }} />{category.label}<b>{category.count}</b></span>)}
-        </div>
-        <div className="vienna-pulse-lines" aria-label="Active Vienna lines">
-          {lines.slice(0, 18).map((line) => <span key={line} style={{ borderColor: lineColor(line), color: lineColor(line) }}>{line}</span>)}
-          {lines.length > 18 && <small>+{lines.length - 18} more</small>}
-          {!lines.length && <small>No vehicle lines in the current feed.</small>}
+        <div className="vienna-pulse-section">
+          <div className="vienna-pulse-section-title"><strong>Network mix</strong><span>{meanAge === null ? 'No age signal' : `mean feed age ${formatAge(meanAge)}`}</span></div>
+          <div className="vienna-pulse-legend">
+            {categories.map((category) => <span key={category.id}><i style={{ background: category.color }} />{category.label}<b>{category.count}</b></span>)}
+          </div>
+          <div className="vienna-pulse-lines" aria-label="Active Vienna lines">
+            {lines.slice(0, 18).map((line) => <span key={line} style={{ borderColor: lineColor(line), color: lineColor(line) }}>{line}</span>)}
+            {lines.length > 18 && <small>+{lines.length - 18} more</small>}
+            {!lines.length && <small>No vehicle lines in the current feed.</small>}
+          </div>
         </div>
       </div>
 
