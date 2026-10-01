@@ -1783,6 +1783,15 @@ button:active {
   background: linear-gradient(180deg, rgba(3, 7, 14, .36), transparent 28%, transparent 72%, rgba(3, 7, 14, .28));
   animation: vienna-pulse-fade-in 260ms ease-out;
 }
+.vienna-pulse-mode .top-bar-container,
+.vienna-pulse-mode .sidebar,
+.vienna-pulse-mode .locate-button,
+.vienna-pulse-mode .nearby-stations,
+.vienna-pulse-mode .follow-gps-button,
+.vienna-pulse-mode .data-provenance-legend,
+.vienna-pulse-mode .active-filter-banner,
+.vienna-pulse-mode .pwa-update-banner,
+.vienna-pulse-mode .replay-active-banner { opacity: 0; pointer-events: none; transition: opacity .18s ease; }
 .vienna-pulse-card { position: absolute; top: calc(78px + env(safe-area-inset-top, 0px)); left: 18px; width: min(402px, calc(100vw - 36px)); max-height: calc(var(--app-height) - 190px); overflow-y: auto; overscroll-behavior: contain; padding: 15px; border: 1px solid rgba(100, 216, 203, .38); border-radius: 15px; background: color-mix(in srgb, var(--bg-panel-solid) 90%, #071e27 10%); box-shadow: 0 18px 48px rgba(0, 0, 0, .42), 0 0 0 1px rgba(100, 216, 203, .06); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); pointer-events: auto; scrollbar-width: thin; }
 @keyframes vienna-pulse-fade-in { from { opacity: 0; } to { opacity: 1; } }
 .vienna-pulse-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

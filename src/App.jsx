@@ -576,7 +576,7 @@ function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${networkPulseOpen ? 'vienna-pulse-mode' : ''}`}>
       {/* Full-screen interactive map */}
       <MapView
         theme={theme}
