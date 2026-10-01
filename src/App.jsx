@@ -19,7 +19,7 @@ import trainPositionEngine from './services/trainPositionEngine';
 import { findVehicleForArrival } from './services/vehicleSelection';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
-import networkPulseStore, { NETWORK_PULSE_SAMPLE_INTERVAL_MS } from './services/networkPulseStore';
+import networkPulseStore, { compactNetworkPulseSample, NETWORK_PULSE_SAMPLE_INTERVAL_MS } from './services/networkPulseStore';
 import officialSnapshotStore from './services/officialSnapshotStore';
 import delayReportStore from './services/delayReportStore';
 import { buildCellIntelligence } from './services/gridIntelligence';
@@ -210,6 +210,17 @@ function App() {
       ? disruptionSnapshot.alerts.length
       : 0;
   }, [disruptionSnapshot.alerts]);
+
+  useEffect(() => {
+    const previousReplay = typeof networkIntelligenceStore.getReplayHistory === 'function'
+      ? networkIntelligenceStore.getReplayHistory()
+      : [];
+    networkPulseStore.seed(previousReplay.map((frame) => compactNetworkPulseSample(
+      frame.vehicles,
+      0,
+      frame.at,
+    )));
+  }, []);
 
   // Persist compact service-count observations independently of the Pulse UI.
   // That means a user can open the video-style view later and still see the

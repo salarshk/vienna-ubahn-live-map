@@ -345,6 +345,16 @@ class NetworkIntelligenceStore {
     ), null);
   }
 
+  // Expose the compact replay frames so other visualisations can reuse data
+  // already collected before they were opened. Callers decide how to derive
+  // their own bounded metrics; raw coordinates stay inside the browser.
+  getReplayHistory() {
+    return this.snapshots.map((snapshot) => ({
+      at: snapshot.at,
+      vehicles: snapshot.vehicles,
+    }));
+  }
+
   getReliabilityByLine() {
     const lines = ['U1', 'U2', 'U3', 'U4', 'U6'];
     return lines.map((line) => {

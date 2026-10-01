@@ -110,6 +110,16 @@ class NetworkPulseStore {
     return true;
   }
 
+  seed(samples = []) {
+    const merged = validSamples([...this.samples, ...(Array.isArray(samples) ? samples : [])]);
+    if (merged.length <= this.samples.length) return false;
+    this.samples = merged;
+    this.lastSampleAt = this.samples.at(-1)?.at || this.lastSampleAt;
+    this.persist(true);
+    this.notify();
+    return true;
+  }
+
   getSamples() { return this.samples.slice(); }
 
   getSnapshot() {
