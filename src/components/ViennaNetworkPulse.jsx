@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, Clock3, Radio, TrainFront, X } from 'lucide-react';
 import { lineColor } from '../utils/lineColor';
+import networkPulseStore from '../services/networkPulseStore';
 
 const SAMPLE_LIMIT = 36;
 
@@ -52,38 +53,32 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
   const latestVehiclesRef = useRef(vehicles);
   const latestAlertsRef = useRef(alerts);
   const latestTimeRef = useRef(updatedAt);
-  const [samples, setSamples] = useState(() => (updatedAt ? [sampleFrom(vehicles, alerts, updatedAt)] : []));
+  const [samples, setSamples] = useState(() => networkPulseStore.getSamples());
   const [cursor, setCursor] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = networkPulseStore.subscribe((snapshot) => {
+      setSamples(snapshot.samples);
+      setCursor(Math.max(0, snapshot.samples.length - 1));
+    });
+    // Capture an immediately available live snapshot if the always-on
+    // recorder has not reached its next five-second tick yet.
+    if (updatedAt) networkPulseStore.record(vehicles, alerts.length, updatedAt);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     latestVehiclesRef.current = vehicles;
     latestAlertsRef.current = alerts;
     latestTimeRef.current = updatedAt;
+    if (updatedAt) networkPulseStore.record(vehicles, alerts.length, updatedAt);
 
-    // App receives the first live snapshot asynchronously. Capture that
-    // snapshot immediately instead of leaving the panel on its initial empty
-    // placeholder until the next five-second interval.
-    if (!updatedAt) return;
-    const next = sampleFrom(vehicles, alerts, updatedAt);
-    setSamples((previous) => {
-      const last = previous[previous.length - 1];
-      if (last && next.at <= last.at) return previous;
-      const bounded = [...previous, next].slice(-SAMPLE_LIMIT);
-      setCursor(bounded.length - 1);
-      return bounded;
-    });
   }, [vehicles, alerts, updatedAt]);
 
   useEffect(() => {
     const capture = () => {
-      const next = sampleFrom(latestVehiclesRef.current, latestAlertsRef.current, latestTimeRef.current || Date.now());
-      setSamples((previous) => {
-        const last = previous[previous.length - 1];
-        if (last && next.at - last.at < 2500) return previous;
-        const bounded = [...previous, next].slice(-SAMPLE_LIMIT);
-        setCursor(bounded.length - 1);
-        return bounded;
-      });
+      const at = latestTimeRef.current || Date.now();
+      networkPulseStore.record(latestVehiclesRef.current, latestAlertsRef.current.length, at);
     };
     const timer = setInterval(capture, 5000);
     return () => clearInterval(timer);
@@ -102,8 +97,13 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
     const ages = live.map((vehicle) => Number(vehicle.lastDataAgeSeconds)).filter(Number.isFinite);
     return ages.length ? ages.reduce((sum, age) => sum + age, 0) / ages.length : null;
   }, [live]);
-  const maxTrains = Math.max(1, ...samples.map((sample) => sample.trains));
-  const selectedSample = samples[Math.min(cursor, Math.max(0, samples.length - 1))] || sampleFrom(list, alerts, updatedAt);
+  const chartSamples = useMemo(() => {
+    if (samples.length <= SAMPLE_LIMIT) return samples;
+    const step = (samples.length - 1) / (SAMPLE_LIMIT - 1);
+    return Array.from({ length: SAMPLE_LIMIT }, (_, index) => samples[Math.round(index * step)]);
+  }, [samples]);
+  const maxTrains = Math.max(1, ...chartSamples.map((sample) => sample.trains));
+  const selectedSample = chartSamples[Math.min(cursor, Math.max(0, chartSamples.length - 1))] || sampleFrom(list, alerts, updatedAt);
 
   return (
     <section className="vienna-network-pulse" role="dialog" aria-label="Vienna live network pulse">
@@ -142,11 +142,11 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
       <div className="vienna-pulse-section vienna-pulse-chart-section">
         <div className="vienna-pulse-section-title"><strong>Trains in service</strong><span>{formatClock(selectedSample.at)} · {selectedSample.trains} visible</span></div>
         <div className="vienna-pulse-chart" aria-label="Train count captured during this session">
-          {samples.map((sample, index) => <button key={`${sample.at}-${index}`} className={index === cursor ? 'active' : ''} style={{ height: `${Math.max(8, (sample.trains / maxTrains) * 100)}%` }} onClick={() => setCursor(index)} aria-label={`${sample.trains} trains at ${formatClock(sample.at)}`} />)}
+          {chartSamples.map((sample, index) => <button key={`${sample.at}-${index}`} className={index === cursor ? 'active' : ''} style={{ height: `${Math.max(8, (sample.trains / maxTrains) * 100)}%` }} onClick={() => setCursor(index)} aria-label={`${sample.trains} trains at ${formatClock(sample.at)}`} />)}
         </div>
-        <input className="vienna-pulse-slider" type="range" min="0" max={Math.max(0, samples.length - 1)} value={Math.min(cursor, Math.max(0, samples.length - 1))} onChange={(event) => setCursor(Number(event.target.value))} aria-label="Session pulse timeline" />
-        <div className="vienna-pulse-chart-scale"><span>{formatClock(samples[0]?.at || updatedAt)}</span><span>now {formatClock(updatedAt)}</span></div>
-        <p className="vienna-pulse-note">The timeline starts when this pulse is opened and records one sample every five seconds. It is a live session trace, not backfilled historical data.</p>
+        <input className="vienna-pulse-slider" type="range" min="0" max={Math.max(0, chartSamples.length - 1)} value={Math.min(cursor, Math.max(0, chartSamples.length - 1))} onChange={(event) => setCursor(Number(event.target.value))} aria-label="Stored Vienna network timeline" />
+        <div className="vienna-pulse-chart-scale"><span>{formatClock(chartSamples[0]?.at || updatedAt)}</span><span>now {formatClock(updatedAt)}</span></div>
+        <p className="vienna-pulse-note">Compact service counts are stored locally for up to 24 hours and reused here when you reopen Pulse. The raw train feed and coordinates are not duplicated.</p>
       </div>
     </section>
   );

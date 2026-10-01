@@ -19,6 +19,7 @@ import trainPositionEngine from './services/trainPositionEngine';
 import { findVehicleForArrival } from './services/vehicleSelection';
 import disruptionStore, { REFRESH_INTERVAL_MS as DISRUPTION_REFRESH_MS } from './services/disruptionStore';
 import networkIntelligenceStore from './services/networkIntelligence';
+import networkPulseStore, { NETWORK_PULSE_SAMPLE_INTERVAL_MS } from './services/networkPulseStore';
 import officialSnapshotStore from './services/officialSnapshotStore';
 import delayReportStore from './services/delayReportStore';
 import { buildCellIntelligence } from './services/gridIntelligence';
@@ -86,6 +87,7 @@ function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const followCleanupRef = useRef(null);
   const seenDisruptionIdsRef = useRef(new Set());
+  const pulseAlertCountRef = useRef(0);
 
   useEffect(() => {
     const captureInstallPrompt = (event) => {
@@ -202,6 +204,34 @@ function App() {
     }
     seenDisruptionIdsRef.current = ids;
   }, [disruptionSnapshot.alerts]);
+
+  useEffect(() => {
+    pulseAlertCountRef.current = Array.isArray(disruptionSnapshot.alerts)
+      ? disruptionSnapshot.alerts.length
+      : 0;
+  }, [disruptionSnapshot.alerts]);
+
+  // Persist compact service-count observations independently of the Pulse UI.
+  // That means a user can open the video-style view later and still see the
+  // recent timeline gathered while the ordinary map was running.
+  useEffect(() => {
+    const record = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const at = Date.now();
+      networkPulseStore.record(
+        trainPositionEngine.getAllVehicles(at),
+        pulseAlertCountRef.current,
+        at,
+      );
+    };
+    record();
+    const timer = setInterval(record, NETWORK_PULSE_SAMPLE_INTERVAL_MS);
+    document.addEventListener('visibilitychange', record);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', record);
+    };
+  }, []);
 
   useEffect(() => {
     const record = () => networkIntelligenceStore.record();
