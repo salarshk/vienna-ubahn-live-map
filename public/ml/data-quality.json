@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-02T14:37:03.251Z",
+  "status": "watch",
+  "sources": {
+    "ubahn": {
+      "files": 23,
+      "rows": 72431,
+      "stations": 99,
+      "liveRows": 72431,
+      "earliest": 1789038687406,
+      "latest": 1790951776881,
+      "ageMinutes": 1
+    },
+    "workerSnapshots": {
+      "snapshots": 0,
+      "rows": 0,
+      "earliest": null,
+      "latest": null,
+      "ageMinutes": null
+    },
+    "mobilityContextWorker": {
+      "snapshots": 0,
+      "rows": 0,
+      "earliest": null,
+      "latest": null,
+      "ageMinutes": null
+    },
+    "mobilityContextCollector": {
+      "snapshots": 2,
+      "rows": 0,
+      "earliest": null,
+      "latest": null,
+      "ageMinutes": null
+    },
+    "weatherContext": {
+      "files": 1,
+      "rows": 552,
+      "stations": 0,
+      "liveRows": 0,
+      "earliest": 1788998400000,
+      "latest": 1790982000000,
+      "ageMinutes": 0
+    },
+    "sbahn": {
+      "status": "blocked-live-source",
+      "note": "ÖBB timetable/archive data is retained; no live vehicle-delay feed is connected."
+    }
+  },
+  "collectionHealth": {
+    "status": "ok",
+    "stationsRequested": 469,
+    "stationsSuccessful": 469,
+    "rowsCollected": 1055
+  },
+  "labels": {
+    "delayActual": 72431,
+    "trafficJam": 0,
+    "incidentContext": 58277,
+    "exactGps": 0,
+    "crowdProxy": 72431,
+    "cancellation": "not available",
+    "transferOutcome": "not available",
+    "eventAttendance": "not available"
+  },
+  "warnings": [
+    "no Worker snapshots restored from R2"
+  ]
+}
