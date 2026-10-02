@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "source": "wiener-linien",
-  "observedAt": 1790934722505,
+  "observedAt": 1790950871102,
   "status": "ok",
   "stationsRequested": 469,
   "stationsSuccessful": 469,
   "batchesFailed": 0,
   "failedBatches": [],
-  "rowsCollected": 766,
-  "liveRows": 766,
+  "rowsCollected": 1053,
+  "liveRows": 1053,
   "incidentsAvailable": true,
   "newsAvailable": true
 }
