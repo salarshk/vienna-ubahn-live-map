@@ -4,6 +4,7 @@ import {
   parseGbfs,
   parseGeoSphereNowcast,
   parseHolidays,
+  parseTrafficCounterLocations,
 } from './mobilityContextStore';
 
 describe('mobility context parsers', () => {
@@ -42,5 +43,14 @@ describe('mobility context parsers', () => {
       { startDate: '2026-10-26', endDate: '2026-10-31', name: 'Autumn break' },
     ], new Date('2026-09-17T12:00:00Z').getTime());
     expect(result).toMatchObject({ isPublicHoliday: true, isSchoolHoliday: false, next: { date: '2026-10-26' } });
+  });
+
+  it('normalises public Vienna traffic-counter locations without inventing measurements', () => {
+    const result = parseTrafficCounterLocations({ features: [{
+      geometry: { type: 'Point', coordinates: [16.37, 48.21] },
+      properties: { ZST_ID: '42', ZST_NAME: 'Ring / Oper', STRASSE: 'Ringstraße' },
+    }] });
+    expect(result).toMatchObject({ stationCount: 1, valuesStatus: 'not connected' });
+    expect(result.locations[0]).toMatchObject({ id: '42', name: 'Ring / Oper', lat: 48.21, lon: 16.37 });
   });
 });

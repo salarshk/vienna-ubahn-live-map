@@ -10,6 +10,7 @@ import {
   predictTrafficAwareTrams,
 } from './transportIntelligence';
 import { buildTramPredictions } from './tramIntelligence';
+import { buildUrbanMobilityForecast } from './urbanMobilityModels';
 
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 const clamp = (value, low = 0, high = 100) => Math.max(low, Math.min(high, Number(value) || 0));
@@ -52,6 +53,10 @@ export const DATA_MODEL_CATALOG = [
   { id: 'airport-arrival-wave', name: 'Airport arrival-wave pressure', description: 'Estimates pressure on S7, CAT, airport buses and taxi fallbacks from airport activity.', inputs: 'Airport arrivals or aircraft activity + rail state', source: 'airport-flights' },
   { id: 'event-crowding', name: 'Event crowd forecast', description: 'Projects station pressure from nearby event records, attendance signals and disruption overlap.', inputs: 'Vienna events + calendar + rail pressure', source: 'vienna-events' },
   { id: 'environmental-comfort', name: 'Environmental transfer comfort', description: 'Ranks outdoor transfer conditions using rain, wind, temperature and pollutants.', inputs: 'GeoSphere weather + air quality', source: 'air-quality,geosphere-nowcast' },
+  { id: 'traffic-congestion-forecast', name: 'Road congestion forecast', description: 'Forecasts surface-access pressure 15, 30 and 60 minutes ahead.', inputs: 'Vienna counters + EVIS + time-of-day prior', source: 'vienna-traffic-counters' },
+  { id: 'event-impact-forecast', name: 'Event impact forecast', description: 'Ranks the likely station pressure created by active Vienna events.', inputs: 'Event records + rail state + calendar', source: 'vienna-events' },
+  { id: 'station-pressure-forecast', name: 'Station pressure forecast', description: 'Combines road, event, weather and rail signals into a station-pressure warning.', inputs: 'Urban context + rail observations', source: 'all' },
+  { id: 'multimodal-journey-risk', name: 'Multimodal journey risk', description: 'Estimates whether a rail journey needs extra margin or a surface fallback.', inputs: 'Traffic + events + weather + delay risk', source: 'all' },
 ];
 
 const averageDelay = (arrivals) => {
@@ -83,6 +88,7 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
   const airportWave = predictAirportArrivalWave({ context, now });
   const eventCrowding = predictEventCrowding({ context, disruptions, now });
   const environmental = estimateEnvironmentalComfort({ context, now });
+  const urbanForecast = buildUrbanMobilityForecast({ context, railRisk: incidentScore, now });
   const fallbackOptions = buildMultimodalFallbacks({ context, lineRisk: incidentScore, disruptions, now });
   const decisions = LINES.map((line) => {
     const lineIssues = issues.filter((item) => item.line === line);
@@ -117,6 +123,10 @@ export const buildDataDrivenModels = ({ context = {}, sources = {}, arrivals = [
     make('airport-arrival-wave', `${airportWave.railPressureLevel} airport corridor pressure · ${airportWave.activity} activity observations`, airportWave.railPressureScore, { confidence: airportWave.confidence, airportWave }),
     make('event-crowding', `${eventCrowding.level} event pressure · ${eventCrowding.events} event records`, eventCrowding.score, { confidence: eventCrowding.confidence, eventCrowding }),
     make('environmental-comfort', `${environmental.level} outdoor transfer conditions · ${environmental.score}/100`, 100 - environmental.score, { confidence: environmental.confidence, environmental }),
+    make('traffic-congestion-forecast', `${riskLabel(urbanForecast.horizons[1]?.score || 0)} road pressure in 30 min · ${urbanForecast.traffic.observations} observations`, urbanForecast.horizons[1]?.score || 0, { confidence: urbanForecast.confidence, urbanForecast }),
+    make('event-impact-forecast', `${riskLabel(urbanForecast.events.score)} event pressure · ${urbanForecast.events.active} active`, urbanForecast.events.score, { confidence: urbanForecast.confidence, urbanForecast }),
+    make('station-pressure-forecast', `${riskLabel(urbanForecast.stationPressure)} station pressure · ${urbanForecast.warnings[0] || 'no active context warning'}`, urbanForecast.stationPressure, { confidence: urbanForecast.confidence, urbanForecast }),
+    make('multimodal-journey-risk', `${riskLabel(urbanForecast.multimodalRisk)} multimodal risk · ${urbanForecast.horizons.map((item) => `${item.minutes}m ${item.score}`).join(' / ')}`, urbanForecast.multimodalRisk, { confidence: urbanForecast.confidence, urbanForecast }),
   ];
   const remoteLines = Array.isArray(remoteModels?.lines) ? remoteModels.lines : [];
   if (!remoteLines.length) return localModels;

@@ -11,6 +11,7 @@ import imageLineColors from '../data/line_colors_from_image.json';
 import lineRenderConfig from '../data/line_render_config.js';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
 import { cellsToGeoJSON } from '../services/gridIntelligence';
+import { parseUrbanEvents, parseUrbanTraffic } from '../services/urbanMobilityModels';
 
 // MapLibre derives its worker's URL from import.meta.url, which resolves to a
 // file Vite's bundler never writes (maplibre-gl is bundled into the app chunk,
@@ -263,6 +264,27 @@ const snappedCoordinates = (station) => {
 const lineGeoJSON    = { type: 'FeatureCollection', features: lineFeatures };
 const emptyFeatureCollection = { type: 'FeatureCollection', features: [] };
 
+const mobilityPoints = (context = {}, visible = false) => {
+  if (!visible) return { traffic: emptyFeatureCollection, events: emptyFeatureCollection };
+  const traffic = parseUrbanTraffic(context);
+  const rawTraffic = context.urbanTraffic?.observations || context['evis-traffic']?.observations || context['evis-traffic']?.data || context['vienna-traffic-counters']?.measurements || [];
+  const locations = context['vienna-traffic-counters']?.locations || context.trafficCounterLocations || [];
+  const rows = Array.isArray(rawTraffic) && rawTraffic.length ? rawTraffic : locations;
+  const trafficFeatures = rows.map((row, index) => {
+    const lat = Number(row.lat ?? row.latitude ?? row.y ?? row.coordinates?.[1]);
+    const lon = Number(row.lon ?? row.lng ?? row.longitude ?? row.x ?? row.coordinates?.[0]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const score = Number(row.congestionScore ?? row.score ?? (traffic.observations ? traffic.congestionScore : 15));
+    return { type: 'Feature', id: `traffic-${row.id || index}`, geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { score: Math.max(0, Math.min(100, score)), label: row.name || row.road || 'Traffic counter', measured: traffic.observations > 0 } };
+  }).filter(Boolean);
+  const events = parseUrbanEvents(context).events;
+  const eventFeatures = events.map((event, index) => {
+    if (!Number.isFinite(event.lat) || !Number.isFinite(event.lon)) return null;
+    return { type: 'Feature', id: `event-${event.id || index}`, geometry: { type: 'Point', coordinates: [event.lon, event.lat] }, properties: { score: Math.min(100, 35 + (Number(event.attendance) || 0) / 500), label: event.title || 'Vienna event' } };
+  }).filter(Boolean);
+  return { traffic: { type: 'FeatureCollection', features: trafficFeatures }, events: { type: 'FeatureCollection', features: eventFeatures } };
+};
+
 // Build a color lookup from line id → color from actual GeoJSON data,
 // allowing overrides from the sampled image colors file.
 const lineColorMap = Object.fromEntries(
@@ -466,6 +488,8 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
     'cell-intelligence': { type: 'geojson', data: emptyFeatureCollection },
+    'mobility-traffic': { type: 'geojson', data: emptyFeatureCollection },
+    'mobility-events': { type: 'geojson', data: emptyFeatureCollection },
   },
   layers: [
     { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
@@ -477,6 +501,15 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
         'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#82958b'],
       },
     },
+    { id: 'mobility-traffic-points', type: 'circle', source: 'mobility-traffic', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 12, 5, 16, 8],
+      'circle-color': ['interpolate', ['linear'], ['get', 'score'], 0, '#4caf50', 40, '#ffb74d', 70, '#ff5252'],
+      'circle-opacity': 0.75, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1,
+    } },
+    { id: 'mobility-event-points', type: 'circle', source: 'mobility-events', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 3, 12, 6, 16, 10],
+      'circle-color': '#b388ff', 'circle-opacity': 0.82, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5,
+    } },
     ...structuredClone(metroLayers),
   ],
 });
@@ -503,6 +536,8 @@ const buildVectorStyle = (flavour) => ({
     'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
     'cell-intelligence': { type: 'geojson', data: emptyFeatureCollection },
+    'mobility-traffic': { type: 'geojson', data: emptyFeatureCollection },
+    'mobility-events': { type: 'geojson', data: emptyFeatureCollection },
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
@@ -515,6 +550,15 @@ const buildVectorStyle = (flavour) => ({
         'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#82958b'],
       },
     },
+    { id: 'mobility-traffic-points', type: 'circle', source: 'mobility-traffic', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 12, 5, 16, 8],
+      'circle-color': ['interpolate', ['linear'], ['get', 'score'], 0, '#4caf50', 40, '#ffb74d', 70, '#ff5252'],
+      'circle-opacity': 0.75, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1,
+    } },
+    { id: 'mobility-event-points', type: 'circle', source: 'mobility-events', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['get', 'score'], 0, 3, 100, 10],
+      'circle-color': '#b388ff', 'circle-opacity': 0.82, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5,
+    } },
     ...structuredClone(metroLayers),
     ...labels('protomaps', flavour, 'en'),
   ],
@@ -759,6 +803,7 @@ const MapView = ({
   reliabilityScores = [],
   gridCells = [], cellGridVisible = false,
   onSelectCell,
+  mobilityContext = {}, mobilityVisible = false,
 }) => {
   const containerRef    = useRef(null);
   const mapRef          = useRef(null);
@@ -779,6 +824,8 @@ const MapView = ({
   const reliabilityRef  = useRef(reliabilityScores);
   const gridCellsRef = useRef(gridCells);
   const cellGridVisibleRef = useRef(cellGridVisible);
+  const mobilityContextRef = useRef(mobilityContext);
+  const mobilityVisibleRef = useRef(mobilityVisible);
   const disruptionsRef  = useRef(disruptions);
   const selectStRef     = useRef(onSelectStation);
   const selectVehicleRef= useRef(onSelectVehicle);
@@ -809,11 +856,19 @@ const MapView = ({
   useEffect(() => { disruptionsRef.current = disruptions; }, [disruptions]);
   useEffect(() => { gridCellsRef.current = gridCells; }, [gridCells]);
   useEffect(() => { cellGridVisibleRef.current = cellGridVisible; }, [cellGridVisible]);
+  useEffect(() => { mobilityContextRef.current = mobilityContext; }, [mobilityContext]);
+  useEffect(() => { mobilityVisibleRef.current = mobilityVisible; }, [mobilityVisible]);
 
   const updateCellGrid = (map) => {
     const source = map?.getSource('cell-intelligence');
     if (!source || typeof source.setData !== 'function') return;
     source.setData(cellsToGeoJSON(gridCellsRef.current, cellGridVisibleRef.current));
+  };
+
+  const updateMobilityLayer = (map) => {
+    const points = mobilityPoints(mobilityContextRef.current, mobilityVisibleRef.current);
+    map?.getSource('mobility-traffic')?.setData?.(points.traffic);
+    map?.getSource('mobility-events')?.setData?.(points.events);
   };
 
   const updateReliabilityAtlas = (map) => {
@@ -1452,6 +1507,7 @@ const MapView = ({
       applyLineFilter(map, filterRef.current);
       updateReliabilityAtlas(map);
       updateCellGrid(map);
+      updateMobilityLayer(map);
       arrivalStore.syncNetwork();
     });
 
@@ -1577,6 +1633,13 @@ const MapView = ({
     updateCellGrid(map);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridCells, cellGridVisible]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    updateMobilityLayer(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobilityContext, mobilityVisible]);
 
   useEffect(() => {
     const map = mapRef.current;

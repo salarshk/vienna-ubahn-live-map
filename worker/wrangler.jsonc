@@ -6,6 +6,12 @@
   "vars": {
     "OPENAI_MODEL": "gpt-5.4-mini",
     "ALLOWED_ORIGINS": "https://salarshk.github.io,http://localhost:5173,http://127.0.0.1:5173"
+    // Optional partner feeds used by /mobility-context. Configure these in
+    // Cloudflare Worker variables when access is available; the public
+    // counter-location catalog continues to work without them.
+    // "VIENNA_TRAFFIC_API_URL": "https://…",
+    // "EVIS_TRAFFIC_API_URL": "https://…",
+    // "VIENNA_EVENTS_API_URL": "https://…"
   },
   "triggers": {
     "crons": ["*/5 * * * *"]

@@ -12,6 +12,7 @@ import FleetTracker from './components/FleetTracker';
 import AlertCenter from './components/AlertCenter';
 import StationDeparturesHub from './components/StationDeparturesHub';
 import ScenarioSimulator from './components/ScenarioSimulator';
+import UrbanMobilityPanel from './components/UrbanMobilityPanel';
 import ViennaNetworkPulse from './components/ViennaNetworkPulse';
 import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
@@ -28,7 +29,7 @@ import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/n
 import { mobilityContextStore } from './services/mobilityContextStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
-import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3, Radio } from 'lucide-react';
+import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3, Radio, TrafficCone } from 'lucide-react';
 import './index.css';
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
@@ -49,6 +50,8 @@ function App() {
   const [alertCenterOpen, setAlertCenterOpen] = useState(false);
   const [stationHubOpen, setStationHubOpen] = useState(false);
   const [scenarioSimulatorOpen, setScenarioSimulatorOpen] = useState(false);
+  const [urbanMobilityOpen, setUrbanMobilityOpen] = useState(false);
+  const [mobilitySnapshot, setMobilitySnapshot] = useState(mobilityContextStore.getSnapshot());
   const [networkPulseOpen, setNetworkPulseOpen] = useState(false);
   const [networkPulseSnapshot, setNetworkPulseSnapshot] = useState({ vehicles: [], updatedAt: 0 });
   const [replayOffset, setReplayOffset] = useState(0);
@@ -77,7 +80,15 @@ function App() {
     movementTrails: true,
     reliabilityAtlas: false,
     cellGrid: false,
+    mobilityContext: false,
   });
+
+  useEffect(() => {
+    const unsubscribe = mobilityContextStore.subscribe(setMobilitySnapshot);
+    mobilityContextStore.refresh();
+    const timer = setInterval(() => mobilityContextStore.refresh(), 10 * 60 * 1000);
+    return () => { unsubscribe(); clearInterval(timer); };
+  }, []);
   const [cellGridSnapshot, setCellGridSnapshot] = useState({ cells: [], generatedAt: 0 });
   const [disruptionSnapshot, setDisruptionSnapshot] = useState(disruptionStore.getSnapshot());
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -314,6 +325,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setUrbanMobilityOpen(false);
     setNetworkPulseOpen(false);
     setSelectedStation(station);
   };
@@ -328,6 +340,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setUrbanMobilityOpen(false);
     setNetworkPulseOpen(false);
     setSelectedVehicle(vehicle);
   };
@@ -485,6 +498,7 @@ function App() {
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
     setNetworkPulseOpen(false);
+    setUrbanMobilityOpen(false);
     setIntelligenceInitialTab('forecast');
     setIntelligenceOpen((open) => !open);
   };
@@ -499,6 +513,7 @@ function App() {
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
     setNetworkPulseOpen(false);
+    setUrbanMobilityOpen(false);
     setCommuteOpen(false);
     setReplayOffset(0);
     setIntelligenceInitialTab('delays');
@@ -516,6 +531,7 @@ function App() {
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
     setNetworkPulseOpen(false);
+    setUrbanMobilityOpen(false);
     setFleetTrackerOpen(true);
   };
 
@@ -530,6 +546,7 @@ function App() {
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
     setNetworkPulseOpen(false);
+    setUrbanMobilityOpen(false);
     setAlertCenterOpen(true);
   };
 
@@ -544,6 +561,7 @@ function App() {
     setAlertCenterOpen(false);
     setScenarioSimulatorOpen(false);
     setNetworkPulseOpen(false);
+    setUrbanMobilityOpen(false);
     setStationHubOpen(true);
   };
 
@@ -557,6 +575,7 @@ function App() {
     setFleetTrackerOpen(false);
     setAlertCenterOpen(false);
     setStationHubOpen(false);
+    setUrbanMobilityOpen(false);
     setNetworkPulseOpen(false);
     setScenarioSimulatorOpen(true);
   };
@@ -571,6 +590,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setUrbanMobilityOpen(false);
     setNetworkPulseOpen(false);
     setCommuteOpen((open) => !open);
   };
@@ -583,6 +603,22 @@ function App() {
     setScenarioSimulatorOpen(false);
     setNetworkPulseOpen(false);
     setReplayOffset(0);
+    setUrbanMobilityOpen(false);
+  };
+
+  const openUrbanMobility = () => {
+    setSelectedStation(null);
+    setSelectedVehicle(null);
+    setSelectedAlert(null);
+    setAlertsOpen(false);
+    setCommuteOpen(false);
+    setIntelligenceOpen(false);
+    setFleetTrackerOpen(false);
+    setAlertCenterOpen(false);
+    setStationHubOpen(false);
+    setScenarioSimulatorOpen(false);
+    setNetworkPulseOpen(false);
+    setUrbanMobilityOpen((open) => !open);
   };
 
   // The pulse panel owns a lightweight five-second snapshot while it is open.
@@ -613,6 +649,7 @@ function App() {
     setAlertCenterOpen(false);
     setStationHubOpen(false);
     setScenarioSimulatorOpen(false);
+    setUrbanMobilityOpen(false);
     setNetworkPulseOpen((open) => !open);
   };
 
@@ -637,6 +674,8 @@ function App() {
         gridCells={cellGridSnapshot.cells}
         cellGridVisible={mapVisibility.cellGrid}
         onSelectCell={handleSelectCell}
+        mobilityContext={mobilitySnapshot.context}
+        mobilityVisible={mapVisibility.mobilityContext}
       />
 
       {/* Collapsible Sidebar */}
@@ -743,6 +782,16 @@ function App() {
             <Route size={18} color={scenarioSimulatorOpen ? '#b388ff' : undefined} />
           </button>
           <button
+            onClick={openUrbanMobility}
+            className={`top-action-button mobility-action ${urbanMobilityOpen ? 'top-action-active' : ''}`}
+            data-label="Mobility"
+            title="Open traffic, events and surface-access context"
+            aria-label="Open urban mobility context"
+            aria-pressed={urbanMobilityOpen}
+          >
+            <TrafficCone size={18} color={urbanMobilityOpen ? '#ffb74d' : undefined} />
+          </button>
+          <button
             onClick={openIntelligence}
             className={`top-action-button intelligence-action ${intelligenceOpen ? 'top-action-active' : ''}`}
             data-label="Intelligence"
@@ -793,6 +842,14 @@ function App() {
           onClose={() => setNetworkPulseOpen(false)}
         />
       )}
+
+      {urbanMobilityOpen && <UrbanMobilityPanel
+        snapshot={mobilitySnapshot}
+        railRisk={intelligenceSnapshot.issues.length * 18}
+        mapVisible={mapVisibility.mobilityContext}
+        onToggleMap={() => setMapVisibility((previous) => ({ ...previous, mobilityContext: !previous.mobilityContext }))}
+        onClose={() => setUrbanMobilityOpen(false)}
+      />}
 
 
       {/* Active Line Filter Banner */}

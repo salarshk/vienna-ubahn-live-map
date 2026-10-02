@@ -266,6 +266,7 @@ body {
 .top-action-button.intelligence-action { color: #4caf50; }
 .top-action-button.commute-action { color: #ffd166; }
 .top-action-button.pulse-action { color: #64d8cb; }
+.top-action-button.mobility-action { color: #ffb74d; }
 .top-action-button.theme-action { color: var(--text-secondary); }
 @media (hover: hover) and (pointer: fine) {
   .top-action-button[data-label]::after { content: attr(data-label); position: absolute; top: calc(100% + 7px); left: 50%; z-index: 220; padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 5px; color: var(--text-primary); background: var(--bg-panel-solid); box-shadow: var(--shadow-panel); font-size: .52rem; font-weight: 800; line-height: 1; opacity: 0; pointer-events: none; transform: translate(-50%, -3px); transition: opacity .12s ease, transform .12s ease; white-space: nowrap; }
@@ -516,6 +517,45 @@ button:active {
 /* ── Network intelligence, replay and reliability ─────────────────────── */
 
 .top-action-active { box-shadow: inset 0 0 0 1px rgba(76, 175, 80, .6); }
+
+/* City traffic/event context opened from the traffic-cone action. */
+.urban-mobility-panel { position: absolute; z-index: 34; top: 84px; right: 16px; width: min(390px, 36vw); max-height: calc(var(--app-height) - 104px); display: flex; flex-direction: column; overflow: hidden; animation: slideUp 280ms cubic-bezier(.16, 1, .3, 1); }
+.urban-mobility-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px; border-bottom: 1px solid var(--border-color); background: var(--bg-panel-solid); }
+.urban-mobility-header > div { display: flex; align-items: center; gap: 9px; min-width: 0; color: #ffb74d; }
+.urban-mobility-header > div > div { min-width: 0; }
+.urban-mobility-header strong, .urban-mobility-header span { display: block; }
+.urban-mobility-header strong { color: var(--text-primary); font-size: .86rem; }
+.urban-mobility-header span { margin-top: 2px; color: var(--text-secondary); font-size: .6rem; }
+.urban-mobility-scroll { min-height: 0; overflow-y: auto; padding: 13px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.urban-mobility-hero { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 4px 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: linear-gradient(135deg, rgba(255,183,77,.12), var(--bg-hover)); }
+.urban-mobility-hero span, .urban-mobility-hero small { grid-column: 1; color: var(--text-secondary); font-size: .53rem; letter-spacing: .08em; text-transform: uppercase; }
+.urban-mobility-hero strong { grid-column: 2; grid-row: 1 / span 2; font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+.urban-mobility-hero strong.routine, .urban-mobility-horizons b.routine { color: #80d98a; }
+.urban-mobility-hero strong.watch, .urban-mobility-horizons b.watch { color: #ffb74d; }
+.urban-mobility-hero strong.high, .urban-mobility-horizons b.high { color: #ff6b6b; }
+.urban-mobility-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.urban-mobility-cards > div { display: flex; gap: 7px; min-width: 0; padding: 9px; border-radius: 8px; background: var(--bg-hover); color: #ffb74d; }
+.urban-mobility-cards span, .urban-mobility-cards strong, .urban-mobility-cards small { display: block; }
+.urban-mobility-cards span { min-width: 0; color: var(--text-secondary); font-size: .56rem; }
+.urban-mobility-cards strong { margin-top: 2px; color: var(--text-primary); font-size: .77rem; font-variant-numeric: tabular-nums; }
+.urban-mobility-cards small { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .5rem; }
+.urban-mobility-horizons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.urban-mobility-horizons > strong { grid-column: 1 / -1; color: var(--text-secondary); font-size: .59rem; }
+.urban-mobility-horizons > div { padding: 8px; border-radius: 8px; background: var(--bg-hover); text-align: center; }
+.urban-mobility-horizons span, .urban-mobility-horizons b, .urban-mobility-horizons small { display: block; }
+.urban-mobility-horizons span, .urban-mobility-horizons small { color: var(--text-secondary); font-size: .5rem; }
+.urban-mobility-horizons b { margin: 3px 0; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.urban-mobility-warnings { margin-top: 9px; padding: 8px 10px; border-left: 3px solid #ffb74d; border-radius: 7px; background: rgba(255,183,77,.1); }
+.urban-mobility-warnings p { margin: 0; color: var(--text-primary); font-size: .58rem; line-height: 1.4; }
+.urban-mobility-warnings p + p { margin-top: 4px; }
+.urban-mobility-sources { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; color: var(--text-secondary); font-size: .55rem; line-height: 1.35; }
+.urban-mobility-sources strong { color: var(--text-primary); font-size: .62rem; }
+.urban-mobility-sources small { margin-top: 3px; font-size: .52rem; }
+.urban-mobility-actions { display: flex; gap: 6px; margin-top: 10px; }
+.urban-mobility-actions button { min-height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 7px; color: var(--text-secondary); background: var(--bg-hover); font-size: .56rem; font-weight: 800; }
+.urban-mobility-actions button:hover, .urban-mobility-actions button[aria-pressed="true"] { color: var(--text-primary); background: var(--bg-hover-active); }
+.urban-mobility-actions button:disabled { opacity: .6; }
+.urban-mobility-footnote { margin-top: 9px; color: var(--text-secondary); font-size: .51rem; line-height: 1.35; }
 
 .intelligence-panel {
   position: absolute;
@@ -1227,6 +1267,8 @@ button:active {
 .station-platform-guidance p { margin: 6px 0 0; color: var(--text-secondary); font-size: .55rem; line-height: 1.35; }
 
 @media (max-width: 819px) {
+  .urban-mobility-panel { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: min(66dvh, calc(100dvh - 10px)); border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .urban-mobility-header { padding: 13px 14px 11px; }
   .model-dashboard-overlay { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
   .model-dashboard { border-radius: 16px 16px 0 0; }
   .model-dashboard-header { padding: 13px 14px; }

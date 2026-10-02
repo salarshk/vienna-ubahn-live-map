@@ -1,4 +1,5 @@
 import { handleNetworkSnapshot } from './networkSnapshot';
+import { handleMobilityContext } from './mobilityContext';
 
 const DEFAULT_ORIGINS = [
   'https://salarshk.github.io',
@@ -176,6 +177,9 @@ export const handleRequest = async (request, env, fetchImpl = fetch, executionCo
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) });
   if (request.method === 'GET' && url.pathname.endsWith('/network-snapshot')) {
     return handleCachedNetworkSnapshot(request, env, fetchImpl, executionContext);
+  }
+  if (request.method === 'GET' && url.pathname.endsWith('/mobility-context')) {
+    return handleMobilityContext(request, env, fetchImpl, origin);
   }
   if (request.method === 'GET' && FEED_PATHS.has(url.pathname)) {
     if (!withinFeedRateLimit(request)) return json({ error: 'Too many feed requests. Please wait a minute.' }, 429, origin);

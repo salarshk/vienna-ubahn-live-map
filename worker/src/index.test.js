@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildOpenAIRequest, handleRequest } from './index';
 import { monitorStationIds, parseMonitorPayload } from './networkSnapshot';
+import { parseCounterLocations } from './mobilityContext';
 
 const origin = 'https://salarshk.github.io';
 const env = { OPENAI_API_KEY: 'test-key', OPENAI_MODEL: 'gpt-5.4-mini' };
@@ -11,6 +12,25 @@ const advisorRequest = (body, options = {}) => new Request('https://worker.examp
 });
 
 describe('advisor worker', () => {
+  it('normalises the public traffic-counter catalog', () => {
+    expect(parseCounterLocations({ features: [{ geometry: { coordinates: [16.37, 48.21] }, properties: { ZST_ID: '1', ZST_NAME: 'Ring' } }] })).toMatchObject({
+      stationCount: 1, locations: [{ id: '1', lat: 48.21, lon: 16.37 }],
+    });
+  });
+
+  it('serves mobility context with catalog-only traffic when partner values are absent', async () => {
+    const fetchMock = vi.fn(async (url) => {
+      expect(String(url)).toContain('DAUERZAEHLOGD');
+      return new Response(JSON.stringify({ features: [{ geometry: { coordinates: [16.37, 48.21] }, properties: { ZST_ID: '1', ZST_NAME: 'Ring' } }] }), { status: 200 });
+    });
+    const response = await handleRequest(new Request('https://worker.example/mobility-context', { headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() } }), {}, fetchMock);
+    const result = await response.json();
+    expect(response.status).toBe(200);
+    expect(result.traffic.counterLocations.stationCount).toBe(1);
+    expect(result.traffic.valuesStatus).toBe('not connected');
+    expect(result.sources['evis-traffic'].status).toBe('awaiting access');
+  });
+
   it('accepts singleton monitor, line, and departure objects', () => {
     const payload = {
       data: { monitors: { locationStop: { properties: { name: '60201320', title: 'Stephansplatz' } }, lines: {

@@ -16,7 +16,7 @@ export const SOURCE_CATALOG = [
   { id: 'wienmobil-rad', label: 'WienMobil Rad / Nextbike GBFS', kind: 'public', cadence: 'live', models: 'first/last-mile rescue' },
   { id: 'vienna-events', label: 'Vienna event database', kind: 'partner', cadence: 'event updates', models: 'event demand and station pressure' },
   { id: 'evis-traffic', label: 'EVIS / ITS Vienna Region', kind: 'partner', cadence: 'live/forecast', models: 'surface access and incident propagation' },
-  { id: 'vienna-traffic-counters', label: 'Vienna traffic counters', kind: 'archive', cadence: 'historical/near-live', models: 'traffic-aware tram delay and road pressure' },
+  { id: 'vienna-traffic-counters', label: 'Vienna traffic counters', kind: 'public', cadence: 'catalog/near-live', models: 'traffic-aware tram delay and road pressure' },
   { id: 'airport-flights', label: 'Vienna Airport / OpenSky activity', kind: 'partner', cadence: 'live/limited', models: 'airport arrival-wave and corridor pressure' },
   { id: 'vao-routing', label: 'VAO multimodal routing', kind: 'partner', cadence: 'on demand', models: 'independent routing and connection validation' },
   { id: 'oebb-train-history', label: 'ÖBB train journeys and NeTEx', kind: 'archive', cadence: 'weekly/annual', models: 'S-Bahn delay labels and infrastructure joins' },
@@ -70,8 +70,8 @@ const status = (sources, id, next) => ({
   },
 });
 
-const number = (value) => {
-  if (value == null || value === '' || Number(value) === -999) return null;
+const number = (...values) => {
+  const value = values.find((candidate) => candidate != null && candidate !== '' && Number(candidate) !== -999);
   return Number.isFinite(Number(value)) ? Number(value) : null;
 };
 
@@ -151,6 +151,35 @@ export const parseHolidays = (publicHolidays, schoolHolidays, now = Date.now()) 
   return { source: 'OpenHolidays public and school calendars', isPublicHoliday: Boolean(currentPublic), isSchoolHoliday: Boolean(currentSchool), current: currentPublic || currentSchool, next: next ? { date: next.date, name: next.name || next.nameInLocale || 'Holiday' } : null };
 };
 
+// The City of Vienna publishes the counter locations as an OGC WFS.  The
+// values feed is a separate, licensed/near-live product, so keep locations
+// useful on their own and preserve the distinction in the returned status.
+export const parseTrafficCounterLocations = (payload) => {
+  const features = Array.isArray(payload?.features) ? payload.features
+    : Array.isArray(payload?.locations) ? payload.locations.map((location) => ({ properties: location, geometry: { coordinates: [location.lon, location.lat] } }))
+      : [];
+  const locations = features.map((feature) => {
+    const properties = feature?.properties || {};
+    const coordinates = feature?.geometry?.coordinates;
+    const lat = number(properties.lat, properties.latitude, properties.Y, Array.isArray(coordinates) ? coordinates[1] : null);
+    const lon = number(properties.lon, properties.longitude, properties.X, Array.isArray(coordinates) ? coordinates[0] : null);
+    return {
+      id: String(properties.ZST_ID || properties.ID || properties.id || properties.zst_id || ''),
+      name: properties.ZST_NAME || properties.NAME || properties.name || 'Vienna traffic counter',
+      road: properties.STRASSE || properties.ROAD || properties.road || null,
+      lat,
+      lon,
+      type: properties.ZST_TYP || properties.TYPE || properties.type || null,
+    };
+  }).filter((item) => item.id && Number.isFinite(item.lat) && Number.isFinite(item.lon));
+  return {
+    source: 'City of Vienna traffic-counter locations (OGC WFS)',
+    stationCount: locations.length,
+    locations,
+    valuesStatus: 'not connected',
+  };
+};
+
 const configuredSources = {
   'vienna-events': env('VITE_VIENNA_EVENTS_API_URL'),
   'evis-traffic': env('VITE_EVIS_API_URL'),
@@ -163,6 +192,9 @@ const configuredSources = {
   'vehicle-telemetry': env('VITE_VEHICLE_TELEMETRY_API_URL'),
   'mobile-movement': env('VITE_MOBILE_MOVEMENT_API_URL'),
 };
+
+const workerRelay = env('VITE_VIENNA_API_BASE') || env('VITE_WORKER_API_BASE');
+const trafficCounterLocationsUrl = 'https://data.wien.gv.at/daten/geo?service=WFS&request=GetFeature&version=1.1.0&typeName=ogdwien:DAUERZAEHLOGD&srsName=EPSG:4326&outputFormat=json';
 
 const cached = readCached();
 let snapshot = cached?.sources ? cached : { status: 'idle', updatedAt: null, sources: initialSources(), context: {} };
@@ -210,6 +242,29 @@ const fetchPublic = async () => {
     context = { ...context, airQuality: parseAirQuality(air) };
     sources = status(sources, 'air-quality', { status: 'live', error: null });
   } catch (error) { sources = status(sources, 'air-quality', { status: 'unavailable', error: error.message }); }
+
+  // A Worker relay is preferred in production so CORS/rate limits are not
+  // imposed on every phone.  The public WFS remains a safe browser fallback.
+  try {
+    const payload = workerRelay
+      ? await getJson(`${workerRelay.replace(/\/$/, '')}/mobility-context`)
+      : await getJson(trafficCounterLocationsUrl);
+    const trafficPayload = payload?.traffic?.counterLocations || payload?.trafficCounters || payload;
+    context = {
+      ...context,
+      urbanTraffic: payload?.traffic || context.urbanTraffic || {},
+      urbanEvents: payload?.events || context.urbanEvents || {},
+      'vienna-traffic-counters': parseTrafficCounterLocations(trafficPayload),
+      trafficCounterLocations: parseTrafficCounterLocations(trafficPayload).locations,
+    };
+    sources = status(sources, 'vienna-traffic-counters', {
+      status: 'live', error: null,
+      detail: `${parseTrafficCounterLocations(trafficPayload).stationCount} public counter locations; value feed ${payload?.traffic?.valuesStatus || 'not connected'}`,
+    });
+    if (payload?.events?.status === 'live') sources = status(sources, 'vienna-events', { status: 'live', error: null });
+  } catch (error) {
+    sources = status(sources, 'vienna-traffic-counters', { status: 'unavailable', error: error.message });
+  }
 
   for (const item of SOURCE_CATALOG.filter((entry) => entry.kind !== 'public')) {
     const url = configuredSources[item.id];
