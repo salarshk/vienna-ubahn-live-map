@@ -60,6 +60,9 @@ jobs:
           run-id: ${{ steps.previous.outputs.run_id }}
           github-token: ${{ github.token }}
 
+      - name: Import five-minute Worker snapshots into the training rows
+        run: node scripts/ml/import_worker_snapshots.mjs
+
       - name: Import official historical U-Bahn incidents
         run: node scripts/ml/sync_ubahn_incidents.mjs
 
@@ -91,6 +94,9 @@ jobs:
           OPERATIONAL_MODELS_PATH: data/ml/operational-models.json
         run: node scripts/ml/train_operational_models.mjs
 
+      - name: Check collection freshness and source completeness
+        run: node scripts/ml/collect_data_quality.mjs
+
       - name: Validate operational candidates on a chronological holdout
         env:
           OPERATIONAL_MODELS_PATH: data/ml/operational-models.json
@@ -115,6 +121,7 @@ jobs:
             cp data/ml/operational-models.json public/ml/operational-models.json
             cp data/ml/operational-validation.json public/ml/operational-validation.json
             cp data/ml/collection-health.json public/ml/collection-health.json
+            cp data/ml/data-quality.json public/ml/data-quality.json
             echo "$today" > data/ml/last-published-day.txt
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -152,6 +159,11 @@ jobs:
               echo "No collector health report was produced."
             fi
             echo "R2 archive step: ${{ steps.r2_archive.outcome }}"
+            if [ -f data/ml/data-quality.json ]; then
+              echo '```json'
+              cat data/ml/data-quality.json
+              echo '```'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit public model report
@@ -159,7 +171,7 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add public/ml/delay-model.json public/ml/delay-metrics.json public/ml/operational-models.json public/ml/operational-validation.json public/ml/collection-health.json
+          git add public/ml/delay-model.json public/ml/delay-metrics.json public/ml/operational-models.json public/ml/operational-validation.json public/ml/collection-health.json public/ml/data-quality.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update U-Bahn delay model report"
           git push

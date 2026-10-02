@@ -93,6 +93,10 @@ if (mode === 'download-ubahn') {
   await mkdir(DATA_DIR, { recursive: true });
   await runAws(['s3', 'sync', s3Path('rolling', 'ubahn'), DATA_DIR]);
   await runAws(['s3', 'sync', s3Path('archive', 'ubahn', 'context'), resolve(DATA_DIR, 'context')]);
+  // Worker cron snapshots are archived at five-minute cadence and are the
+  // highest-volume source for chronological model joins.
+  await runAws(['s3', 'sync', s3Path('mobility-context'), resolve(DATA_DIR, 'context', 'mobility-worker')]);
+  await runAws(['s3', 'sync', s3Path('worker-snapshots'), resolve(DATA_DIR, 'worker-snapshots')]);
   const restored = await hasFiles(DATA_DIR);
   console.log(restored
     ? 'Restored the rolling U-Bahn dataset from Cloudflare R2.'

@@ -256,7 +256,27 @@ const scheduledSnapshot = async (env, executionContext) => {
   if (!response?.ok) console.error('Scheduled network snapshot failed', response?.status || 'unknown');
 };
 
+const scheduledMobilityContext = async (env, executionContext) => {
+  const request = new Request('https://worker.internal/mobility-context', {
+    method: 'GET',
+    headers: { Origin: 'https://salarshk.github.io', Accept: 'application/json' },
+  });
+  const response = await handleMobilityContext(request, env, fetch, 'https://salarshk.github.io');
+  if (!response?.ok || !env?.RAIL_ARCHIVE?.put) return;
+  try {
+    const payload = await response.json();
+    const date = new Date(payload.generatedAt || Date.now());
+    const key = `mobility-context/${date.toISOString().slice(0, 10)}/${date.toISOString().replace(/[:.]/g, '-')}.json`;
+    await env.RAIL_ARCHIVE.put(key, JSON.stringify(payload), { httpMetadata: { contentType: 'application/json' } });
+  } catch (error) {
+    console.error('Scheduled mobility-context archive failed', error?.message || 'unknown');
+  }
+};
+
 export default {
   fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext),
-  scheduled: (controller, env, executionContext) => executionContext.waitUntil(scheduledSnapshot(env, executionContext)),
+  scheduled: (controller, env, executionContext) => executionContext.waitUntil(Promise.all([
+    scheduledSnapshot(env, executionContext),
+    scheduledMobilityContext(env, executionContext),
+  ])),
 };
