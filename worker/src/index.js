@@ -256,7 +256,7 @@ const scheduledSnapshot = async (env, executionContext) => {
   if (!response?.ok) console.error('Scheduled network snapshot failed', response?.status || 'unknown');
 };
 
-const scheduledMobilityContext = async (env, executionContext) => {
+const scheduledMobilityContext = async (env) => {
   const request = new Request('https://worker.internal/mobility-context', {
     method: 'GET',
     headers: { Origin: 'https://salarshk.github.io', Accept: 'application/json' },
@@ -277,6 +277,6 @@ export default {
   fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext),
   scheduled: (controller, env, executionContext) => executionContext.waitUntil(Promise.all([
     scheduledSnapshot(env, executionContext),
-    scheduledMobilityContext(env, executionContext),
+    scheduledMobilityContext(env),
   ])),
 };

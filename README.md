@@ -91,6 +91,28 @@ because the official endpoint does not provide browser CORS headers. The data
 still comes directly from Wiener Linien and the relay receives only public
 station identifiers.
 
+## Data pipeline health and optional context feeds
+
+The Cloudflare Worker polls the shared Wiener Linien network snapshot every
+five minutes and archives it to the R2 bucket. GitHub Actions restores those
+archives, collects the daily station sample, trains the models and publishes a
+quality report at `/ml/data-quality.json`. A missing Worker archive is reported
+as a warning; it is never treated as fresh data.
+
+Traffic-counter locations are public metadata, but measured road values and
+event records require provider access. Configure these Worker variables only
+when the corresponding licensed or public endpoint is available:
+
+```text
+VIENNA_TRAFFIC_API_URL   measured Vienna traffic-counter feed
+EVIS_TRAFFIC_API_URL     EVIS / ITS Vienna Region relay
+VIENNA_EVENTS_API_URL    Vienna event-record relay
+```
+
+Until configured, the Urban Mobility panel labels traffic as `catalog-only` and
+events as `not configured`; its forecasts remain time-of-day baselines rather
+than pretending to be measured traffic or attendance.
+
 ## Refresh Vienna data
 
 ```bash

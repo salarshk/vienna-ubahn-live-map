@@ -13,6 +13,7 @@ import arrivalStore from '../services/arrivalStore';
 import delayModelStore, {
   incidentContextForLine, predictFinalDelay, predictOnlineDelay,
 } from '../services/delayModel';
+import dataQualityStore from '../services/dataQualityStore';
 import operationalModelStore from '../services/operationalModelStore';
 import RailAdvisor from './RailAdvisor';
 import AdvancedSignals from './AdvancedSignals';
@@ -53,6 +54,7 @@ const RailIntelligence = ({
   const sheetDragRef = useRef(null);
   const [explainLineId, setExplainLineId] = useState('U1');
   const [delaySnapshot, setDelaySnapshot] = useState(delayModelStore.getSnapshot());
+  const [dataQualitySnapshot, setDataQualitySnapshot] = useState(dataQualityStore.getSnapshot());
   const [operationalModelSnapshot, setOperationalModelSnapshot] = useState(operationalModelStore.getSnapshot());
   const [reports, setReports] = useState(() => getReports(now));
   const [weatherSnapshot, setWeatherSnapshot] = useState(weatherStore.getSnapshot());
@@ -115,6 +117,12 @@ const RailIntelligence = ({
     const unsubscribe = operationalModelStore.subscribe(setOperationalModelSnapshot);
     operationalModelStore.load();
     const refresh = setInterval(() => operationalModelStore.load(), 10 * 60 * 1000);
+    return () => { unsubscribe(); clearInterval(refresh); };
+  }, []);
+  useEffect(() => {
+    const unsubscribe = dataQualityStore.subscribe(setDataQualitySnapshot);
+    dataQualityStore.load();
+    const refresh = setInterval(() => dataQualityStore.load(), 10 * 60 * 1000);
     return () => { unsubscribe(); clearInterval(refresh); };
   }, []);
   useEffect(() => subscribeReports(setReports), []);
@@ -481,6 +489,7 @@ const RailIntelligence = ({
       operationalModelSnapshot={operationalModelSnapshot}
       onlineMetrics={onlineMetrics}
       delayMetrics={delayMetrics}
+      dataQualitySnapshot={dataQualitySnapshot}
       delayPredictions={delayPredictions}
       arrivals={arrivalStore.getNetworkArrivals(now)}
       issues={issues}

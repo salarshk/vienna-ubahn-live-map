@@ -1046,7 +1046,6 @@ const MapView = ({
 
       const inner = document.createElement('div');
       const centre = document.createElement('div');
-      const isHovered = hoverRef.current && (st.properties.lines || []).includes(hoverRef.current);
       const isHidden = scale < 0.55;
       const ring = stationRingBackground(st);
 

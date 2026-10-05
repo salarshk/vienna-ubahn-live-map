@@ -27,6 +27,7 @@ const ModelDashboard = ({
   operationalModelSnapshot,
   onlineMetrics,
   delayMetrics,
+  dataQualitySnapshot,
   delayPredictions = [],
   arrivals = [],
   issues = [],
@@ -45,6 +46,10 @@ const ModelDashboard = ({
   const shared = networkSnapshot?.data;
   const sharedModels = shared?.models?.predictionLab || {};
   const operationalReport = operationalModelSnapshot?.report;
+  const qualityReport = dataQualitySnapshot?.report;
+  const qualityWarnings = Array.isArray(qualityReport?.warnings) ? qualityReport.warnings : [];
+  const qualityStatus = dataQualitySnapshot?.status || 'unavailable';
+  const trainedAt = delayMetrics?.trainedAt || delayMetrics?.monitoring?.evaluatedAt;
   const reliability = snapshot?.reliability || [];
   const liveVehicles = vehicles.filter((vehicle) => vehicle.isLive !== false);
   const liveEntries = entries.filter((entry) => now - Number(entry?.fetchedAt || 0) < 5 * 60 * 1000);
@@ -104,7 +109,7 @@ const ModelDashboard = ({
           <section className="dashboard-stat-grid" aria-label="Current network data">
             <div><Database size={15} /><span>Live trains<strong>{liveVehicles.length}</strong></span></div>
             <div><Activity size={15} /><span>Fresh station feeds<strong>{liveEntries.length}</strong></span></div>
-            <div><BarChart3 size={15} /><span>Active warnings<strong>{issues.length + disruptions.length}</strong></span></div>
+            <div><BarChart3 size={15} /><span>Active warnings<strong>{issues.length + disruptions.length + qualityWarnings.length}</strong></span></div>
             <div><Layers size={15} /><span>Prediction families<strong>{Object.keys(sharedModels).length || 'local'}</strong></span></div>
           </section>
 
@@ -124,6 +129,7 @@ const ModelDashboard = ({
           <section className="dashboard-card">
             <div className="dashboard-card-heading"><div><strong>Model health</strong><span>Training state and latest score signals</span></div><BrainCircuit size={16} /></div>
             <div className="dashboard-model-list">{modelRows.map((model) => <div className="dashboard-model-row" key={model.name}><span className={`dashboard-status ${String(model.status).replaceAll(' ', '-')}`}>{model.status}</span><div><strong>{model.name}</strong><small>{model.detail}</small></div></div>)}</div>
+            <p className="dashboard-caveat">Last trained/evaluated: {trainedAt ? new Date(trainedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'not published'}</p>
           </section>
 
           <section className="dashboard-card">
@@ -159,6 +165,20 @@ const ModelDashboard = ({
               <div><span>Transfers scored</span><strong>{sharedModels.transfers?.length || labTransfers.length || '—'}</strong><small>connection probabilities</small></div>
               <div><span>Route risks</span><strong>{sharedModels.routes?.length || labRouteRisk.length || '—'}</strong><small>alternative recommendations</small></div>
             </div>
+          </section>
+
+          <section className="dashboard-card">
+            <div className="dashboard-card-heading"><div><strong>Collection health</strong><span>Scheduled pipeline and source completeness</span></div><Database size={16} /></div>
+            <div className="dashboard-data-grid">
+              <div><span>Report status</span><strong className={`dashboard-quality-status ${qualityStatus}`}>{qualityStatus}</strong></div>
+              <div><span>U-Bahn rows</span><strong>{qualityReport?.sources?.ubahn?.rows?.toLocaleString?.('en-GB') || '—'}</strong></div>
+              <div><span>Worker snapshots</span><strong>{qualityReport?.sources?.workerSnapshots?.snapshots?.toLocaleString?.('en-GB') || '0'}</strong></div>
+              <div><span>Latest Worker archive</span><strong>{qualityReport?.sources?.workerSnapshots?.latest ? formatAge(qualityReport.sources.workerSnapshots.latest, now) : 'not available'}</strong></div>
+              <div><span>Delay labels</span><strong>{qualityReport?.labels?.delayActual?.toLocaleString?.('en-GB') || '—'}</strong></div>
+              <div><span>S-Bahn source</span><strong>{qualityReport?.sources?.sbahn?.status || 'timetable-only'}</strong></div>
+            </div>
+            {qualityWarnings.length > 0 && <div className="dashboard-quality-warning">{qualityWarnings.slice(0, 3).map((warning) => <span key={warning}>! {warning}</span>)}</div>}
+            {!qualityReport && <p className="dashboard-caveat">The published data-quality report is not available yet. Local freshness indicators remain active.</p>}
           </section>
           </>}
 

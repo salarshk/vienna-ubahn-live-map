@@ -1,19 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import MapView from './components/MapView';
 import Sidebar from './components/Sidebar';
 import SearchBar from './components/SearchBar';
 import StationPanel from './components/StationPanel';
 import VehiclePanel from './components/VehiclePanel';
 import LocateButton from './components/LocateButton';
-import RailIntelligence from './components/RailIntelligence';
 import NearbyStations from './components/NearbyStations';
-import CommuteDashboard from './components/CommuteDashboard';
-import FleetTracker from './components/FleetTracker';
-import AlertCenter from './components/AlertCenter';
-import StationDeparturesHub from './components/StationDeparturesHub';
-import ScenarioSimulator from './components/ScenarioSimulator';
-import UrbanMobilityPanel from './components/UrbanMobilityPanel';
-import ViennaNetworkPulse from './components/ViennaNetworkPulse';
 import { locate, resultFromPosition, watchDeviceLocation } from './services/userLocation';
 import arrivalStore from './services/arrivalStore';
 import trainPositionEngine from './services/trainPositionEngine';
@@ -24,13 +16,27 @@ import networkPulseStore, { compactNetworkPulseSample, NETWORK_PULSE_SAMPLE_INTE
 import officialSnapshotStore from './services/officialSnapshotStore';
 import delayReportStore from './services/delayReportStore';
 import { buildCellIntelligence } from './services/gridIntelligence';
-import CellDetailPanel from './components/CellDetailPanel';
 import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/networkSnapshotStore';
 import { mobilityContextStore } from './services/mobilityContextStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
 import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3, Radio, TrafficCone } from 'lucide-react';
 import './index.css';
+
+// These panels are opened on demand and are intentionally split from the
+// initial map bundle. Map startup should not pay for the model room, fleet
+// tracker and scenario UI when a passenger only wants to view the map.
+const RailIntelligence = lazy(() => import('./components/RailIntelligence'));
+const CommuteDashboard = lazy(() => import('./components/CommuteDashboard'));
+const FleetTracker = lazy(() => import('./components/FleetTracker'));
+const AlertCenter = lazy(() => import('./components/AlertCenter'));
+const StationDeparturesHub = lazy(() => import('./components/StationDeparturesHub'));
+const ScenarioSimulator = lazy(() => import('./components/ScenarioSimulator'));
+const UrbanMobilityPanel = lazy(() => import('./components/UrbanMobilityPanel'));
+const ViennaNetworkPulse = lazy(() => import('./components/ViennaNetworkPulse'));
+const CellDetailPanel = lazy(() => import('./components/CellDetailPanel'));
+
+const PanelFallback = () => <div className="panel-loading glass-panel" role="status">Loading panel…</div>;
 
 // How long a locate's answer stays on screen. Long enough to read a refusal,
 // short enough that it is gone before it becomes furniture.
@@ -834,11 +840,12 @@ function App() {
         </div>
       </div>
 
+      <Suspense fallback={<PanelFallback />}>
       {networkPulseOpen && (
         <ViennaNetworkPulse
           vehicles={networkPulseSnapshot.vehicles}
           alerts={disruptionSnapshot.alerts}
-          updatedAt={networkPulseSnapshot.updatedAt || Date.now()}
+          updatedAt={networkPulseSnapshot.updatedAt || 0}
           onClose={() => setNetworkPulseOpen(false)}
         />
       )}
@@ -898,7 +905,9 @@ function App() {
         onHide={handleHideLocation}
       />
 
-      <CellDetailPanel cell={selectedCell} onClose={() => setSelectedCell(null)} />
+      <Suspense fallback={null}>
+        <CellDetailPanel cell={selectedCell} onClose={() => setSelectedCell(null)} />
+      </Suspense>
 
       {userLocation && <button
         className={`follow-gps-button glass-panel ${isFollowingGPS ? 'active' : ''}`}
@@ -993,6 +1002,8 @@ function App() {
           onClose={closeIntelligence}
         />
       )}
+
+      </Suspense>
 
     </div>
   );

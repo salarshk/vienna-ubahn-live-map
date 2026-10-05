@@ -666,6 +666,10 @@ button:active {
 .dashboard-status.live, .dashboard-status.ready, .dashboard-status.validated { background: #2e7d32; }
 .dashboard-status.preliminary, .dashboard-status.learning, .dashboard-status.collecting { background: #a96820; }
 .dashboard-status.unavailable, .dashboard-status.error { background: #9b3030; }
+.dashboard-quality-status { color: var(--text-primary); }
+.dashboard-quality-status.healthy, .dashboard-quality-status.ready { color: #7ee787; }
+.dashboard-quality-status.watch, .dashboard-quality-status.stale { color: #ffcf70; }
+.dashboard-quality-status.unavailable, .dashboard-quality-status.error { color: #ff9c9c; }
 .dashboard-line-figure { display: flex; flex-direction: column; gap: 8px; }
 .dashboard-line-row { display: grid; grid-template-columns: 32px minmax(100px, 1fr) 56px 68px; gap: 9px; align-items: center; }
 .dashboard-line-row > b { padding: 4px 3px; border-radius: 5px; color: #fff; font-size: .58rem; text-align: center; }
@@ -682,6 +686,11 @@ button:active {
 .dashboard-data-grid span, .dashboard-pulse-grid span { color: var(--text-secondary); font-size: .55rem; }
 .dashboard-data-grid strong, .dashboard-pulse-grid strong { margin-top: 3px; overflow: hidden; color: var(--text-primary); font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-pulse-grid small { margin-top: 2px; color: var(--text-secondary); font-size: .51rem; }
+.dashboard-quality-warning { display: grid; gap: 3px; margin-top: 9px; padding: 8px 9px; border: 1px solid rgba(255,183,77,.32); border-radius: 8px; color: #ffcf70; background: rgba(255,183,77,.08); font-size: .56rem; line-height: 1.35; }
+.panel-loading { position: fixed; z-index: 90; top: 76px; right: 18px; padding: 10px 13px; color: var(--text-primary); font-size: .65rem; font-weight: 700; }
+.urban-mobility-feed-status { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; color: var(--text-secondary); font-size: .55rem; }
+.urban-mobility-feed-status span { padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 5px; background: var(--bg-hover); }
+.urban-mobility-feed-status b { color: var(--text-primary); text-transform: capitalize; }
 .model-dashboard .prediction-lab { padding: 0; border: 0; }
 .model-dashboard .prediction-lab > .intelligence-section-title { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--border-color); }
 .model-dashboard .advanced-card { background: var(--bg-hover); }

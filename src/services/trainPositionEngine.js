@@ -904,7 +904,6 @@ class TrainPositionEngine {
       ));
       if (retained.length) {
         for (const record of retained) {
-          const ageMs = now - Number(record.lastSeenAt || 0);
           const projectionDeltaMs = Math.max(0, now - Number(record.lastProjectedAt || record.lastSeenAt || now));
           const elapsedSeconds = projectionDeltaMs / 1000;
           const carriedTrain = {

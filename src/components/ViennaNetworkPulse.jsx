@@ -49,7 +49,7 @@ const sampleFrom = (vehicles, alerts, at) => {
  * session pulse: no historical service count is invented before this panel is
  * opened.
  */
-const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now(), onClose }) => {
+const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = 0, onClose }) => {
   const latestVehiclesRef = useRef(vehicles);
   const latestAlertsRef = useRef(alerts);
   const latestTimeRef = useRef(updatedAt);
@@ -61,9 +61,6 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
       setSamples(snapshot.samples);
       setCursor(Math.max(0, snapshot.samples.length - 1));
     });
-    // Capture an immediately available live snapshot if the always-on
-    // recorder has not reached its next five-second tick yet.
-    if (updatedAt) networkPulseStore.record(vehicles, alerts.length, updatedAt);
     return unsubscribe;
   }, []);
 
@@ -84,7 +81,7 @@ const ViennaNetworkPulse = ({ vehicles = [], alerts = [], updatedAt = Date.now()
     return () => clearInterval(timer);
   }, []);
 
-  const list = Array.isArray(vehicles) ? vehicles : [];
+  const list = useMemo(() => (Array.isArray(vehicles) ? vehicles : []), [vehicles]);
   const live = useMemo(() => list.filter((vehicle) => vehicle.isLive), [list]);
   const fresh = useMemo(() => live.filter((vehicle) => Number(vehicle.lastDataAgeSeconds) <= 3), [live]);
   const lines = useMemo(() => [...new Set(list.map((vehicle) => String(vehicle.line || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [list]);

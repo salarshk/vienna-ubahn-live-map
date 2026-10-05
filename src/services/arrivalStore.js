@@ -664,7 +664,7 @@ class ArrivalStore {
   }
 
   /**
-   * Main fetch method with 60s memory pause, rate budgeting, and in-flight deduplication.
+   * Main fetch method with five-second memory pause, rate budgeting, and in-flight deduplication.
    */
   async getStationArrivals(stationProps, { forceRefresh = false, bypassCooldown = false } = {}) {
     if (!stationProps) return [];
@@ -675,7 +675,7 @@ class ArrivalStore {
     const entry = key ? this.memory.get(key) : null;
     const timeSinceFetch = entry ? (now - entry.fetchedAt) : Infinity;
 
-    // 1. Strict 60-Second Memory Pause:
+    // 1. Strict five-second memory pause:
     // If fetched less than 60s ago, NEVER make a network call (return memory data).
     if (entry && !forceRefresh && timeSinceFetch < CACHE_TTL_MS) {
       const projected = this.projectArrivals(entry, now);

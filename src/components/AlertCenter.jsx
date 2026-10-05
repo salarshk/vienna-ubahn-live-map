@@ -14,7 +14,7 @@ const timeLabel = (value) => {
 const AlertCenter = ({ snapshot, selectedAlert, onSelectAlert, onRefresh, onClose }) => {
   const alerts = Array.isArray(snapshot?.alerts) ? snapshot.alerts : [];
   const [scope, setScope] = useState('all');
-  const saved = getCommutePreferences().stations || [];
+  const saved = useMemo(() => getCommutePreferences().stations || [], []);
   const savedNames = useMemo(() => new Set(saved.map((station) => String(station.name || '').toLowerCase())), [saved]);
   const savedLines = useMemo(() => new Set(saved.flatMap((station) => station.lines || []).map(String)), [saved]);
   const visibleAlerts = scope === 'saved'
