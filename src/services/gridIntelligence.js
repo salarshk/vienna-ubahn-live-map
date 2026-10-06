@@ -159,10 +159,20 @@ const toCellList = (cells) => [...cells.values()].map((cell) => {
   const walkingMinutes = Number.isFinite(cell.userDistanceMetres) ? Number((cell.userDistanceMetres / 80).toFixed(1)) : null;
   const anomalyScore = Math.round(clamp(cell.positionStale * 25 + cell.conflictCount * 25 + cell.dwellRisk * 0.35 + Math.max(0, delayTrend) * 18));
   const active = Boolean(lines.length || stationNames.length || cell.liveTrainCount || cell.arrivalCount || cell.scheduledTrainCount);
+  // Coverage and observation are deliberately separate. A cell can belong to
+  // the static network (station/corridor geometry) without having a current
+  // timing or disruption signal. The map heat layer uses this flag so quiet
+  // coverage squares do not look like measured green data.
+  const observed = Boolean(
+    cell.delays.length || cell.arrivalCount || cell.liveTrainCount || cell.scheduledTrainCount
+      || cell.disruptionCount || cell.gapRisk || cell.bunchingRisk || cell.dwellRisk
+      || cell.trafficJamSignals,
+  );
 
   return {
     ...cell,
     active,
+    observed,
     lines,
     modes: [...cell.modes].sort(),
     stations: stationNames,
@@ -371,6 +381,7 @@ export const cellsToGeoJSON = (cells = [], visible = true) => ({
     properties: {
       id: cell.id,
       active: cell.active,
+      observed: cell.observed,
       severity: cell.severity,
       delay: cell.meanDelaySeconds,
       risk: cell.riskScore,

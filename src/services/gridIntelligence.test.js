@@ -21,8 +21,12 @@ describe('200 metre Vienna cell intelligence', () => {
     expect(result.cells.length).toBeGreaterThan(result.activeCells.length);
     expect(result.cellSizeMetres).toBe(200);
     expect(result.rankings.delay[0].meanDelaySeconds).toBeGreaterThan(0);
+    expect(result.rankings.delay[0].observed).toBe(true);
+    expect(result.cells.find((cell) => !cell.active)?.observed).toBe(false);
     expect(result.rankings.access[0].accessibilityIssues).toBe(1);
-    expect(cellsToGeoJSON(result.cells, true).features.length).toBe(result.cells.length);
+    const geojson = cellsToGeoJSON(result.cells, true);
+    expect(geojson.features.length).toBe(result.cells.length);
+    expect(geojson.features.find((feature) => feature.properties.observed).properties.risk).toBeGreaterThan(0);
     expect(cellsToGeoJSON(result.cells, false).features).toHaveLength(0);
   });
 });

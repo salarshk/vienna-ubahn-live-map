@@ -496,9 +496,27 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     {
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
-        'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
-        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.27, 0.14],
-        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#82958b'],
+        // A continuous scale makes this a real risk heatmap instead of a
+        // categorical green/amber/red wash. Unobserved coverage cells stay
+        // transparent; only current signals contribute visible heat.
+        'fill-color': ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0],
+          0, '#2e7d32', 20, '#8bc34a', 40, '#fdd835', 60, '#fb8c00', 80, '#e53935', 100, '#8e24aa'],
+        'fill-opacity': ['case', ['boolean', ['get', 'observed'], false],
+          ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0], 0, 0.12, 35, 0.24, 70, 0.42, 100, 0.58],
+          0],
+        'fill-outline-color': ['case', ['boolean', ['get', 'observed'], false],
+          ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0], 0, '#66bb6a', 40, '#fdd835', 70, '#ef5350', 100, '#ce93d8'],
+          'rgba(0,0,0,0)'],
+      },
+    },
+    {
+      id: 'cell-intelligence-outline', type: 'line', source: 'cell-intelligence',
+      filter: ['==', ['get', 'observed'], true],
+      paint: {
+        'line-color': ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0],
+          0, '#66bb6a', 40, '#fdd835', 70, '#ef5350', 100, '#ce93d8'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.2, 12, 0.45, 16, 0.8],
+        'line-opacity': 0.48,
       },
     },
     { id: 'mobility-traffic-points', type: 'circle', source: 'mobility-traffic', paint: {
@@ -545,9 +563,24 @@ const buildVectorStyle = (flavour) => ({
     {
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
-        'fill-color': ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'],
-        'fill-opacity': ['case', ['boolean', ['get', 'active'], false], 0.27, 0.14],
-        'fill-outline-color': ['case', ['boolean', ['get', 'active'], false], ['match', ['get', 'severity'], 'high', '#ff6b6b', 'medium', '#ffb74d', '#4caf50'], '#82958b'],
+        'fill-color': ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0],
+          0, '#2e7d32', 20, '#8bc34a', 40, '#fdd835', 60, '#fb8c00', 80, '#e53935', 100, '#8e24aa'],
+        'fill-opacity': ['case', ['boolean', ['get', 'observed'], false],
+          ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0], 0, 0.12, 35, 0.24, 70, 0.42, 100, 0.58],
+          0],
+        'fill-outline-color': ['case', ['boolean', ['get', 'observed'], false],
+          ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0], 0, '#66bb6a', 40, '#fdd835', 70, '#ef5350', 100, '#ce93d8'],
+          'rgba(0,0,0,0)'],
+      },
+    },
+    {
+      id: 'cell-intelligence-outline', type: 'line', source: 'cell-intelligence',
+      filter: ['==', ['get', 'observed'], true],
+      paint: {
+        'line-color': ['interpolate', ['linear'], ['coalesce', ['get', 'risk'], 0],
+          0, '#66bb6a', 40, '#fdd835', 70, '#ef5350', 100, '#ce93d8'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.2, 12, 0.45, 16, 0.8],
+        'line-opacity': 0.48,
       },
     },
     { id: 'mobility-traffic-points', type: 'circle', source: 'mobility-traffic', paint: {
