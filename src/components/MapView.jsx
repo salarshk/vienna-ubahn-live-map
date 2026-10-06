@@ -1271,6 +1271,11 @@ const MapView = ({
     }
 
     const createVehicleMarker = (v) => {
+      // Presentation mode follows the reference video: the map shows the
+      // luminous activity layer instead of hundreds of overlapping labelled
+      // DOM markers. The underlying GeoJSON points are still live and remain
+      // selectable through the activity layer.
+      if (cellGridVisibleRef.current) return;
       const color = lineColorMap[v.line] || '#ffffff';
       const wrapper = document.createElement('div');
       wrapper.style.cssText = 'width:28px; height:28px; cursor:pointer; z-index:1000; overflow:visible;';
@@ -1578,6 +1583,12 @@ const MapView = ({
     const onCellLayerClick = (event) => { selectCellFromEvent(event); };
     const onCellTouchEnd = (event) => { selectCellFromEvent(event); };
     map.on('click', 'cell-intelligence-fill', onCellLayerClick);
+    map.on('click', 'vehicle-activity-core', (event) => {
+      const id = String(event.features?.[0]?.properties?.id || '');
+      if (!id) return;
+      const vehicle = trainPositionEngine.getAllVehicles(Date.now()).find((candidate) => String(candidate.id) === id);
+      if (vehicle) selectVehicleRef.current?.(vehicle);
+    });
     map.on('touchend', onCellTouchEnd);
     map.on('mouseenter', 'cell-intelligence-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'cell-intelligence-fill', () => { map.getCanvas().style.cursor = ''; });
@@ -1744,6 +1755,16 @@ const MapView = ({
     updateVehicleActivity(map, trainPositionEngine.getAllVehicles(Date.now()), Date.now(), true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridCells, cellGridVisible]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    // Rebuild only when presentation mode changes. Grid data itself refreshes
+    // every ten seconds and must not restart the marker animation loop.
+    initVehicleLoop(map);
+    updateVehicleActivity(map, trainPositionEngine.getAllVehicles(Date.now()), Date.now(), true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cellGridVisible]);
 
   useEffect(() => {
     const map = mapRef.current;
