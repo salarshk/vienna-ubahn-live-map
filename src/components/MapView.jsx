@@ -10,7 +10,6 @@ import tramData from '../data/tram_network.json';
 import imageLineColors from '../data/line_colors_from_image.json';
 import lineRenderConfig from '../data/line_render_config.js';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
-import { cellsToGeoJSON } from '../services/gridIntelligence';
 import { parseUrbanEvents, parseUrbanTraffic } from '../services/urbanMobilityModels';
 
 // MapLibre derives its worker's URL from import.meta.url, which resolves to a
@@ -900,7 +899,7 @@ const MapView = ({
   selectedVehicleId = null,
   replaySnapshot = null,
   reliabilityScores = [],
-  gridCells = [], cellGridVisible = false,
+  cellGridVisible = false,
   onSelectCell,
   mobilityContext = {}, mobilityVisible = false,
 }) => {
@@ -921,7 +920,6 @@ const MapView = ({
   const visibilityRef   = useRef(mapVisibility);
   const replayRef       = useRef(replaySnapshot);
   const reliabilityRef  = useRef(reliabilityScores);
-  const gridCellsRef = useRef(gridCells);
   const cellGridVisibleRef = useRef(cellGridVisible);
   const mobilityContextRef = useRef(mobilityContext);
   const mobilityVisibleRef = useRef(mobilityVisible);
@@ -954,7 +952,6 @@ const MapView = ({
   useEffect(() => { visibilityRef.current = mapVisibility; }, [mapVisibility]);
   useEffect(() => { replayRef.current = replaySnapshot; }, [replaySnapshot]);
   useEffect(() => { disruptionsRef.current = disruptions; }, [disruptions]);
-  useEffect(() => { gridCellsRef.current = gridCells; }, [gridCells]);
   useEffect(() => { cellGridVisibleRef.current = cellGridVisible; }, [cellGridVisible]);
   useEffect(() => { mobilityContextRef.current = mobilityContext; }, [mobilityContext]);
   useEffect(() => { mobilityVisibleRef.current = mobilityVisible; }, [mobilityVisible]);
@@ -962,7 +959,11 @@ const MapView = ({
   const updateCellGrid = (map) => {
     const source = map?.getSource('cell-intelligence');
     if (!source || typeof source.setData !== 'function') return;
-    source.setData(cellsToGeoJSON(gridCellsRef.current, cellGridVisibleRef.current));
+    // The live-train presentation intentionally does not draw the analytical
+    // 200 m polygons. Those squares obscure the movement visual from the
+    // reference video; the same grid remains available in the Intelligence
+    // panel and its reports, while this map mode is reserved for activity.
+    source.setData(emptyFeatureCollection);
   };
 
   const updateVehicleActivity = (map, vehicles, now = Date.now(), force = false) => {
@@ -1754,7 +1755,7 @@ const MapView = ({
     updateCellGrid(map);
     updateVehicleActivity(map, trainPositionEngine.getAllVehicles(Date.now()), Date.now(), true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gridCells, cellGridVisible]);
+  }, [cellGridVisible]);
 
   useEffect(() => {
     const map = mapRef.current;
