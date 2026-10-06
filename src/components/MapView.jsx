@@ -516,16 +516,19 @@ const vehicleActivityLayers = [
     id: 'vehicle-activity-glow', type: 'circle', source: 'vehicle-activity',
     paint: {
       'circle-color': ['get', 'color'],
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 3, 12, 6, 16, 11],
-      'circle-blur': 0.9,
-      'circle-opacity': ['*', ['get', 'intensity'], 0.58],
+      // Oversized, soft points are intentional: in presentation mode these
+      // replace the dense DOM train labels with the luminous fleet view used
+      // by the reference video.
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 5, 12, 10, 16, 18],
+      'circle-blur': 1,
+      'circle-opacity': ['*', ['get', 'intensity'], 0.78],
     },
   },
   {
     id: 'vehicle-activity-core', type: 'circle', source: 'vehicle-activity',
     paint: {
       'circle-color': ['get', 'color'],
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 1.4, 12, 2.5, 16, 4],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2.2, 12, 4.5, 16, 7],
       'circle-opacity': ['*', ['get', 'confidence'], 0.9],
       'circle-stroke-color': '#ffffff',
       'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 8, 0.35, 16, 0.8],
@@ -1041,7 +1044,7 @@ const MapView = ({
 
     // Station markers: hide below scale 0.55 (~zoom 9.7), scale above that
     stInnerElemsRef.current.forEach(el => {
-      if (scale < 0.55) {
+      if (scale < 0.55 || cellGridVisibleRef.current) {
         el.style.visibility = 'hidden';
         el.style.pointerEvents = 'none';
       } else {
@@ -1155,7 +1158,7 @@ const MapView = ({
 
       const inner = document.createElement('div');
       const centre = document.createElement('div');
-      const isHidden = scale < 0.55;
+      const isHidden = scale < 0.55 || cellGridVisibleRef.current;
       const ring = stationRingBackground(st);
 
       inner.style.cssText = `
@@ -1762,6 +1765,7 @@ const MapView = ({
     if (!map || !map.isStyleLoaded()) return;
     // Rebuild only when presentation mode changes. Grid data itself refreshes
     // every ten seconds and must not restart the marker animation loop.
+    applyMarkerScale(zoomScaleRef.current);
     initVehicleLoop(map);
     updateVehicleActivity(map, trainPositionEngine.getAllVehicles(Date.now()), Date.now(), true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
