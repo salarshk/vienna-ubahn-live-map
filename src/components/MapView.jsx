@@ -264,6 +264,33 @@ const snappedCoordinates = (station) => {
 const lineGeoJSON    = { type: 'FeatureCollection', features: lineFeatures };
 const emptyFeatureCollection = { type: 'FeatureCollection', features: [] };
 
+// Video-style activity layer: a soft, animated concentration of train
+// sightings underneath the accessible DOM markers. The layer is deliberately
+// fed from the same position engine as the markers, so it cannot drift into a
+// second, inconsistent train location model.
+const vehicleActivityPoints = (vehicles = [], visible = false) => ({
+  type: 'FeatureCollection',
+  features: visible ? vehicles
+    .filter((vehicle) => Array.isArray(vehicle.coordinates) && vehicle.coordinates.length >= 2)
+    .map((vehicle) => {
+      const delay = Math.max(0, Number(vehicle.officialDelaySeconds) || 0);
+      const confidence = Math.max(0.2, Math.min(1, Number(vehicle.positionConfidence) || 0.75));
+      const intensity = Math.max(0.25, Math.min(1, (vehicle.isLive ? 0.7 : vehicle.isScheduled ? 0.45 : 0.25) + delay / 900));
+      return {
+        type: 'Feature',
+        id: String(vehicle.id || `${vehicle.line}-${vehicle.direction || ''}`),
+        geometry: { type: 'Point', coordinates: vehicle.coordinates.slice(0, 2).map(Number) },
+        properties: {
+          line: String(vehicle.line || ''),
+          color: lineColorMap[String(vehicle.line)] || '#ffffff',
+          intensity,
+          confidence,
+          mode: vehicle.mode || (vehicle.isScheduled ? 'sbahn' : 'ubahn'),
+        },
+      };
+    }) : [],
+});
+
 const mobilityPoints = (context = {}, visible = false) => {
   if (!visible) return { traffic: emptyFeatureCollection, events: emptyFeatureCollection };
   const traffic = parseUrbanTraffic(context);
@@ -473,6 +500,41 @@ const metroLayers = [
   },
 ];
 
+const vehicleActivityLayers = [
+  {
+    id: 'vehicle-activity-heat', type: 'heatmap', source: 'vehicle-activity',
+    maxzoom: 17,
+    paint: {
+      'heatmap-weight': ['interpolate', ['linear'], ['get', 'intensity'], 0, 0, 1, 1],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 0.65, 12, 1.1, 16, 1.8],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 12, 17, 16, 28],
+      'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.72, 14, 0.56, 17, 0.3],
+      'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+        0, 'rgba(0,0,0,0)', 0.18, '#243b75', 0.38, '#2dd4bf', 0.62, '#f8e16c', 0.82, '#ff8a65', 1, '#ff4fc3'],
+    },
+  },
+  {
+    id: 'vehicle-activity-glow', type: 'circle', source: 'vehicle-activity',
+    paint: {
+      'circle-color': ['get', 'color'],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 3, 12, 6, 16, 11],
+      'circle-blur': 0.9,
+      'circle-opacity': ['*', ['get', 'intensity'], 0.58],
+    },
+  },
+  {
+    id: 'vehicle-activity-core', type: 'circle', source: 'vehicle-activity',
+    paint: {
+      'circle-color': ['get', 'color'],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 1.4, 12, 2.5, 16, 4],
+      'circle-opacity': ['*', ['get', 'confidence'], 0.9],
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 8, 0.35, 16, 0.8],
+      'circle-stroke-opacity': 0.72,
+    },
+  },
+];
+
 // Raster fallback, used only when the offline archive is missing. Esri's Gray
 // Canvas stops having real tiles at zoom 16 and serves a "map data not yet
 // available" placeholder above it, which is exactly why the offline vector
@@ -486,6 +548,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
     'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
+    'vehicle-activity': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
     'cell-intelligence': { type: 'geojson', data: emptyFeatureCollection },
     'mobility-traffic': { type: 'geojson', data: emptyFeatureCollection },
@@ -529,6 +592,7 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
       'circle-color': '#b388ff', 'circle-opacity': 0.82, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5,
     } },
     ...structuredClone(metroLayers),
+    ...structuredClone(vehicleActivityLayers),
   ],
 });
 
@@ -552,6 +616,7 @@ const buildVectorStyle = (flavour) => ({
     'metro-lines': { type: 'geojson', data: lineGeoJSON, tolerance: 0.6, buffer: 128, attribution: 'U-Bahn: Stadt Wien · S-Bahn: ÖBB GTFS' },
     'position-confidence': { type: 'geojson', data: emptyFeatureCollection },
     'vehicle-trails': { type: 'geojson', data: emptyFeatureCollection },
+    'vehicle-activity': { type: 'geojson', data: emptyFeatureCollection },
     'reliability-atlas': { type: 'geojson', data: emptyFeatureCollection },
     'cell-intelligence': { type: 'geojson', data: emptyFeatureCollection },
     'mobility-traffic': { type: 'geojson', data: emptyFeatureCollection },
@@ -593,6 +658,7 @@ const buildVectorStyle = (flavour) => ({
       'circle-color': '#b388ff', 'circle-opacity': 0.82, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5,
     } },
     ...structuredClone(metroLayers),
+    ...structuredClone(vehicleActivityLayers),
     ...labels('protomaps', flavour, 'en'),
   ],
 });
@@ -875,6 +941,7 @@ const MapView = ({
   const drawnStationsRef = useRef([]);
   const vehInnerElemsRef= useRef([]); // refs to vehicle inner elements for direct scale updates
   const lastRangeUpdateRef = useRef(0);
+  const lastActivityUpdateRef = useRef(0);
 
   useEffect(() => { themeRef.current = theme; }, [theme]);
   useEffect(() => { filterRef.current = activeLineFilter; }, [activeLineFilter]);
@@ -896,6 +963,14 @@ const MapView = ({
     const source = map?.getSource('cell-intelligence');
     if (!source || typeof source.setData !== 'function') return;
     source.setData(cellsToGeoJSON(gridCellsRef.current, cellGridVisibleRef.current));
+  };
+
+  const updateVehicleActivity = (map, vehicles, now = Date.now(), force = false) => {
+    if (!force && now - lastActivityUpdateRef.current < 1000) return;
+    lastActivityUpdateRef.current = now;
+    const source = map?.getSource('vehicle-activity');
+    if (!source || typeof source.setData !== 'function') return;
+    source.setData(vehicleActivityPoints(vehicles, cellGridVisibleRef.current));
   };
 
   const updateMobilityLayer = (map) => {
@@ -1328,6 +1403,7 @@ const MapView = ({
     };
     updatePositionRanges(visible, Date.now(), true);
     updateVehicleTrail(visible, Date.now());
+    updateVehicleActivity(map, visible, Date.now(), true);
 
     const animate = () => {
       const now = Date.now();
@@ -1339,6 +1415,7 @@ const MapView = ({
       }
       updatePositionRanges(currentVisible, now);
       updateVehicleTrail(currentVisible, now);
+      updateVehicleActivity(map, currentVisible, now);
       const visibleIds = new Set(currentVisible.map(v => v.id));
 
       markerMapRef.current.forEach(({ marker }, id) => {
@@ -1539,6 +1616,7 @@ const MapView = ({
       applyLineFilter(map, filterRef.current);
       updateReliabilityAtlas(map);
       updateCellGrid(map);
+      updateVehicleActivity(map, trainPositionEngine.getAllVehicles(Date.now()), Date.now(), true);
       updateMobilityLayer(map);
       arrivalStore.syncNetwork();
     });
@@ -1663,6 +1741,7 @@ const MapView = ({
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     updateCellGrid(map);
+    updateVehicleActivity(map, trainPositionEngine.getAllVehicles(Date.now()), Date.now(), true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gridCells, cellGridVisible]);
 

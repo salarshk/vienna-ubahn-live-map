@@ -59,7 +59,7 @@ const CellIntelligencePanel = ({
     <div className="intelligence-section-title"><Grid2X2 size={14} /><strong>200 m Vienna + NÖ grid</strong><em>Rail-corridor spatial layer</em></div>
     {topDelay.length ? <div className="cell-intelligence-list">{topDelay.map((cell) => <CellRow key={cell.id} cell={cell} metric="delay" />)}</div> : <p className="advanced-empty">Waiting for live cell observations.</p>}
     <div className="cell-intelligence-summary"><span>{grid.activeCells?.length || 0} active · {grid.cells.length} covered</span><span>{grid.nearestUserCell ? `Nearest: ${grid.nearestUserCell.displayName}` : 'GPS not active'}</span></div>
-    <button className={`cell-grid-toggle ${cellGridVisible ? 'active' : ''}`} onClick={onToggleCellGrid} aria-pressed={cellGridVisible}><Grid2X2 size={12} /> {cellGridVisible ? 'Hide delay heatmap' : 'Show delay heatmap'}</button>
+    <button className={`cell-grid-toggle ${cellGridVisible ? 'active' : ''}`} onClick={onToggleCellGrid} aria-pressed={cellGridVisible}><Grid2X2 size={12} /> {cellGridVisible ? 'Hide live train heatmap' : 'Show live train heatmap'}</button>
     {cellGridVisible && <div className="cell-grid-legend" aria-label="Delay heatmap legend"><span><i style={{ background: '#2e7d32' }} />low</span><span><i style={{ background: '#fdd835' }} />moderate</span><span><i style={{ background: '#e53935' }} />high</span><span><i style={{ background: '#8e24aa' }} />critical</span></div>}
   </section>;
 
@@ -70,7 +70,7 @@ const CellIntelligencePanel = ({
       <div className="cell-intelligence-tabs">
         {[["overview", Grid2X2, 'Overview'], ["delay", Timer, 'Delay'], ["flow", TrainFront, 'Flow'], ["access", Accessibility, 'Access'], ["context", CloudRain, 'Context'], ["reports", History, 'Reports']].map(([id, Icon, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><Icon size={13} />{label}</button>)}
       </div>
-      <button className={`cell-grid-toggle ${cellGridVisible ? 'active' : ''}`} onClick={onToggleCellGrid} aria-pressed={cellGridVisible}><Grid2X2 size={12} /> {cellGridVisible ? 'Hide delay heatmap' : 'Show delay heatmap'}</button>
+      <button className={`cell-grid-toggle ${cellGridVisible ? 'active' : ''}`} onClick={onToggleCellGrid} aria-pressed={cellGridVisible}><Grid2X2 size={12} /> {cellGridVisible ? 'Hide live train heatmap' : 'Show live train heatmap'}</button>
       {cellGridVisible && <div className="cell-grid-legend" aria-label="Delay heatmap legend"><span><i style={{ background: '#2e7d32' }} />low</span><span><i style={{ background: '#fdd835' }} />moderate</span><span><i style={{ background: '#e53935' }} />high</span><span><i style={{ background: '#8e24aa' }} />critical</span></div>}
     </div>
 

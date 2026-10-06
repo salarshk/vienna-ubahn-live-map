@@ -51,7 +51,7 @@ const Sidebar = ({
     ['confidenceRanges', 'Position ranges'],
     ['movementTrails', 'Selected train trail'],
     ['reliabilityAtlas', 'Reliability atlas'],
-    ['cellGrid', '200 m delay heatmap'],
+    ['cellGrid', 'Live train heatmap'],
   ];
 
   return (
