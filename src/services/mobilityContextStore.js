@@ -136,6 +136,9 @@ export const parseGbfs = (discovery, stationInformation, stationStatus) => {
   return { source: 'WienMobil Rad / Nextbike GBFS', stationCount: stations.length, availableBikes: stations.reduce((sum, item) => sum + (item.bikes || 0), 0), availableDocks: stations.reduce((sum, item) => sum + (item.docks || 0), 0), stations, discoveryUpdatedAt: discovery?.last_updated || null };
 };
 
+export const gbfsFeedsFromDiscovery = (discovery) => discovery?.data?.en?.feeds
+  || discovery?.data?.de?.feeds || discovery?.data?.feeds || discovery?.feeds || [];
+
 const dateIso = (date) => date.toISOString().slice(0, 10);
 
 export const parseHolidays = (publicHolidays, schoolHolidays, now = Date.now()) => {
@@ -229,7 +232,7 @@ const fetchPublic = async () => {
 
   try {
     const discovery = await getJson('https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_wr/gbfs.json');
-    const feeds = (discovery?.data?.feeds || discovery?.feeds || []);
+    const feeds = gbfsFeedsFromDiscovery(discovery);
     const findFeed = (type) => feeds.find((feed) => new RegExp(`station_${type}`, 'i').test(feed?.name || feed?.url || '') && /en|de/i.test(feed?.url || ''))?.url
       || feeds.find((feed) => new RegExp(`station_${type}`, 'i').test(feed?.name || feed?.url || ''))?.url;
     const [information, stationStatus] = await Promise.all([getJson(findFeed('information')), getJson(findFeed('status'))]);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  gbfsFeedsFromDiscovery,
   parseAirQuality,
   parseGbfs,
   parseGeoSphereNowcast,
@@ -27,6 +28,7 @@ describe('mobility context parsers', () => {
   });
 
   it('joins GBFS station metadata with live bike and dock counts', () => {
+    expect(gbfsFeedsFromDiscovery({ data: { en: { feeds: [{ name: 'station_status', url: 'https://bikes.test/status' }] } } })).toHaveLength(1);
     const result = parseGbfs({}, {
       data: { stations: [{ station_id: '1', name: 'Karlsplatz', lat: '48.2', lon: '16.37', capacity: '20' }] },
     }, {
