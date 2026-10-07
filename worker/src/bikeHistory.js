@@ -26,7 +26,9 @@ export const parseBikeSnapshot = (information, status, at = Date.now()) => {
 export const collectBikeHistory = async (env, fetchImpl = fetch) => {
   if (!env?.RAIL_ARCHIVE?.get || !env?.RAIL_ARCHIVE?.put) return null;
   const discovery = await getJson(GBFS, fetchImpl);
-  const feeds = discovery?.data?.feeds || discovery?.feeds || [];
+  // GBFS v2 auto-discovery commonly groups feeds by language (data.en.feeds).
+  const feeds = discovery?.data?.en?.feeds || discovery?.data?.de?.feeds
+    || discovery?.data?.feeds || discovery?.feeds || [];
   const feed = (name) => feeds.find((row) => row.name === `station_${name}`)?.url;
   const infoUrl = feed('information');
   const statusUrl = feed('status');

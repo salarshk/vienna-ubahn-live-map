@@ -60,7 +60,7 @@ describe('shared bike history', () => {
   it('collects and exposes only requested station IDs', async () => {
     const store = bucket();
     const fetchImpl = vi.fn(async (url) => new Response(JSON.stringify(String(url).endsWith('gbfs.json')
-      ? { data: { feeds: [{ name: 'station_information', url: 'https://bikes.test/info' }, { name: 'station_status', url: 'https://bikes.test/status' }] } }
+      ? { data: { en: { feeds: [{ name: 'station_information', url: 'https://bikes.test/info' }, { name: 'station_status', url: 'https://bikes.test/status' }] } } }
       : String(url).endsWith('/info')
         ? { data: { stations: [{ station_id: '1', name: 'Ring', lat: 48.21, lon: 16.37 }, { station_id: '2', name: 'Park', lat: 48.2, lon: 16.3 }] } }
         : { data: { stations: [{ station_id: '1', num_bikes_available: 5 }, { station_id: '2', num_bikes_available: 4 }] } }), { status: 200 }));
