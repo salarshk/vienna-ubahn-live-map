@@ -35,7 +35,7 @@ const useIsLandscape = () => {
 };
 
 const stationDelayLabel = (seconds) => {
-  if (!Number.isFinite(Number(seconds))) return '—';
+  if (seconds == null || seconds === '' || !Number.isFinite(Number(seconds))) return '—';
   const value = Number(seconds);
   if (Math.abs(value) < 30) return '0m';
   return `${value >= 0 ? '+' : ''}${(value / 60).toFixed(1)}m`;
