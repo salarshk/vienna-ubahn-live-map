@@ -97,6 +97,10 @@ if (mode === 'download-ubahn') {
   // highest-volume source for chronological model joins.
   await runAws(['s3', 'sync', s3Path('mobility-context'), resolve(DATA_DIR, 'context', 'mobility-worker')]);
   await runAws(['s3', 'sync', s3Path('worker-snapshots'), resolve(DATA_DIR, 'worker-snapshots')]);
+  // Older Worker deployments wrote at bucket root; keep those historical
+  // objects visible to training without changing or deleting the archive.
+  await runAws(['s3', 'sync', `s3://${bucket}/mobility-context`, resolve(DATA_DIR, 'context', 'mobility-worker')]);
+  await runAws(['s3', 'sync', `s3://${bucket}/worker-snapshots`, resolve(DATA_DIR, 'worker-snapshots')]);
   const restored = await hasFiles(DATA_DIR);
   console.log(restored
     ? 'Restored the rolling U-Bahn dataset from Cloudflare R2.'
@@ -119,5 +123,11 @@ if (mode === 'upload-ubahn') {
 }
 
 await syncDirectory(OEBB_DIR, s3Path('archive', 'oebb'));
+const sbahnSummary = resolve(OEBB_DIR, 'sbahn-punctuality.json');
+if (await directoryExists(sbahnSummary)) {
+  // Publish unavailable/awaiting-join diagnostics too, so the public panel
+  // does not imply that a missing GTFS input is merely still collecting.
+  await runAws(['s3', 'cp', sbahnSummary, `s3://${bucket}/rail-history/sbahn-punctuality.json`]);
+}
 await writeArchiveHealth('oebb');
 console.log('Archived the ÖBB dated dataset to Cloudflare R2.');

@@ -252,6 +252,73 @@ export const getScheduledSbahnArrivals = (stationProps, now = Date.now()) => {
   return arrivals.sort((a, b) => a.seconds - b.seconds);
 };
 
+// Last advertised S-Bahn departures before the next 04:00 Vienna service-day
+// boundary. Timetable-only: cancellations and actual delay are not known here.
+export const getLastScheduledSbahnDepartures = (stationProps, now = Date.now()) => {
+  if (!isSbahnScheduleUsable(now)) return [];
+  const station = resolveStation(stationProps);
+  if (!station) return [];
+  const instant = new Date(now);
+  const clockNow = getViennaServiceClock(instant);
+  const horizonSeconds = (4 * 3600 - clockNow.seconds + 86400) % 86400;
+  const serviceDays = [-1, 0, 1].map((offset) => {
+    const date = new Date(instant.getTime() + offset * 86400000);
+    return { ...getViennaServiceClock(date), offset };
+  });
+  const byRoute = new Map();
+  for (const trip of tripsByStation.get(station.properties.stop_id) || []) {
+    const call = trip[5].find((item) => item[2] === station.properties.stop_id);
+    if (!call) continue;
+    for (const serviceDay of serviceDays) {
+      if (!isSbahnServiceActive(trip[2], serviceDay)) continue;
+      const remaining = call[1] + serviceDay.offset * 86400 - clockNow.seconds;
+      if (remaining < 0 || remaining > horizonSeconds) continue;
+      const key = `${trip[1]}|${trip[4]}`;
+      const previous = byRoute.get(key);
+      if (!previous || remaining > previous.secondsFromNow) byRoute.set(key, {
+        line: trip[1], destination: trip[4], secondsFromNow: remaining,
+        departureAt: instant.getTime() + remaining * 1000, source: 'ÖBB annual GTFS timetable',
+      });
+    }
+  }
+  return [...byRoute.values()].sort((a, b) => a.secondsFromNow - b.secondsFromNow);
+};
+
+export const getDirectScheduledSbahnJourneys = (originName, destinationName, now = Date.now(), horizonSeconds = 2 * 3600) => {
+  if (!isSbahnScheduleUsable(now)) return [];
+  const origin = resolveStation({ name: originName, lines: ['S'] });
+  const destination = resolveStation({ name: destinationName, lines: ['S'] });
+  if (!origin || !destination || origin === destination) return [];
+  const originId = origin.properties.stop_id;
+  const destinationId = destination.properties.stop_id;
+  const instant = new Date(now);
+  const clockNow = getViennaServiceClock(instant);
+  const days = [-1, 0, 1].map((offset) => ({ ...getViennaServiceClock(new Date(instant.getTime() + offset * 86400000)), offset }));
+  const options = [];
+  for (const trip of tripsByStation.get(originId) || []) {
+    const fromIndex = trip[5].findIndex((call) => call[2] === originId);
+    const toIndex = trip[5].findIndex((call, index) => index > fromIndex && call[2] === destinationId);
+    if (fromIndex < 0 || toIndex < 0) continue;
+    for (const day of days) {
+      if (!isSbahnServiceActive(trip[2], day)) continue;
+      const untilDeparture = trip[5][fromIndex][1] + day.offset * 86400 - clockNow.seconds;
+      if (untilDeparture < 0 || untilDeparture > horizonSeconds) continue;
+      options.push({
+        id: `s-${trip[0]}-${day.date}`, line: trip[1], destination: trip[4],
+        departureAt: instant.getTime() + untilDeparture * 1000,
+        expectedAt: instant.getTime() + (trip[5][toIndex][0] + day.offset * 86400 - clockNow.seconds) * 1000,
+      });
+    }
+  }
+  return options.sort((a, b) => a.departureAt - b.departureAt);
+};
+
+export const getLastDirectScheduledSbahnJourney = (originName, destinationName, now = Date.now()) => {
+  const clock = getViennaServiceClock(new Date(now));
+  const horizon = (4 * 3600 - clock.seconds + 86400) % 86400;
+  return getDirectScheduledSbahnJourneys(originName, destinationName, now, horizon).at(-1) || null;
+};
+
 export const SBAHN_LINES = sbahnData.features
   .filter((feature) => feature.geometry.type === 'LineString')
   .map((feature) => feature.properties.line);

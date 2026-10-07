@@ -937,6 +937,7 @@ function App() {
           station={selectedStation}
           theme={theme}
           userLocation={userLocation}
+          disruptions={disruptionSnapshot.alerts}
           onClose={() => setSelectedStation(null)}
           onCenter={() => handleCenterStation(selectedStation)}
           onSelectArrival={handleSelectArrival}

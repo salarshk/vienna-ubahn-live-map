@@ -14,7 +14,7 @@
     // "VIENNA_EVENTS_API_URL": "https://…"
   },
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["* * * * *"]
   },
   "r2_buckets": [
     {

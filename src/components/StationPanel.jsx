@@ -9,6 +9,10 @@ import React, { useEffect, useState } from 'react';
 import { X, Radio, Database, Navigation, Timer } from 'lucide-react';
 import arrivalStore from '../services/arrivalStore';
 import officialSnapshotStore from '../services/officialSnapshotStore';
+import { fetchRailHistory, stationDelayWindowsFromHistory, buildDelayOnsets } from '../services/sharedRailHistory';
+import { mobilityContextStore } from '../services/mobilityContextStore';
+import { getLastScheduledSbahnDepartures } from '../services/sbahnSchedule';
+import { getLiftLocations } from '../services/liftAccessStore';
 import { getStationFocus } from '../services/stationFocus';
 import { countdownHeat, countdownLabel } from '../utils/countdownHeat';
 import { lineColor } from '../utils/lineColor';
@@ -41,9 +45,20 @@ const stationDelayLabel = (seconds) => {
   return `${value >= 0 ? '+' : ''}${(value / 60).toFixed(1)}m`;
 };
 
-const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelectArrival }) => {
-  const [now, setNow] = useState(Date.now());
+const distanceMetres = ([lonA, latA], [lonB, latB]) => {
+  const radians = Math.PI / 180;
+  const dLat = (latB - latA) * radians;
+  const dLon = (lonB - lonA) * radians;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(latA * radians) * Math.cos(latB * radians) * Math.sin(dLon / 2) ** 2;
+  return 12742000 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+};
+
+const StationPanel = ({ station, theme, userLocation, disruptions = [], onClose, onCenter, onSelectArrival }) => {
+  const [now, setNow] = useState(() => Date.now());
   const [, setOfficialSnapshotState] = useState(officialSnapshotStore.getSnapshot());
+  const [sharedHistoryState, setSharedHistoryState] = useState({ station: null, data: null });
+  const [mobilitySnapshot, setMobilitySnapshot] = useState(mobilityContextStore.getSnapshot());
+  const [mappedLifts, setMappedLifts] = useState([]);
   const landscape = useIsLandscape();
 
   useEffect(() => {
@@ -52,6 +67,23 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
   }, []);
 
   useEffect(() => officialSnapshotStore.subscribe(setOfficialSnapshotState), []);
+  useEffect(() => mobilityContextStore.subscribe(setMobilitySnapshot), []);
+  useEffect(() => {
+    let active = true;
+    getLiftLocations().then((locations) => { if (active) setMappedLifts(locations); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    const stationName = station?.properties?.name;
+    if (!stationName) return undefined;
+    let active = true;
+    const refresh = () => fetchRailHistory({ station: stationName, days: 0 })
+      .then((data) => { if (active) setSharedHistoryState({ station: stationName, data }); })
+      .catch(() => { if (active) setSharedHistoryState({ station: stationName, data: null }); });
+    refresh();
+    const id = setInterval(refresh, 60000);
+    return () => { active = false; clearInterval(id); };
+  }, [station?.properties?.name]);
 
   // getStationFocus only ever reads arrivalStore's cache — it has to, since it
   // also runs inside MapView's floating node every second and must not fire a
@@ -72,6 +104,7 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
   if (!station) return null;
 
   const focus = getStationFocus(station.properties, now);
+  const sharedHistory = sharedHistoryState.station === station.properties.name ? sharedHistoryState.data : null;
   const selectArrival = (arrival) => onSelectArrival?.(arrival);
   const leaveNow = estimateLeaveNow(station.properties, userLocation, now);
   const bestDeparture = leaveNow?.options?.find((option) => option.chance >= 45)
@@ -79,13 +112,30 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
   const platformArrivals = focus.arrivals
     .filter((arrival) => arrival.platform || arrival.gate)
     .slice(0, 4);
-  const stationDelayWindows = officialSnapshotStore.getStationLineDelayWindows(
+  const localDelayWindows = officialSnapshotStore.getStationLineDelayWindows(
     focus.name,
     station.properties.lines,
     now,
   );
+  const cloudDelayWindows = stationDelayWindowsFromHistory(sharedHistory, focus.name, station.properties.lines, now);
+  const cloudHasLabels = cloudDelayWindows.some((window) => window.lines.some((line) => line.labelledObservations > 0));
+  const stationDelayWindows = cloudHasLabels ? cloudDelayWindows : localDelayWindows;
   const stationDelayLines = stationDelayWindows[stationDelayWindows.length - 1]?.lines || [];
   const hasStationDelayHistory = stationDelayWindows.some((window) => window.lines.some((line) => line.labelledObservations > 0));
+  const etaStability = cloudDelayWindows.find((window) => window.id === '20m')?.lines.filter((line) => line.etaPairs > 0) || [];
+  const stationOnsets = buildDelayOnsets(sharedHistory, now).filter((item) => item.stationName.toLocaleLowerCase('de-AT') === focus.name.toLocaleLowerCase('de-AT'));
+  const stationOutages = disruptions.filter((item) => item.isElevator && !item.resolved && [item.station, item.title, item.location].some((value) => String(value || '').toLocaleLowerCase('de-AT').includes(focus.name.toLocaleLowerCase('de-AT'))));
+  const stationCoords = station.geometry?.coordinates;
+  const nearbyBikes = Array.isArray(stationCoords) ? (mobilitySnapshot?.context?.bikeShare?.stations || [])
+    .filter((bike) => Number.isFinite(bike.lon) && Number.isFinite(bike.lat))
+    .map((bike) => ({ ...bike, metres: Math.round(distanceMetres(stationCoords, [bike.lon, bike.lat])) }))
+    .filter((bike) => bike.metres <= 800)
+    .sort((a, b) => a.metres - b.metres).slice(0, 2) : [];
+  const nearbyLifts = Array.isArray(stationCoords) ? mappedLifts
+    .map((lift) => ({ ...lift, metres: Math.round(distanceMetres(stationCoords, lift.coordinates)) }))
+    .filter((lift) => lift.metres <= 300).sort((a, b) => a.metres - b.metres).slice(0, 3) : [];
+  const lastSbahn = station.properties.lines?.some((line) => String(line).startsWith('S'))
+    ? getLastScheduledSbahnDepartures(station.properties, now).slice(0, 3) : [];
   const scheduledOnly = focus.hasScheduled && !focus.hasRealtime;
   const unheardLabel = focus.secondsUnheard === null
     ? 'never fetched'
@@ -253,8 +303,23 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
         ) : (
           <p className="station-delay-history-empty">Collecting the first official station samples.</p>
         )}
-        <small>{hasStationDelayHistory ? 'Averages use Wiener Linien timeReal − timePlanned. Samples are captured about every 10 minutes.' : 'The first window appears after the next official archive sample.'}</small>
+        <small>{hasStationDelayHistory ? `Averages use Wiener Linien timeReal − timePlanned. ${cloudHasLabels ? 'Shared Cloudflare collector checks every minute and retains changed official predictions; repeated departures are sampled observations, not distinct trains.' : 'Device-local fallback, sampled about every 10 minutes.'}` : 'The first window appears after an official archive sample.'}</small>
       </section>
+
+      <details className="station-insight-strip" aria-label="Station reliability and access insights">
+        <summary>Reliability & access</summary>
+        <div className="station-insight-scroll">
+        {etaStability.length ? etaStability.map((line) => <p key={line.line}>
+          <b style={{ color: lineColor(line.line) }}>{line.line}</b> ETA stability: {line.stableEtaPercent}% within 1 min ({line.etaPairs} revisions compared)
+          {line.maxEtaRevisionSeconds >= 120 ? <span className="risk-high"> · warning: shifted by up to {Math.ceil(line.maxEtaRevisionSeconds / 60)} min</span> : null}
+        </p>) : <p>ETA stability is collecting shared before-and-after predictions.</p>}
+        {stationOnsets.map((item) => <p key={`${item.line}-${item.direction}`}><b style={{ color: lineColor(item.line) }}>{item.line}</b> Towards {item.direction || 'either direction'}: reported delay rose about {Math.round(item.riseSeconds / 60)} min in the latest 30 min. Possible onset here; not a verified cause or track segment.</p>)}
+        {stationOutages.length ? <p className="risk-high">Reported lift issue: {stationOutages.map((item) => item.title).join('; ')}. Check operator notices before a step-free journey.</p> : <p>No lift outage matched this station in current notices.</p>}
+        <p>{nearbyLifts.length ? `Mapped lifts nearby: ${nearbyLifts.map((lift) => `${lift.label} (${lift.metres} m)`).join('; ')}.` : 'No mapped lift was found within 300 m.'} Locations alone do not verify a step-free route to the platform or current lift operation.</p>
+        {nearbyBikes.length ? nearbyBikes.map((bike) => <p key={bike.id}>Bike near arrival: {bike.name} · {bike.metres} m · {bike.bikes ?? '—'} bikes now. Availability at your arrival is not guaranteed.</p>) : <p>No nearby live WienMobil Rad station is available in the current feed.</p>}
+        {lastSbahn.length ? <p>Last scheduled S-Bahn departures before 04:00: {lastSbahn.map((item) => `${item.line} → ${item.destination} ${new Intl.DateTimeFormat('de-AT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Vienna' }).format(item.departureAt)}`).join(' · ')}. Timetable only; check ÖBB for changes.</p> : null}
+        </div>
+      </details>
 
       {platformArrivals.length > 0 && (
         <section className="station-platform-guidance" aria-label="Platform and boarding guidance">

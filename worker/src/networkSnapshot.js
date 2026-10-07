@@ -202,15 +202,15 @@ export const buildSharedModels = ({ observations = [], fetchedAt = Date.now() } 
   };
 };
 
-const archiveSnapshot = async (env, snapshot) => {
+export const archiveSnapshot = async (env, snapshot) => {
   if (!env?.RAIL_ARCHIVE?.put) return null;
   const date = new Date(snapshot.generatedAt);
-  const key = `worker-snapshots/${date.toISOString().slice(0, 10)}/${date.toISOString().replace(/[:.]/g, '-')}.json`;
+  const key = `vienna-rail/worker-snapshots/${date.toISOString().slice(0, 10)}/${date.toISOString().replace(/[:.]/g, '-')}.json`;
   await env.RAIL_ARCHIVE.put(key, JSON.stringify(snapshot), { httpMetadata: { contentType: 'application/json' } });
   return key;
 };
 
-export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch, executionContext = null) => {
+export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch, _executionContext = null) => {
   const url = new URL(request.url);
   const origin = request.headers.get('Origin') || 'http://localhost:5173';
   if (request.method === 'OPTIONS') return json({}, 204, origin);
@@ -306,7 +306,8 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     models,
     completeness,
   };
-  if (executionContext?.waitUntil) executionContext.waitUntil(archiveSnapshot(env, snapshot).catch(() => null));
+  // Public map polling must never write to R2. Only the scheduled collector
+  // archives snapshots; otherwise every active visitor multiplies writes.
   return json(snapshot, 200, origin, {
     // The map marks observations older than three seconds as waiting. Keep the
     // edge cache to one second and never serve a stale-while-revalidate copy:

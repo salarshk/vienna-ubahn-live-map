@@ -28,6 +28,16 @@ jobs:
           OEBB_NETEX_URL: ${{ secrets.OEBB_NETEX_URL || 'https://data.oebb.at/dam/jcr:845b5ed1-332b-4038-8924-f7eb92b1ceda/NETEX_2026.zip' }}
         run: node scripts/ml/ingest_oebb_open_data.mjs
 
+      - name: Build S-Bahn operating-point punctuality summary when the joins validate
+        env:
+          OEBB_GTFS_URL: ${{ secrets.OEBB_GTFS_URL }}
+        run: |
+          if [ -n "$OEBB_GTFS_URL" ] && curl --fail --location --silent --show-error --max-time 180 "$OEBB_GTFS_URL" -o /tmp/oebb-gtfs-punctuality.zip; then
+            OEBB_GTFS_ZIP=/tmp/oebb-gtfs-punctuality.zip node scripts/ml/summarize_sbahn_punctuality.mjs
+          else
+            node scripts/ml/summarize_sbahn_punctuality.mjs
+          fi
+
       - name: Archive ÖBB data to Cloudflare R2
         id: r2_archive
         env:

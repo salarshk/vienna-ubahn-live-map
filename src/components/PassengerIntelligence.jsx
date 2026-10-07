@@ -11,8 +11,22 @@ import {
 } from '../services/passengerIntelligence';
 import { lineColor } from '../utils/lineColor';
 import { mobilityContextStore } from '../services/mobilityContextStore';
+import { buildArrivalByOptions } from '../services/arrivalByPlanner';
+import { getLastDirectScheduledSbahnJourney } from '../services/sbahnSchedule';
+import { estimatedArrivalByChance, fetchRailHistory, stationDelayWindowsFromHistory } from '../services/sharedRailHistory';
+import { fetchBikeHistory, forecastBikeStock } from '../services/bikeAvailability';
+
+const timeLabel = (value) => new Intl.DateTimeFormat('de-AT', { hour: '2-digit', minute: '2-digit' }).format(value);
+const metres = ([aLon, aLat], [bLon, bLat]) => {
+  const radians = Math.PI / 180;
+  const dLat = (bLat - aLat) * radians;
+  const dLon = (bLon - aLon) * radians;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * radians) * Math.cos(bLat * radians) * Math.sin(dLon / 2) ** 2;
+  return 12742000 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+};
 
 const stationNames = PASSENGER_STATIONS.map((station) => station.name);
+const EMPTY_CONTEXT = {};
 const firstStation = (preferred, fallbackIndex = 0) => stationNames.find((name) => name === preferred) || stationNames[fallbackIndex] || '';
 
 const formatDue = (seconds) => {
@@ -29,7 +43,10 @@ const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [
   const [feedbackModel, setFeedbackModel] = useState('U-Bahn delay');
   const [feedbackSaved, setFeedbackSaved] = useState(false);
   const [contextRefreshing, setContextRefreshing] = useState(false);
-  const context = mobilitySnapshot?.context || {};
+  const [deadlineTime, setDeadlineTime] = useState(() => new Date(Date.now() + 45 * 60000).toTimeString().slice(0, 5));
+  const [originHistoryState, setOriginHistoryState] = useState({ origin: null, data: null });
+  const [bikeHistory, setBikeHistory] = useState(null);
+  const context = mobilitySnapshot?.context || EMPTY_CONTEXT;
   const sourceStates = mobilitySnapshot?.sources || {};
   const lineRisks = useMemo(() => reliability.map((item) => ({ line: item.line, risk: item.score == null ? 35 : Math.max(0, 100 - item.score) })), [reliability]);
   const blockedStations = useMemo(() => disruptions.filter((item) => item.isElevator && item.station).map((item) => item.station), [disruptions]);
@@ -37,12 +54,53 @@ const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [
   const rescues = useMemo(() => buildRescueOptions({ vehicles, lineRisks, now }), [vehicles, lineRisks, now]);
   const stationCrowding = useMemo(() => buildStationCrowdingNowcast({ entries, issues, now, context }), [entries, issues, now, context]);
   const similarities = useMemo(() => buildIncidentSimilarities({ alerts: disruptions, history }), [disruptions, history]);
-  const feedbackSummary = useMemo(() => getPredictionFeedbackSummary(), [feedbackSaved]);
+  const feedbackSummary = getPredictionFeedbackSummary();
   const platformRows = useMemo(() => entries.flatMap((entry) => (entry.arrivals || []).map((arrival) => ({ ...arrival, stationName: entry.stationName })))
     .filter((arrival) => arrival.isLive && (arrival.platform || arrival.gate))
     .sort((a, b) => a.seconds - b.seconds)
     .filter((arrival, index, all) => all.findIndex((candidate) => candidate.stationName === arrival.stationName && candidate.line === arrival.line && candidate.destination === arrival.destination) === index)
     .slice(0, 6), [entries]);
+  React.useEffect(() => {
+    let active = true;
+    fetchRailHistory({ station: origin, days: 0 }).then((data) => { if (active) setOriginHistoryState({ origin, data }); }).catch(() => {});
+    return () => { active = false; };
+  }, [origin]);
+  const originHistory = originHistoryState.origin === origin ? originHistoryState.data : null;
+  const deadlineAt = useMemo(() => {
+    const [hour, minute] = deadlineTime.split(':').map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+    const date = new Date(now);
+    date.setHours(hour, minute, 0, 0);
+    if (date.getTime() < now - 60000) date.setDate(date.getDate() + 1);
+    return date.getTime();
+  }, [deadlineTime, now]);
+  const arrivalOptions = useMemo(() => buildArrivalByOptions({ origin, destination, entries, now }), [origin, destination, entries, now]);
+  const originLines = PASSENGER_STATIONS.find((station) => station.name === origin)?.lines || [];
+  const etaEvidence = stationDelayWindowsFromHistory(originHistory, origin, originLines, now).find((window) => window.id === '60m')?.lines || [];
+  const arrivalOutlooks = arrivalOptions.slice(0, 4).map((option) => {
+    const evidence = etaEvidence.find((row) => row.line === option.line);
+    const outlook = estimatedArrivalByChance({
+      departureAt: option.departureAt, travelSeconds: option.travelSeconds, deadlineAt,
+      etaPairs: option.scheduled ? 0 : evidence?.etaPairs || 0,
+      meanEtaRevisionSeconds: Math.max((option.latestLikelyAt - option.expectedAt) / 2000, evidence?.meanEtaRevisionSeconds || 0),
+    });
+    return { ...option, outlook };
+  });
+  const lastDirectSbahn = useMemo(() => getLastDirectScheduledSbahnJourney(origin, destination, now), [origin, destination, now]);
+  const nightBackup = lastDirectSbahn && lastDirectSbahn.departureAt - now <= 90 * 60000
+    ? arrivalOptions.find((option) => option.line.startsWith('U') && option.expectedAt <= deadlineAt) : null;
+  const destinationStation = PASSENGER_STATIONS.find((station) => station.name === destination);
+  const nearbyDestinationBikes = destinationStation?.coordinates ? (context.bikeShare?.stations || [])
+    .filter((bike) => Number.isFinite(bike.lon) && Number.isFinite(bike.lat))
+    .map((bike) => ({ ...bike, metres: Math.round(metres(destinationStation.coordinates, [bike.lon, bike.lat])) }))
+    .filter((bike) => bike.metres <= 800).sort((a, b) => a.metres - b.metres).slice(0, 2) : [];
+  const bikeIds = nearbyDestinationBikes.map((bike) => bike.id).join(',');
+  React.useEffect(() => {
+    let active = true;
+    if (!bikeIds) return undefined;
+    fetchBikeHistory(bikeIds.split(',')).then((data) => { if (active) setBikeHistory(data); }).catch(() => { if (active) setBikeHistory(null); });
+    return () => { active = false; };
+  }, [bikeIds]);
 
   const submitFeedback = (outcome) => {
     recordPredictionFeedback({ model: feedbackModel, outcome, context: `live=${vehicles.length}; alerts=${disruptions.length}` });
@@ -93,6 +151,29 @@ const PassengerIntelligence = ({ now, issues = [], disruptions = [], history = [
         <b>{journey.resilience}%</b><small>resilience</small>
       </div>)}</div> : <p className="advanced-empty">Choose two different stations served by a selected mode.</p>}
         <small className="advanced-caveat">Risk is based on current reliability and service-pressure signals; accessibility metadata is advisory and exact departures must be verified before leaving.</small>
+    </div>
+
+    <div className="advanced-card">
+      <div className="advanced-card-title"><strong>Arrive by & last connection</strong><span>direct U-Bahn / S-Bahn only</span></div>
+      <label className="arrival-deadline">Arrival deadline <input type="time" value={deadlineTime} onChange={(event) => setDeadlineTime(event.target.value)} /></label>
+      {arrivalOutlooks.length ? <div className="advanced-list">{arrivalOutlooks.map((option) => <div className="arrival-outlook" key={option.id}>
+        <strong><span style={{ color: lineColor(option.line) }}>{option.line}</span> Board {timeLabel(option.departureAt)} → estimated arrival {timeLabel(option.expectedAt)}</strong>
+        <span>{option.outlook?.chance == null ? 'Chance still calibrating' : `${option.outlook.chance}% experimental chance by ${deadlineTime}`} · planning range {timeLabel(option.outlook?.lowerAt || option.expectedAt)}–{timeLabel(option.outlook?.upperAt || option.latestLikelyAt)}</span>
+        {option.outlook && deadlineAt && <span>{option.departureAt > deadlineAt - option.travelSeconds * 1000 - option.outlook.uncertaintySeconds * 1000 ? 'Tight for this deadline; consider an earlier train.' : `Board by about ${timeLabel(deadlineAt - option.travelSeconds * 1000 - option.outlook.uncertaintySeconds * 1000)} for a planning buffer.`}</span>}
+        <small>{option.source}{option.scheduled ? ' · disruption/cancellation not reflected' : ` · ${option.outlook?.evidencePairs || 0} prior ETA comparisons`}</small>
+      </div>)}</div> : <p className="advanced-empty">No direct live or scheduled departure is available for this pair. One-transfer routes above have no arrival-time promise.</p>}
+      {lastDirectSbahn && <p className="advanced-caveat">Last scheduled direct {lastDirectSbahn.line} towards {lastDirectSbahn.destination} before 04:00: {timeLabel(lastDirectSbahn.departureAt)}. Verify with ÖBB; this timetable does not include live cancellations.</p>}
+      {lastDirectSbahn && lastDirectSbahn.departureAt - now <= 90 * 60000 && <p className="advanced-caveat">{nightBackup ? `Nearby backup in current public predictions: direct ${nightBackup.line} at ${timeLabel(nightBackup.departureAt)}. Confirm service before travelling.` : 'No verified direct night backup is visible in the current public feeds; check the official journey planner.'}</p>}
+      <small className="advanced-caveat">U-Bahn travel time comes from route geometry and assumed speed. A numeric chance appears only after 30 same-departure ETA comparisons and is not yet validated against physical arrivals. “Board” time is at the origin platform, not a leave-home time. U-Bahn last-service and night-bus protection need a current timetable feed.</small>
+    </div>
+
+    <div className="advanced-card">
+      <div className="advanced-card-title"><strong>Bike after arrival</strong><span>WienMobil Rad · live stock</span></div>
+      {nearbyDestinationBikes.length ? nearbyDestinationBikes.map((bike) => {
+        const outlook = forecastBikeStock(bikeHistory, bike.id, arrivalOptions[0]?.expectedAt || now + 15 * 60000, now);
+        return <div className="arrival-outlook" key={bike.id}><strong>{bike.name} · {bike.metres} m from {destination}</strong><span>{bike.bikes ?? '—'} bikes and {bike.docks ?? '—'} free docks now · {outlook?.expectedBikes == null ? 'arrival trend collecting' : `about ${outlook.expectedBikes} bikes in ${outlook.horizonMinutes} min (trend estimate)`}</span></div>;
+      }) : <p className="advanced-empty">No nearby live bike-share station is available for this destination.</p>}
+      <small className="advanced-caveat">The trend extrapolates at least four shared GBFS samples over 20 minutes; reservations and sudden rentals are not predicted. Never rely on it as a guaranteed bike.</small>
     </div>
 
     <div className="advanced-card">

@@ -1,5 +1,7 @@
-import { handleNetworkSnapshot } from './networkSnapshot';
+import { archiveSnapshot, handleNetworkSnapshot } from './networkSnapshot';
 import { handleMobilityContext } from './mobilityContext';
+import { handleRailHistory, updateRailHistory } from './railHistory';
+import { collectBikeHistory, handleBikeHistory } from './bikeHistory';
 
 const DEFAULT_ORIGINS = [
   'https://salarshk.github.io',
@@ -178,6 +180,24 @@ export const handleRequest = async (request, env, fetchImpl = fetch, executionCo
   if (request.method === 'GET' && url.pathname.endsWith('/network-snapshot')) {
     return handleCachedNetworkSnapshot(request, env, fetchImpl, executionContext);
   }
+  if (request.method === 'GET' && url.pathname === '/rail-history') {
+    return handleRailHistory(request, env, origin);
+  }
+  if (request.method === 'GET' && url.pathname === '/bike-history') {
+    return handleBikeHistory(request, env, origin);
+  }
+  if (request.method === 'GET' && url.pathname === '/sbahn-punctuality') {
+    const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': origin, Vary: 'Origin', 'Cache-Control': 'public, max-age=0, s-maxage=3600' };
+    const object = await env?.RAIL_ARCHIVE?.get?.('rail-history/sbahn-punctuality.json');
+    const payload = object ? await object.json() : { status: 'collecting', rows: [], reason: 'Waiting for validated ÖBB train-number and station-code joins.' };
+    if (url.searchParams.get('format') === 'csv') {
+      const fields = ['station', 'line', 'hour', 'kind', 'observations', 'meanDelaySeconds', 'overFivePercent'];
+      const escaped = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const rows = [fields.join(','), ...(payload.rows || []).map((row) => fields.map((field) => escaped(row[field])).join(','))].join('\n');
+      return new Response(rows, { headers: { ...headers, 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="vienna-sbahn-punctuality.csv"' } });
+    }
+    return new Response(JSON.stringify(payload), { headers });
+  }
   if (request.method === 'GET' && url.pathname.endsWith('/mobility-context')) {
     return handleMobilityContext(request, env, fetchImpl, origin);
   }
@@ -245,7 +265,7 @@ export const handleRequest = async (request, env, fetchImpl = fetch, executionCo
 // Cloudflare supplies an execution context as the third handler argument. Keep
 // the injected fetch function explicit so production calls use global fetch,
 // while unit tests can still provide a mock. The scheduled edge poll archives
-// the same shared snapshot used by the map every five minutes, while GitHub
+// the same shared snapshot used by the map, while GitHub
 // Actions remains responsible for the heavier daily model training.
 const scheduledSnapshot = async (env, executionContext) => {
   const request = new Request('https://worker.internal/network-snapshot', {
@@ -253,7 +273,17 @@ const scheduledSnapshot = async (env, executionContext) => {
     headers: { Origin: 'https://salarshk.github.io', Accept: 'application/json' },
   });
   const response = await handleNetworkSnapshot(request, env, fetch, executionContext);
-  if (!response?.ok) console.error('Scheduled network snapshot failed', response?.status || 'unknown');
+  if (!response?.ok) {
+    console.error('Scheduled network snapshot failed', response?.status || 'unknown');
+    return;
+  }
+  const snapshot = await response.json();
+  try {
+    await updateRailHistory(env, snapshot);
+    if (new Date(snapshot.generatedAt).getUTCMinutes() % 5 === 0) await archiveSnapshot(env, snapshot);
+  } catch (error) {
+    console.error('Scheduled rail history failed', error?.message || 'unknown');
+  }
 };
 
 const scheduledMobilityContext = async (env) => {
@@ -266,7 +296,7 @@ const scheduledMobilityContext = async (env) => {
   try {
     const payload = await response.json();
     const date = new Date(payload.generatedAt || Date.now());
-    const key = `mobility-context/${date.toISOString().slice(0, 10)}/${date.toISOString().replace(/[:.]/g, '-')}.json`;
+    const key = `vienna-rail/mobility-context/${date.toISOString().slice(0, 10)}/${date.toISOString().replace(/[:.]/g, '-')}.json`;
     await env.RAIL_ARCHIVE.put(key, JSON.stringify(payload), { httpMetadata: { contentType: 'application/json' } });
   } catch (error) {
     console.error('Scheduled mobility-context archive failed', error?.message || 'unknown');
@@ -277,6 +307,9 @@ export default {
   fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext),
   scheduled: (controller, env, executionContext) => executionContext.waitUntil(Promise.all([
     scheduledSnapshot(env, executionContext),
-    scheduledMobilityContext(env),
+    ...(new Date().getUTCMinutes() % 5 === 0 ? [
+      scheduledMobilityContext(env),
+      collectBikeHistory(env).catch((error) => console.error('Scheduled GBFS history failed', error?.message || 'unknown')),
+    ] : []),
   ])),
 };

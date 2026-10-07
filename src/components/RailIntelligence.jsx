@@ -33,6 +33,7 @@ import { advisorIsEnabled } from '../services/railAdvisor';
 import ModelDashboard from './ModelDashboard';
 import DelayPanel from './DelayPanel';
 import CellIntelligencePanel from './CellIntelligencePanel';
+import ReliabilityExplorer from './ReliabilityExplorer';
 
 const ageLabel = (timestamp) => {
   if (!timestamp) return 'now';
@@ -392,6 +393,7 @@ const RailIntelligence = ({
       />}
 
       {tab === 'history' && <>
+        <ReliabilityExplorer />
         <section className="intelligence-section">
           <div className="intelligence-section-title"><Clock3 size={14} /><strong>Network replay</strong></div>
           <div className="replay-time-row">

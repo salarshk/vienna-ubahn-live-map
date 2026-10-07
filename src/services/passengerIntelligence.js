@@ -24,7 +24,7 @@ for (const feature of [
     ...(existing?.lines || []),
     ...(feature.properties?.lines || []),
   ].map(String).filter(Boolean))].sort();
-  stationMap.set(normalise(name), { name, lines });
+  stationMap.set(normalise(name), { name, lines, coordinates: existing?.coordinates || feature.geometry.coordinates });
 }
 
 export const JOURNEY_STATIONS = [...stationMap.values()]
