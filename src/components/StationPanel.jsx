@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Radio, Database, Navigation, Timer } from 'lucide-react';
 import arrivalStore from '../services/arrivalStore';
+import officialSnapshotStore from '../services/officialSnapshotStore';
 import { getStationFocus } from '../services/stationFocus';
 import { countdownHeat, countdownLabel } from '../utils/countdownHeat';
 import { lineColor } from '../utils/lineColor';
@@ -33,14 +34,24 @@ const useIsLandscape = () => {
   return landscape;
 };
 
+const stationDelayLabel = (seconds) => {
+  if (!Number.isFinite(Number(seconds))) return '—';
+  const value = Number(seconds);
+  if (Math.abs(value) < 30) return '0m';
+  return `${value >= 0 ? '+' : ''}${(value / 60).toFixed(1)}m`;
+};
+
 const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelectArrival }) => {
   const [now, setNow] = useState(Date.now());
+  const [, setOfficialSnapshotState] = useState(officialSnapshotStore.getSnapshot());
   const landscape = useIsLandscape();
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => officialSnapshotStore.subscribe(setOfficialSnapshotState), []);
 
   // getStationFocus only ever reads arrivalStore's cache — it has to, since it
   // also runs inside MapView's floating node every second and must not fire a
@@ -68,6 +79,13 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
   const platformArrivals = focus.arrivals
     .filter((arrival) => arrival.platform || arrival.gate)
     .slice(0, 4);
+  const stationDelayWindows = officialSnapshotStore.getStationLineDelayWindows(
+    focus.name,
+    station.properties.lines,
+    now,
+  );
+  const stationDelayLines = stationDelayWindows[stationDelayWindows.length - 1]?.lines || [];
+  const hasStationDelayHistory = stationDelayWindows.some((window) => window.lines.some((line) => line.labelledObservations > 0));
   const scheduledOnly = focus.hasScheduled && !focus.hasRealtime;
   const unheardLabel = focus.secondsUnheard === null
     ? 'never fetched'
@@ -203,6 +221,40 @@ const StationPanel = ({ station, theme, userLocation, onClose, onCenter, onSelec
           })}
         </div>
       )}
+
+      <section className="station-delay-history" aria-label={`Average delay by line at ${focus.name}`}>
+        <div className="station-delay-history-header">
+          <div><strong>Average delay by line</strong><span>Official observations · rolling windows</span></div>
+          <Timer size={14} aria-hidden="true" />
+        </div>
+        {stationDelayLines.length > 0 ? (
+          <div className="station-delay-history-scroll">
+            <table>
+              <caption className="visually-hidden">Average reported delay by line at {focus.name}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Line</th>
+                  {stationDelayWindows.map((window) => <th scope="col" key={window.id}>{window.label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {stationDelayLines.map((line) => (
+                  <tr key={line.line}>
+                    <th scope="row"><span style={{ background: lineColor(line.line) }}>{line.line}</span></th>
+                    {stationDelayWindows.map((window) => {
+                      const value = window.lines.find((item) => item.line === line.line);
+                      return <td key={`${line.line}-${window.id}`} title={value?.labelledObservations ? `${value.labelledObservations} labelled observations` : 'No labelled observations'} className={value?.meanDelaySeconds >= 180 ? 'risk-high' : value?.meanDelaySeconds >= 60 ? 'risk-medium' : ''}>{stationDelayLabel(value?.meanDelaySeconds)}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="station-delay-history-empty">Collecting the first official station samples.</p>
+        )}
+        <small>{hasStationDelayHistory ? 'Averages use Wiener Linien timeReal − timePlanned. Samples are captured about every 10 minutes.' : 'The first window appears after the next official archive sample.'}</small>
+      </section>
 
       {platformArrivals.length > 0 && (
         <section className="station-platform-guidance" aria-label="Platform and boarding guidance">

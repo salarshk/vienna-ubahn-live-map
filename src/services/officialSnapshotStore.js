@@ -11,6 +11,14 @@ export const OFFICIAL_SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000;
 export const OFFICIAL_SNAPSHOT_RETENTION_MS = 48 * 60 * 60 * 1000;
 export const OFFICIAL_SNAPSHOT_KEY = 'vienna_official_snapshots_v1';
 export const OFFICIAL_LOCAL_CACHE_LIMIT = 24;
+export const STATION_DELAY_WINDOWS = [
+  { id: '5m', label: '5 min', durationMs: 5 * 60 * 1000 },
+  { id: '10m', label: '10 min', durationMs: 10 * 60 * 1000 },
+  { id: '20m', label: '20 min', durationMs: 20 * 60 * 1000 },
+  { id: '30m', label: '30 min', durationMs: 30 * 60 * 1000 },
+  { id: '60m', label: '60 min', durationMs: 60 * 60 * 1000 },
+  { id: '4h', label: '4 hours', durationMs: 4 * 60 * 60 * 1000 },
+];
 
 const readSnapshots = () => {
   try {
@@ -36,6 +44,36 @@ const writeSnapshots = (snapshots) => {
 };
 
 const roundDelay = (value) => Number.isFinite(Number(value)) ? Math.round(Number(value)) : null;
+const normaliseName = (value) => String(value || '').trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+
+const summariseStationLines = (arrivals) => {
+  const groups = new Map();
+  for (const arrival of arrivals) {
+    const stationName = String(arrival.stationName || '').trim();
+    const line = String(arrival.line || '').trim();
+    if (!stationName || !line) continue;
+    const key = `${normaliseName(stationName)}|${line}`;
+    const current = groups.get(key) || {
+      stationName,
+      line,
+      observations: 0,
+      labelledObservations: 0,
+      delaySumSeconds: 0,
+      maxDelaySeconds: null,
+    };
+    current.observations += 1;
+    const delay = Number(arrival.officialDelaySeconds);
+    if (Number.isFinite(delay)) {
+      current.labelledObservations += 1;
+      current.delaySumSeconds += delay;
+      current.maxDelaySeconds = current.maxDelaySeconds == null
+        ? delay
+        : Math.max(current.maxDelaySeconds, delay);
+    }
+    groups.set(key, current);
+  }
+  return [...groups.values()];
+};
 
 export const compactOfficialSnapshot = (entries, at = Date.now()) => {
   const allArrivals = (Array.isArray(entries) ? entries : []).flatMap((entry) => (
@@ -106,6 +144,11 @@ export const compactOfficialSnapshot = (entries, at = Date.now()) => {
     observations: allArrivals.length,
     labelledObservations: allArrivals.filter((arrival) => Number.isFinite(Number(arrival.officialDelaySeconds))).length,
     lineSummary,
+    // Unlike `arrivals` (which is intentionally capped to the worst eight
+    // examples per line), this compact index covers every station/line pair.
+    // It is what powers the rolling delay table without retaining every raw
+    // departure row in the browser archive.
+    stationLineSummary: summariseStationLines(allArrivals),
     arrivals,
   };
 };
@@ -220,6 +263,67 @@ class OfficialSnapshotStore {
       oldestMinutes: first ? Math.max(0, Math.floor((Date.now() - first) / 60000)) : 0,
       latest: this.snapshots.at(-1) ? summariseOfficialSnapshot(this.snapshots.at(-1)) : null,
     };
+  }
+
+  getStationLineDelayWindows(stationName, stationLines = [], now = Date.now()) {
+    const wantedStation = normaliseName(stationName);
+    const requestedLines = new Set((Array.isArray(stationLines) ? stationLines : []).map((line) => String(line)).filter(Boolean));
+    const knownLines = new Set(requestedLines);
+    const snapshots = this.snapshots.filter((snapshot) => Number(snapshot?.at) <= now);
+    const summaries = snapshots.map((snapshot) => {
+      const indexed = Array.isArray(snapshot.stationLineSummary)
+        ? snapshot.stationLineSummary
+        : summariseStationLines(Array.isArray(snapshot.arrivals) ? snapshot.arrivals : []);
+      return {
+        at: Number(snapshot.at) || 0,
+        rows: indexed.filter((row) => normaliseName(row.stationName) === wantedStation),
+      };
+    });
+    summaries.forEach(({ rows }) => rows.forEach((row) => knownLines.add(String(row.line || ''))));
+
+    return STATION_DELAY_WINDOWS.map((window) => {
+      const from = now - window.durationMs;
+      const totals = new Map([...knownLines].filter(Boolean).map((line) => [line, {
+        line,
+        observations: 0,
+        labelledObservations: 0,
+        delaySumSeconds: 0,
+        maxDelaySeconds: null,
+        lastObservedAt: 0,
+      }]));
+      summaries.forEach(({ at, rows }) => {
+        if (at < from || at > now) return;
+        rows.forEach((row) => {
+          const line = String(row.line || '');
+          if (!line || (requestedLines.size && !requestedLines.has(line))) return;
+          const target = totals.get(line) || {
+            line, observations: 0, labelledObservations: 0, delaySumSeconds: 0,
+            maxDelaySeconds: null, lastObservedAt: 0,
+          };
+          target.observations += Number(row.observations) || 0;
+          target.labelledObservations += Number(row.labelledObservations) || 0;
+          target.delaySumSeconds += Number(row.delaySumSeconds) || 0;
+          if (Number.isFinite(Number(row.maxDelaySeconds))) {
+            target.maxDelaySeconds = target.maxDelaySeconds == null
+              ? Number(row.maxDelaySeconds)
+              : Math.max(target.maxDelaySeconds, Number(row.maxDelaySeconds));
+          }
+          target.lastObservedAt = Math.max(target.lastObservedAt, at);
+          totals.set(line, target);
+        });
+      });
+      return {
+        ...window,
+        from,
+        to: now,
+        lines: [...totals.values()].sort((a, b) => a.line.localeCompare(b.line)).map((item) => ({
+          ...item,
+          meanDelaySeconds: item.labelledObservations
+            ? Math.round(item.delaySumSeconds / item.labelledObservations)
+            : null,
+        })),
+      };
+    });
   }
 
   clear() {
