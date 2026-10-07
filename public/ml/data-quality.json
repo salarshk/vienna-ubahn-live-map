@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-06T10:27:49.030Z",
+  "generatedAt": "2026-10-07T10:22:45.432Z",
   "status": "watch",
   "sources": {
     "ubahn": {
-      "files": 27,
-      "rows": 76146,
+      "files": 28,
+      "rows": 76920,
       "stations": 99,
-      "liveRows": 76146,
+      "liveRows": 76920,
       "earliest": 1789038687406,
-      "latest": 1791282415632,
+      "latest": 1791368515418,
       "ageMinutes": 1
     },
     "workerSnapshots": {
@@ -27,7 +27,7 @@
       "ageMinutes": null
     },
     "mobilityContextCollector": {
-      "snapshots": 7,
+      "snapshots": 8,
       "rows": 0,
       "earliest": null,
       "latest": null,
@@ -35,11 +35,11 @@
     },
     "weatherContext": {
       "files": 1,
-      "rows": 648,
+      "rows": 672,
       "stations": 0,
       "liveRows": 0,
       "earliest": 1788998400000,
-      "latest": 1791327600000,
+      "latest": 1791414000000,
       "ageMinutes": 0
     },
     "sbahn": {
@@ -51,14 +51,14 @@
     "status": "ok",
     "stationsRequested": 469,
     "stationsSuccessful": 469,
-    "rowsCollected": 745
+    "rowsCollected": 774
   },
   "labels": {
-    "delayActual": 76146,
+    "delayActual": 76920,
     "trafficJam": 0,
-    "incidentContext": 61992,
+    "incidentContext": 62766,
     "exactGps": 0,
-    "crowdProxy": 76146,
+    "crowdProxy": 76920,
     "cancellation": "not available",
     "transferOutcome": "not available",
     "eventAttendance": "not available"
