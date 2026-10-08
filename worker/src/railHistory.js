@@ -1,10 +1,38 @@
 // Shared, bounded history of official departure predictions. This is not a
 // physical train-position or actual-arrival archive.
-const LATEST_KEY = 'rail-history/latest.json';
+const LATEST_KEY = 'rail-history/v2/latest.json';
+const LEGACY_LATEST_KEY = 'rail-history/latest.json';
+const SAMPLE_PREFIX = 'rail-history/v2/samples/';
+const BLOCK_PREFIX = 'rail-history/v2/blocks/';
 const DAY_PREFIX = 'rail-history/days/';
 const RECENT_MS = 4 * 60 * 60 * 1000;
 const MAX_DAYS = 14;
 const PUBLIC_LINES = new Set(['U1', 'U2', 'U3', 'U4', 'U6', '1', '2', 'D', 'O']);
+const HISTORY_STALE_MS = 10 * 60 * 1000;
+
+const minuteKey = (at) => {
+  const iso = new Date(at).toISOString();
+  return `${SAMPLE_PREFIX}${iso.slice(0, 10)}/${iso.slice(11, 16).replace(':', '-')}.json`;
+};
+
+const blockKey = (at) => {
+  const iso = new Date(at).toISOString();
+  const halfHour = Number(iso.slice(14, 16)) < 30 ? '00' : '30';
+  return `${BLOCK_PREFIX}${iso.slice(0, 10)}/${iso.slice(11, 13)}-${halfHour}.json`;
+};
+
+// A 30-minute R2 block, rather than a four-hour object, is rewritten each
+// minute. The dated minute samples are append-only and do not expire in code.
+const packRow = (row) => [row.stationId, row.stationName, row.line, row.direction,
+  row.observations, row.labelledObservations, row.delaySumSeconds,
+  row.delayedThreeMinutes, row.maxDelaySeconds, row.etaPairs,
+  row.etaStablePairs, row.etaRevisionSumSeconds, row.maxEtaRevisionSeconds];
+const unpackRow = (row) => Array.isArray(row) ? {
+  stationId: row[0], stationName: row[1], line: row[2], direction: row[3],
+  observations: row[4], labelledObservations: row[5], delaySumSeconds: row[6],
+  delayedThreeMinutes: row[7], maxDelaySeconds: row[8], etaPairs: row[9],
+  etaStablePairs: row[10], etaRevisionSumSeconds: row[11], maxEtaRevisionSeconds: row[12],
+} : row;
 
 const readObject = async (bucket, key) => {
   const object = await bucket.get(key);
@@ -82,41 +110,78 @@ export const updateRailHistory = async (env, snapshot) => {
   const bucket = env?.RAIL_ARCHIVE;
   if (!bucket?.get || !bucket?.put) return null;
   const at = Number(snapshot.generatedAt) || Date.now();
-  const date = new Date(at).toISOString().slice(0, 10);
-  const [latest, day] = await Promise.all([
-    readObject(bucket, LATEST_KEY),
-    readObject(bucket, `${DAY_PREFIX}${date}.json`),
-  ]);
+  const latest = await readObject(bucket, LATEST_KEY);
   const minute = Math.floor(at / 60000);
-  if (latest?.minute === minute || (snapshot.sourceServerTime && latest?.sourceServerTime === snapshot.sourceServerTime)) return latest;
+  if ((latest?.updatedAt && at <= latest.updatedAt)
+    || latest?.minute === minute
+    || (snapshot.sourceServerTime && latest?.sourceServerTime === snapshot.sourceServerTime)) return latest;
   const { sample, nextDepartures } = summariseRailSample(snapshot, latest?.previousDepartures || {});
-  const samples = [...(latest?.samples || []), sample].filter((item) => item.at >= at - RECENT_MS);
-  const hour = new Date(at).toISOString().slice(0, 13) + ':00:00Z';
-  const hourly = new Map((day?.hourly || []).map((row) => [rowKey(row, row.hour), row]));
-  for (const row of sample.rows) {
-    const key = rowKey(row, hour);
-    const target = hourly.get(key) || emptyRow(row, hour);
-    addRow(target, row);
-    hourly.set(key, target);
-  }
+  const packedSample = { at: sample.at, sourceServerTime: sample.sourceServerTime, rows: sample.rows.map(packRow) };
+  const key = blockKey(at);
+  const block = await readObject(bucket, key);
+  const samples = [...(block?.samples || []).filter((item) => Math.floor(item.at / 60000) !== minute), packedSample]
+    .sort((a, b) => a.at - b.at);
   const nextLatest = {
-    version: 1, updatedAt: at, minute, sourceServerTime: sample.sourceServerTime,
-    sampleCadenceSeconds: samples.length > 1
-      ? Math.round((samples.at(-1).at - samples.at(-2).at) / 1000) : null,
+    version: 2, startedAt: latest?.startedAt || at, updatedAt: at, minute,
+    sourceServerTime: sample.sourceServerTime,
+    sampleCadenceSeconds: latest?.updatedAt ? Math.round((at - latest.updatedAt) / 1000) : null,
     coverage: snapshot.completeness || null,
-    samples, previousDepartures: nextDepartures,
+    previousDepartures: nextDepartures,
   };
-  const dailyRows = [...hourly.values()];
-  const lineExports = new Date(at).getUTCMinutes() % 5 === 0
-    ? [...PUBLIC_LINES].map((line) => writeObject(bucket, `rail-history/lines/${date}/${line}.json`, {
-      date, line, hourly: dailyRows.filter((row) => row.line === line),
-    })) : [];
   await Promise.all([
-    writeObject(bucket, LATEST_KEY, nextLatest),
-    writeObject(bucket, `${DAY_PREFIX}${date}.json`, { date, hourly: dailyRows }),
-    ...lineExports,
+    writeObject(bucket, key, { version: 2, samples }),
+    writeObject(bucket, minuteKey(at), packedSample),
   ]);
+  // Commit the cursor only after both durable records succeeded. A cron retry
+  // can then safely fill a partial write without double-counting the minute.
+  await writeObject(bucket, LATEST_KEY, nextLatest);
   return nextLatest;
+};
+
+// Runs in a separate cron invocation so a growing multi-day public report can
+// never starve the minute-by-minute collector or the bike archive.
+export const publishRailHistory = async (env, at = Date.now()) => {
+  const bucket = env?.RAIL_ARCHIVE;
+  if (!bucket?.get || !bucket?.put) return null;
+  const currentMinute = Math.floor(at / 60000);
+  // Up to 25 reads plus two day objects and their line exports stays below
+  // the Workers Free 50-subrequest limit, including a midnight crossover.
+  const keys = Array.from({ length: 25 }, (_, index) => minuteKey((currentMinute - index) * 60000));
+  const samples = (await Promise.all(keys.map((key) => readObject(bucket, key))))
+    .filter(Boolean).sort((a, b) => a.at - b.at);
+  const byDate = new Map();
+  for (const sample of samples) {
+    const date = new Date(sample.at).toISOString().slice(0, 10);
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(sample);
+  }
+  const published = [];
+  for (const [date, datedSamples] of byDate) {
+    const day = await readObject(bucket, `${DAY_PREFIX}${date}.json`);
+    const hourly = new Map((day?.hourly || []).map((row) => [rowKey(row, row.hour), row]));
+    const pending = datedSamples.filter((sample) => sample.at > (day?.v2ProcessedThrough || 0));
+    if (!pending.length) continue;
+    for (const sample of pending) {
+      const hour = new Date(sample.at).toISOString().slice(0, 13) + ':00:00Z';
+      for (const packed of sample.rows || []) {
+        const row = unpackRow(packed);
+        const key = rowKey(row, hour);
+        const target = hourly.get(key) || emptyRow(row, hour);
+        addRow(target, row);
+        hourly.set(key, target);
+      }
+    }
+    const dailyRows = [...hourly.values()];
+    await Promise.all([...PUBLIC_LINES].map((line) => writeObject(bucket, `rail-history/lines/${date}/${line}.json`, {
+        date, line, hourly: dailyRows.filter((row) => row.line === line),
+      })));
+    // Advance the publication cursor only after every line export exists.
+    await writeObject(bucket, `${DAY_PREFIX}${date}.json`, {
+      date, hourly: dailyRows, v2ProcessedThrough: pending.at(-1).at,
+    });
+    published.push({ date, samples: pending.length, rows: dailyRows.length });
+  }
+  return published;
 };
 
 const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
@@ -138,9 +203,17 @@ export const handleRailHistory = async (request, env, origin) => {
     const date = new Date(now - index * 86400000).toISOString().slice(0, 10);
     return line && PUBLIC_LINES.has(line) ? `rail-history/lines/${date}/${line}.json` : `${DAY_PREFIX}${date}.json`;
   });
-  const [latest, ...archives] = await Promise.all([
+  const [newLatest, legacyLatest] = await Promise.all([
     readObject(env.RAIL_ARCHIVE, LATEST_KEY),
-    ...keys.map((key) => readObject(env.RAIL_ARCHIVE, key)),
+    readObject(env.RAIL_ARCHIVE, LEGACY_LATEST_KEY),
+  ]);
+  const latest = newLatest || legacyLatest;
+  const blockKeys = latest?.version === 2
+    ? [...new Set(Array.from({ length: 9 }, (_, index) => blockKey(now - index * 30 * 60000)))]
+    : [];
+  const [archives, blocks] = await Promise.all([
+    Promise.all(keys.map((key) => readObject(env.RAIL_ARCHIVE, key))),
+    Promise.all(blockKeys.map((key) => readObject(env.RAIL_ARCHIVE, key))),
   ]);
   const station = String(url.searchParams.get('station') || '').trim().toLocaleLowerCase('de-AT');
   const direction = String(url.searchParams.get('direction') || '').trim().toLocaleLowerCase('de-AT');
@@ -151,9 +224,22 @@ export const handleRailHistory = async (request, env, origin) => {
   if (url.searchParams.get('format') === 'csv') return new Response(csvFor(hourly), {
     headers: { ...headers, 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="vienna-rail-reliability.csv"' },
   });
-  const recent = (latest?.samples || []).map((sample) => ({ at: sample.at, rows: sample.rows.filter(match) })).filter((sample) => sample.rows.length);
+  const newRecent = blocks.flatMap((block) => block?.samples || []);
+  const firstNewAt = newRecent.reduce((earliest, sample) => Math.min(earliest, sample.at), Infinity);
+  const allRecent = latest?.version === 2
+    ? [...(legacyLatest?.samples || []).filter((sample) => sample.at < firstNewAt), ...newRecent]
+    : latest?.samples || [];
+  const recent = allRecent.filter((sample) => sample.at >= now - RECENT_MS && sample.at <= now + 60000)
+    .map((sample) => ({
+      at: sample.at,
+      rows: (sample.rows || []).filter((row) => match(Array.isArray(row) ? {
+        stationId: row[0], stationName: row[1], line: row[2], direction: row[3],
+      } : row)).map(unpackRow),
+    })).filter((sample) => sample.rows.length).sort((a, b) => a.at - b.at);
+  const archiveAgeSeconds = latest ? Math.max(0, Math.round((now - latest.updatedAt) / 1000)) : null;
   return new Response(JSON.stringify({
-    status: latest ? 'ready' : 'collecting', generatedAt: latest?.updatedAt || null,
+    status: !latest ? 'collecting' : archiveAgeSeconds > HISTORY_STALE_MS / 1000 ? 'stale' : 'ready',
+    generatedAt: latest?.updatedAt || null, archiveAgeSeconds,
     source: 'official-wiener-linien-departure-predictions', sampleCadenceSeconds: latest?.sampleCadenceSeconds || null,
     caveat: 'Prediction revisions and reported delays are not independently observed train-arrival times or GPS.',
     coverage: latest?.coverage || null, recent, hourly, daysRequested: days,

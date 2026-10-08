@@ -27,7 +27,18 @@ const REQUIREMENTS = {
 };
 const DELAY_THRESHOLD_MINUTES = 3;
 const ONLINE_MIN_EXAMPLES = Number(process.env.DELAY_ONLINE_MIN_EXAMPLES || 30);
+// Keep the full observations in R2, but bound the daily comparison workload.
+// Every candidate and the live baseline use the same deterministic,
+// chronological holdout sample so their scores remain directly comparable.
+const MAX_TRAIN_EXAMPLES = Math.max(500, Number(process.env.DELAY_TRAIN_MAX_EXAMPLES || 6000));
+const MAX_TEST_EXAMPLES = Math.max(100, Number(process.env.DELAY_TEST_MAX_EXAMPLES || 1200));
 const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
+
+const evenlySample = (items, limit) => {
+  if (items.length <= limit) return items;
+  if (limit === 1) return [items.at(-1)];
+  return Array.from({ length: limit }, (_, index) => items[Math.floor(index * (items.length - 1) / (limit - 1))]);
+};
 
 const clamp = (value, lower, upper) => Math.max(lower, Math.min(upper, value));
 const round = (value, digits = 2) => Number(value.toFixed(digits));
@@ -611,6 +622,8 @@ const candidateTraining = examples.filter((example) => !testDates.has(
 const candidateTest = examples.filter((example) => testDates.has(
   new Date(example.plannedTimestamp).toISOString().slice(0, 10)
 ));
+const sampledTraining = evenlySample(candidateTraining, MAX_TRAIN_EXAMPLES);
+const sampledTest = evenlySample(candidateTest, MAX_TEST_EXAMPLES);
 const validationStage = trainingStageFor({
   dataDays: uniqueDates.length,
   coverageHours,
@@ -646,7 +659,7 @@ const common = {
     fallbackLabelledJourneys: examples.filter((example) => !example.officialLabel).length,
   },
   monitoring: {
-    cadence: 'Every 10 minutes when the collector workflow runs',
+    cadence: 'Daily GitHub Actions training; fresh Worker observations are collected separately',
     rollbackPolicy: 'Disable ML predictions when the candidate is stale, invalid, or does not beat the live-estimate baseline.',
     maxAgeHours: 36,
     maxMaeMinutes: 10,
@@ -695,8 +708,8 @@ if (validationStage === 'collecting') {
     monitoring: common.monitoring,
   };
 } else {
-  const training = candidateTraining;
-  const test = candidateTest;
+  const training = sampledTraining;
+  const test = sampledTest;
   const scaling = calculateScaling(training);
   const weights = fitRidge(training, scaling);
   const predictions = test.map((example) => predict(example, scaling, weights));
@@ -842,8 +855,11 @@ if (validationStage === 'collecting') {
     algorithm: 'Ridge regression',
     split: {
       method: 'Chronological split by whole calendar days; the newest 20% of days are test-only',
+      availableTrainingExamples: candidateTraining.length,
+      availableTestExamples: candidateTest.length,
       trainingExamples: training.length,
       testExamples: test.length,
+      sampling: 'Deterministic, evenly spaced within each chronological split; all candidates use identical examples',
       testPeriodStarts: cutoff,
     },
     model: winningCandidate ? winningCandidate.metrics : modelMetrics,

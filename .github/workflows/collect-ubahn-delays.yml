@@ -83,6 +83,17 @@ jobs:
           VIENNA_API_BASE: https://vienna-rail-advisor.vienna-u-bahn-live-map.workers.dev
         run: node scripts/ml/collect_mobility_context.mjs
 
+      # Archive the newly collected labels before expensive model comparison.
+      # A slow trainer must not hold the long-term R2 history hostage.
+      - name: Archive observations to Cloudflare R2
+        id: r2_archive
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: vienna-rail-archive
+        run: node scripts/ml/archive_r2.mjs upload-ubahn
+
       - name: Train preliminary or validated model with a chronological holdout
         env:
           DELAY_MODEL_PATH: data/ml/candidate-model.json
@@ -102,6 +113,14 @@ jobs:
           OPERATIONAL_MODELS_PATH: data/ml/operational-models.json
           OPERATIONAL_VALIDATION_PATH: data/ml/operational-validation.json
         run: node scripts/ml/validate_operational_models.mjs
+
+      - name: Archive dated model and validation reports to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: vienna-rail-archive
+        run: node scripts/ml/archive_r2.mjs upload-model
 
       - name: Publish daily progress or a new online-model stage
         id: publish
@@ -135,15 +154,6 @@ jobs:
           path: data/ml
           retention-days: 7
           compression-level: 9
-
-      - name: Archive observations to Cloudflare R2
-        id: r2_archive
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: vienna-rail-archive
-        run: node scripts/ml/archive_r2.mjs upload-ubahn
 
       - name: Record collection health
         if: always()

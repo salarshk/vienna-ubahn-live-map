@@ -65,8 +65,9 @@ const ReliabilityExplorer = () => {
       {sbahnHistory.status === 'ready' ? <div className="explorer-ranking">{(sbahnHistory.rows || []).filter((row) => row.line === line).sort((a, b) => b.meanDelaySeconds - a.meanDelaySeconds).slice(0, 18).map((row) => <div key={`${row.station}-${row.line}-${row.hour}-${row.kind}`}><b style={{ color: lineColor(row.line) }}>{row.line}</b><span>{row.station}<small> · {String(row.hour).padStart(2, '0')}:00 · {row.kind}</small></span><strong>{formatDelay(row.meanDelaySeconds)}</strong><small>{row.observations} runs</small></div>)}</div> : <p className="advanced-empty">The weekly ÖBB file does not yet have a validated S-line/station join. We do not substitute all-train or timetable values for S-Bahn punctuality.</p>}
     </>}
     {!isSbahn && history?.status === 'collecting' && <p className="advanced-empty">The scheduled shared archive is collecting its first samples.</p>}
-    {!isSbahn && history?.status === 'ready' && <>
-      <p className="intelligence-note">The collector checks each minute and keeps changed official reported delays and ETA predictions. Repeated departure observations are not unique trains or verified physical arrivals. The hourly view begins when the new collector is deployed.</p>
+    {!isSbahn && history?.status === 'stale' && <p className="advanced-caveat">Shared history is {Math.round((history.archiveAgeSeconds || 0) / 60)} minutes old. The rankings below are historical; live train positions and arrivals use a separate feed.</p>}
+    {!isSbahn && ['ready', 'stale'].includes(history?.status) && <>
+      <p className="intelligence-note">The collector checks each minute and stores dated observations in Cloudflare R2. Repeated departure observations are not unique trains or verified physical arrivals. Hourly reports may lag the live map.</p>
       <h4>Most delayed stations and directions</h4>
       {ranking.length ? <div className="explorer-ranking">{ranking.slice(0, 12).map((row) => <div key={`${row.stationName}-${row.line}-${row.direction}`}>
         <b style={{ color: lineColor(row.line) }}>{row.line}</b><span>{row.stationName}<small> → {row.direction || 'all directions'}</small></span><strong>{formatDelay(row.meanDelaySeconds)}</strong><small>{row.labelledObservations} samples</small>

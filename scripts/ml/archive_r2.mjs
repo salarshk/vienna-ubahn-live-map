@@ -17,6 +17,7 @@ const endpoint = process.env.R2_ENDPOINT
   || (process.env.R2_ACCOUNT_ID ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : '');
 const bucket = String(process.env.R2_BUCKET || '').trim();
 const prefix = String(process.env.R2_PREFIX || 'vienna-rail').replace(/^\/|\/$/g, '');
+const trainingWindowDays = Math.max(7, Math.min(90, Number(process.env.R2_TRAIN_WINDOW_DAYS) || 21));
 const credentialsAvailable = Boolean(
   endpoint && bucket && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY,
 );
@@ -79,28 +80,40 @@ const syncDirectory = async (source, destination) => {
   return true;
 };
 
-if (!['download-ubahn', 'upload-ubahn', 'upload-oebb'].includes(mode)) {
-  throw new Error('Usage: archive_r2.mjs <download-ubahn|upload-ubahn|upload-oebb>');
+const syncRecentDates = async (sourcePrefix, destination) => {
+  const today = Math.floor(Date.now() / 86400000);
+  // Dated partitions stay in R2 indefinitely. Only the recent window is
+  // hydrated on a daily training runner, so startup cost does not grow forever.
+  for (let offset = trainingWindowDays - 1; offset >= 0; offset -= 1) {
+    const day = new Date((today - offset) * 86400000).toISOString().slice(0, 10);
+    await runAws(['s3', 'sync', `${sourcePrefix}/${day}`, resolve(destination, day)]);
+  }
+};
+
+if (!['download-ubahn', 'upload-ubahn', 'upload-model', 'upload-oebb'].includes(mode)) {
+  throw new Error('Usage: archive_r2.mjs <download-ubahn|upload-ubahn|upload-model|upload-oebb>');
 }
 
 if (!credentialsAvailable) {
-  console.log('R2 archive skipped: configure R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.');
+  if (mode !== 'download-ubahn') throw new Error('R2 archive credentials are missing; the long-term upload cannot be skipped.');
+  console.log('R2 restore skipped: configure R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.');
   await writeOutput('r2_restored', 'false');
   process.exit(0);
 }
 
 if (mode === 'download-ubahn') {
   await mkdir(DATA_DIR, { recursive: true });
-  await runAws(['s3', 'sync', s3Path('rolling', 'ubahn'), DATA_DIR]);
+  await runAws(['s3', 'sync', s3Path('rolling', 'ubahn'), DATA_DIR,
+    '--exclude', 'worker-snapshots/*', '--exclude', 'observations/worker-*']);
   await runAws(['s3', 'sync', s3Path('archive', 'ubahn', 'context'), resolve(DATA_DIR, 'context')]);
   // Worker cron snapshots are archived at five-minute cadence and are the
   // highest-volume source for chronological model joins.
-  await runAws(['s3', 'sync', s3Path('mobility-context'), resolve(DATA_DIR, 'context', 'mobility-worker')]);
-  await runAws(['s3', 'sync', s3Path('worker-snapshots'), resolve(DATA_DIR, 'worker-snapshots')]);
+  await syncRecentDates(s3Path('mobility-context'), resolve(DATA_DIR, 'context', 'mobility-worker'));
+  await syncRecentDates(s3Path('worker-snapshots'), resolve(DATA_DIR, 'worker-snapshots'));
   // Older Worker deployments wrote at bucket root; keep those historical
   // objects visible to training without changing or deleting the archive.
-  await runAws(['s3', 'sync', `s3://${bucket}/mobility-context`, resolve(DATA_DIR, 'context', 'mobility-worker')]);
-  await runAws(['s3', 'sync', `s3://${bucket}/worker-snapshots`, resolve(DATA_DIR, 'worker-snapshots')]);
+  await syncRecentDates(`s3://${bucket}/mobility-context`, resolve(DATA_DIR, 'context', 'mobility-worker'));
+  await syncRecentDates(`s3://${bucket}/worker-snapshots`, resolve(DATA_DIR, 'worker-snapshots'));
   const restored = await hasFiles(DATA_DIR);
   console.log(restored
     ? 'Restored the rolling U-Bahn dataset from Cloudflare R2.'
@@ -112,13 +125,29 @@ if (mode === 'download-ubahn') {
 if (mode === 'upload-ubahn') {
   // No --delete is used: the R2 archive remains append-only even when local
   // ML files expire after the rolling training window.
-  await syncDirectory(DATA_DIR, s3Path('rolling', 'ubahn'));
+  await runAws(['s3', 'sync', DATA_DIR, s3Path('rolling', 'ubahn'),
+    '--exclude', 'worker-snapshots/*', '--exclude', 'observations/worker-*']);
   await syncDirectory(resolve(DATA_DIR, 'observations'), s3Path('archive', 'ubahn', 'observations'));
   await syncDirectory(resolve(DATA_DIR, 'raw'), s3Path('archive', 'ubahn', 'raw'));
   await syncDirectory(resolve(DATA_DIR, 'headway-events'), s3Path('archive', 'ubahn', 'headway-events'));
   await syncDirectory(resolve(DATA_DIR, 'context'), s3Path('archive', 'ubahn', 'context'));
   await writeArchiveHealth('ubahn');
   console.log('Archived the U-Bahn rolling dataset and dated partitions to Cloudflare R2.');
+  process.exit(0);
+}
+
+if (mode === 'upload-model') {
+  const date = new Date().toISOString().slice(0, 10);
+  const version = String(process.env.GITHUB_RUN_ID || new Date().toISOString().replace(/[:.]/g, '-'));
+  for (const name of ['candidate-model.json', 'candidate-metrics.json', 'operational-models.json',
+    'operational-validation.json', 'collection-health.json', 'data-quality.json']) {
+    const source = resolve(DATA_DIR, name);
+    if (!(await directoryExists(source))) continue;
+    await runAws(['s3', 'cp', source, s3Path('models', 'daily', date, version, name)]);
+    await runAws(['s3', 'cp', source, s3Path('models', 'latest', name)]);
+  }
+  await writeArchiveHealth('models');
+  console.log('Archived the validated model report and its dated R2 version.');
   process.exit(0);
 }
 

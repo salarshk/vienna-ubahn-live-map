@@ -1,6 +1,12 @@
 const KEY = 'rail-history/bikes/latest.json';
 const GBFS = 'https://gbfs.nextbike.net/maps/gbfs/v2/nextbike_wr/gbfs.json';
-const RETENTION_MS = 4 * 60 * 60 * 1000;
+const RETENTION_MS = 75 * 60 * 1000;
+const STALE_MS = 15 * 60 * 1000;
+
+const datedKey = (at) => {
+  const iso = new Date(at).toISOString();
+  return `vienna-rail/bike-snapshots/${iso.slice(0, 10)}/${iso.slice(11, 16).replace(':', '-')}.json`;
+};
 
 const getJson = async (url, fetchImpl) => {
   const response = await fetchImpl(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout?.(9000) });
@@ -40,7 +46,10 @@ export const collectBikeHistory = async (env, fetchImpl = fetch) => {
   const sample = parseBikeSnapshot(information, status);
   if (!sample.stations.length) throw new Error('GBFS returned no usable bike stations');
   const samples = [...(previous?.samples || []), sample].filter((row) => row.at >= sample.at - RETENTION_MS);
-  const next = { version: 1, updatedAt: sample.at, cadenceSeconds: 300, source: 'WienMobil Rad / Nextbike GBFS', samples };
+  const next = { version: 2, updatedAt: sample.at, cadenceSeconds: 300, source: 'WienMobil Rad / Nextbike GBFS', samples };
+  // Keep every dated observation even after it ages out of the small public
+  // trend window. The latest cursor is committed only after archival succeeds.
+  await env.RAIL_ARCHIVE.put(datedKey(sample.at), JSON.stringify(sample), { httpMetadata: { contentType: 'application/json' } });
   await env.RAIL_ARCHIVE.put(KEY, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } });
   return next;
 };
@@ -55,5 +64,6 @@ export const handleBikeHistory = async (request, env, origin) => {
   const samples = (payload.samples || []).map((sample) => ({
     at: sample.at, stations: ids.size ? sample.stations.filter((station) => ids.has(station.id)) : [],
   })).filter((sample) => sample.stations.length);
-  return new Response(JSON.stringify({ status: 'ready', source: payload.source, updatedAt: payload.updatedAt, cadenceSeconds: payload.cadenceSeconds, samples }), { headers });
+  const archiveAgeSeconds = Math.max(0, Math.round((Date.now() - payload.updatedAt) / 1000));
+  return new Response(JSON.stringify({ status: archiveAgeSeconds > STALE_MS / 1000 ? 'stale' : 'ready', source: payload.source, updatedAt: payload.updatedAt, archiveAgeSeconds, cadenceSeconds: payload.cadenceSeconds, samples }), { headers });
 };

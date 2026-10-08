@@ -1,6 +1,6 @@
 import { archiveSnapshot, handleNetworkSnapshot } from './networkSnapshot';
 import { handleMobilityContext } from './mobilityContext';
-import { handleRailHistory, updateRailHistory } from './railHistory';
+import { handleRailHistory, publishRailHistory, updateRailHistory } from './railHistory';
 import { collectBikeHistory, handleBikeHistory } from './bikeHistory';
 
 const DEFAULT_ORIGINS = [
@@ -267,7 +267,7 @@ export const handleRequest = async (request, env, fetchImpl = fetch, executionCo
 // while unit tests can still provide a mock. The scheduled edge poll archives
 // the same shared snapshot used by the map, while GitHub
 // Actions remains responsible for the heavier daily model training.
-const scheduledSnapshot = async (env, executionContext) => {
+const scheduledSnapshot = async (env, executionContext, archive = false) => {
   const request = new Request('https://worker.internal/network-snapshot', {
     method: 'GET',
     headers: { Origin: 'https://salarshk.github.io', Accept: 'application/json' },
@@ -279,10 +279,10 @@ const scheduledSnapshot = async (env, executionContext) => {
   }
   const snapshot = await response.json();
   try {
-    await updateRailHistory(env, snapshot);
-    if (new Date(snapshot.generatedAt).getUTCMinutes() % 5 === 0) await archiveSnapshot(env, snapshot);
+    if (archive) await archiveSnapshot(env, snapshot);
+    else await updateRailHistory(env, snapshot);
   } catch (error) {
-    console.error('Scheduled rail history failed', error?.message || 'unknown');
+    console.error(archive ? 'Scheduled raw snapshot archive failed' : 'Scheduled rail history failed', error?.message || 'unknown');
   }
 };
 
@@ -305,11 +305,15 @@ const scheduledMobilityContext = async (env) => {
 
 export default {
   fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext),
-  scheduled: (controller, env, executionContext) => executionContext.waitUntil(Promise.all([
-    scheduledSnapshot(env, executionContext),
-    ...(new Date().getUTCMinutes() % 5 === 0 ? [
-      scheduledMobilityContext(env),
-      collectBikeHistory(env).catch((error) => console.error('Scheduled GBFS history failed', error?.message || 'unknown')),
-    ] : []),
-  ])),
+  scheduled: (controller, env, executionContext) => {
+    const jobs = {
+      '* * * * *': () => scheduledSnapshot(env, executionContext),
+      '*/5 * * * *': () => scheduledSnapshot(env, executionContext, true),
+      '1-56/5 * * * *': () => collectBikeHistory(env),
+      '2-57/5 * * * *': () => scheduledMobilityContext(env),
+      '3-58/15 * * * *': () => publishRailHistory(env),
+    };
+    const job = jobs[controller.cron];
+    if (job) executionContext.waitUntil(job().catch((error) => console.error(`Scheduled ${controller.cron} failed`, error?.message || 'unknown')));
+  },
 };

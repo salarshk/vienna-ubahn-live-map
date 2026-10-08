@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleRailHistory, summariseRailSample, updateRailHistory } from './railHistory';
+import { handleRailHistory, publishRailHistory, summariseRailSample, updateRailHistory } from './railHistory';
 import { collectBikeHistory, handleBikeHistory, parseBikeSnapshot } from './bikeHistory';
 
 const bucket = () => {
@@ -18,20 +18,23 @@ const observation = (at, realtimeTimestamp = at + 300000) => ({
 
 describe('shared rail history', () => {
   it('compares the same planned departure across samples and persists one minute once', async () => {
-    const at = Math.floor(Date.now() / 300000) * 300000 + 60000;
+    const at = Math.floor(Date.now() / 300000) * 300000 - 60000;
     const store = bucket();
     const first = { generatedAt: at, sourceServerTime: String(at), observations: [observation(at)], completeness: { complete: true } };
     const second = { ...first, generatedAt: at + 60000, sourceServerTime: String(at + 60000), observations: [observation(at, at + 420000)] };
     await updateRailHistory({ RAIL_ARCHIVE: store }, first);
     await updateRailHistory({ RAIL_ARCHIVE: store }, second);
     await updateRailHistory({ RAIL_ARCHIVE: store }, second);
-    const latest = JSON.parse(store.objects.get('rail-history/latest.json'));
-    expect(latest.samples).toHaveLength(2);
-    expect(latest.samples[1].rows[0]).toMatchObject({ etaPairs: 1, etaStablePairs: 0, maxEtaRevisionSeconds: 120 });
-    expect(store.put).toHaveBeenCalledTimes(4);
+    const latest = JSON.parse(store.objects.get('rail-history/v2/latest.json'));
+    expect(latest.version).toBe(2);
+    expect(latest.updatedAt).toBe(second.generatedAt);
+    expect([...store.objects.keys()].filter((key) => key.startsWith('rail-history/v2/samples/'))).toHaveLength(2);
+    expect(store.put).toHaveBeenCalledTimes(6);
+    await publishRailHistory({ RAIL_ARCHIVE: store }, second.generatedAt + 1000);
     const response = await handleRailHistory(new Request('https://worker.example/rail-history?station=Stephansplatz&days=1'), { RAIL_ARCHIVE: store }, 'https://salarshk.github.io');
     const payload = await response.json();
     expect(payload.recent).toHaveLength(2);
+    expect(payload.recent[1].rows[0]).toMatchObject({ etaPairs: 1, etaStablePairs: 0, maxEtaRevisionSeconds: 120 });
     expect(payload.hourly[0].etaPairs).toBe(1);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://salarshk.github.io');
   });
@@ -45,10 +48,22 @@ describe('shared rail history', () => {
     const store = bucket();
     const at = Date.now();
     await updateRailHistory({ RAIL_ARCHIVE: store }, { generatedAt: at, observations: [observation(at), { ...observation(at), stationId: 42, stationName: 'Karlsplatz' }] });
+    await publishRailHistory({ RAIL_ARCHIVE: store }, at + 1000);
     const response = await handleRailHistory(new Request('https://worker.example/rail-history?station=Stephansplatz&days=1&format=csv'), { RAIL_ARCHIVE: store }, 'https://salarshk.github.io');
     const csv = await response.text();
     expect(csv).toContain('Stephansplatz');
     expect(csv).not.toContain('Karlsplatz');
+  });
+
+  it('marks an interrupted archive stale and can still read the old rolling format', async () => {
+    const store = bucket();
+    const at = Date.now() - 11 * 60000;
+    const sample = summariseRailSample({ generatedAt: at, observations: [observation(at)] }).sample;
+    store.objects.set('rail-history/latest.json', JSON.stringify({ updatedAt: at, samples: [sample] }));
+    const response = await handleRailHistory(new Request('https://worker.example/rail-history?days=0&station=Stephansplatz'), { RAIL_ARCHIVE: store }, 'https://salarshk.github.io');
+    const payload = await response.json();
+    expect(payload.status).toBe('stale');
+    expect(payload.recent[0].rows[0].stationName).toBe('Stephansplatz');
   });
 });
 
@@ -65,6 +80,7 @@ describe('shared bike history', () => {
         ? { data: { stations: [{ station_id: '1', name: 'Ring', lat: 48.21, lon: 16.37 }, { station_id: '2', name: 'Park', lat: 48.2, lon: 16.3 }] } }
         : { data: { stations: [{ station_id: '1', num_bikes_available: 5 }, { station_id: '2', num_bikes_available: 4 }] } }), { status: 200 }));
     await collectBikeHistory({ RAIL_ARCHIVE: store }, fetchImpl);
+    expect([...store.objects.keys()].some((key) => key.startsWith('vienna-rail/bike-snapshots/'))).toBe(true);
     const response = await handleBikeHistory(new Request('https://worker.example/bike-history?ids=1'), { RAIL_ARCHIVE: store }, 'https://salarshk.github.io');
     const payload = await response.json();
     expect(payload.samples[0].stations.map((row) => row.id)).toEqual(['1']);
