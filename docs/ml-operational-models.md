@@ -34,10 +34,12 @@ trains the delay model, refreshes this registry, and publishes both reports.
 The registry is also saved with the rolling artifact so a short GitHub Actions
 retention window does not erase its evidence.
 
-Frequent edge snapshots are handled by the Cloudflare Worker cron (`*/5 * * *
-*`) and written to the R2 `worker-snapshots/` prefix. GitHub Actions runs the
-heavier collection/training job once per day, using the Worker feed proxy to
-avoid intermittent direct-runner HTTP 403 responses from Wiener Linien.
+The Worker writes compact rail summaries each minute and fuller observation
+snapshots every five minutes under the R2 `worker-snapshots/` prefix. A separate
+five-minute job archives bike observations. GitHub Actions runs the heavier
+collection/training job once per day, archiving newly collected labels before
+training and saving dated model reports afterward. The Worker feed proxy
+avoids intermittent direct-runner HTTP 403 responses from Wiener Linien.
 
 The daily job also archives Open-Meteo hourly weather rows and joins them to
 official delay observations. When Wiener Linien omits a vehicle ID, repeated

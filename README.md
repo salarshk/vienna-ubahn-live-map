@@ -93,11 +93,14 @@ station identifiers.
 
 ## Data pipeline health and optional context feeds
 
-The Cloudflare Worker polls the shared Wiener Linien network snapshot every
-five minutes and archives it to the R2 bucket. GitHub Actions restores those
-archives, collects the daily station sample, trains the models and publishes a
-quality report at `/ml/data-quality.json`. A missing Worker archive is reported
-as a warning; it is never treated as fresh data.
+The Cloudflare Worker saves a station-level Wiener Linien summary to R2 each
+minute, full observation snapshots every five minutes, and dated WienMobil Rad
+samples every five minutes. Public rail and bike history endpoints mark stale
+data rather than presenting it as live. A separate scheduled job publishes
+hourly reliability reports. GitHub Actions restores a recent training window
+from the long-term R2 archive, saves new observations before training, and
+publishes model and data-quality reports. Each completed model report also has
+a dated R2 copy. The map's live feed is separate from these archives.
 
 Traffic-counter locations are public metadata, but measured road values and
 event records require provider access. Configure these Worker variables only
