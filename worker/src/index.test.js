@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildOpenAIRequest, handleRequest } from './index';
-import { monitorStationIds, parseMonitorPayload } from './networkSnapshot';
+import { collectNetworkSnapshot, monitorStationIds, parseMonitorPayload } from './networkSnapshot';
 import { parseCounterLocations } from './mobilityContext';
 
 const origin = 'https://salarshk.github.io';
@@ -86,6 +86,10 @@ describe('advisor worker', () => {
     expect(result.observations).toHaveLength(6);
     expect(result.models.lines.find((line) => line.line === 'U1').delay.meanDelayMinutes).toBe(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    const archived = await collectNetworkSnapshot(fetchMock);
+    expect(archived.status).toBe(200);
+    expect(archived.snapshot.observations).toHaveLength(6);
+    expect(archived.snapshot.models).toBeUndefined();
   });
 
   it('falls back to smaller monitor batches when the full request fails', async () => {

@@ -210,11 +210,10 @@ export const archiveSnapshot = async (env, snapshot) => {
   return key;
 };
 
-export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch, _executionContext = null) => {
-  const url = new URL(request.url);
-  const origin = request.headers.get('Origin') || 'http://localhost:5173';
-  if (request.method === 'OPTIONS') return json({}, 204, origin);
-  if (request.method !== 'GET' || !url.pathname.endsWith('/network-snapshot')) return null;
+// Scheduled storage only needs validated observations. Keep the expensive
+// dashboard model derivation and Response JSON serialization on the public
+// HTTP path; a Free-plan cron has a much smaller CPU budget.
+export const collectNetworkSnapshot = async (fetchImpl = fetch) => {
   const fetchMonitorBatch = async (stationIds) => {
     const upstream = new URL('https://www.wienerlinien.at/ogd_realtime/monitor');
     for (const id of stationIds) upstream.searchParams.append('diva', String(id));
@@ -253,7 +252,7 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     const successful = results.filter((result) => result.ok && result.payload);
     if (!successful.length) {
       console.error('Wiener Linien monitor unavailable', batch.status || batch.error?.message || 'network error');
-      return json({ error: `Wiener Linien monitor returned HTTP ${batch.status || 502}` }, 502, origin);
+      return { status: 502, error: `Wiener Linien monitor returned HTTP ${batch.status || 502}` };
     }
     payload = {
       message: successful.find((result) => result.payload?.message)?.payload?.message || null,
@@ -266,7 +265,6 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
   }
   const generatedAt = Date.now();
   const observations = parseMonitorPayload(payload, generatedAt);
-  const models = buildSharedModels({ observations, fetchedAt: generatedAt });
   const returnedMonitors = asArray(payload?.data?.monitors || payload?.monitors);
   const returnedStationIds = new Set(returnedMonitors.map((monitor) => {
     const properties = monitor?.locationStop?.properties || monitor?.stop?.properties || {};
@@ -293,19 +291,26 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     // snapshot store will retain its last complete response and retry on the
     // next poll, which is safer than dropping trains or recalculating their
     // positions from an incomplete station set.
-    return json({
-      error: 'Wiener Linien returned an incomplete station snapshot.',
-      completeness,
-    }, 502, origin);
+    return { status: 502, error: 'Wiener Linien returned an incomplete station snapshot.', completeness };
   }
-  const snapshot = {
+  return { status: 200, snapshot: {
     generatedAt,
     source: 'wiener-linien-monitor',
     sourceServerTime: payload?.message?.serverTime || payload?.data?.message?.serverTime || null,
     observations,
-    models,
     completeness,
-  };
+  } };
+};
+
+export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch, _executionContext = null) => {
+  const url = new URL(request.url);
+  const origin = request.headers.get('Origin') || 'http://localhost:5173';
+  if (request.method === 'OPTIONS') return json({}, 204, origin);
+  if (request.method !== 'GET' || !url.pathname.endsWith('/network-snapshot')) return null;
+  const collected = await collectNetworkSnapshot(fetchImpl);
+  if (!collected.snapshot) return json({ error: collected.error, completeness: collected.completeness }, collected.status, origin);
+  const { snapshot } = collected;
+  snapshot.models = buildSharedModels({ observations: snapshot.observations, fetchedAt: snapshot.generatedAt });
   // Public map polling must never write to R2. Only the scheduled collector
   // archives snapshots; otherwise every active visitor multiplies writes.
   return json(snapshot, 200, origin, {
@@ -313,7 +318,7 @@ export const handleNetworkSnapshot = async (request, env = {}, fetchImpl = fetch
     // edge cache to one second and never serve a stale-while-revalidate copy:
     // a stale response must not be labelled as fresh telemetry.
     'Cache-Control': 'public, max-age=0, s-maxage=1',
-    'X-Snapshot-Generated-At': String(generatedAt),
-    ETag: `W/"${generatedAt}"`,
+    'X-Snapshot-Generated-At': String(snapshot.generatedAt),
+    ETag: `W/"${snapshot.generatedAt}"`,
   });
 };
