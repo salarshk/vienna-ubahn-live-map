@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T13:09:11.118Z",
+  "generatedAt": "2026-10-08T13:28:20.751Z",
   "production": {
     "stage": "monitored-production",
     "modelIds": [
@@ -14,26 +14,26 @@
     "policy": "Guarded live baselines are visible in the app with confidence, evidence and safe fallback; chronological validation continues independently."
   },
   "data": {
-    "observationRows": 1591874,
-    "labelledDelayRows": 1591874,
-    "headwayEvents": 11300,
-    "recoveredHeadwayEvents": 4589,
+    "observationRows": 1594078,
+    "labelledDelayRows": 1594078,
+    "headwayEvents": 11461,
+    "recoveredHeadwayEvents": 4654,
     "contextRows": 672,
     "weatherRows": 672,
     "weatherJoinedExamples": 1574711,
-    "etaCrossStationRows": 609613,
+    "etaCrossStationRows": 611288,
     "crowdingProxyExamples": 24069,
-    "cancellationProxyExamples": 5238,
-    "eventPressureExamples": 65641,
-    "transferOpportunityExamples": 1591874,
+    "cancellationProxyExamples": 5266,
+    "eventPressureExamples": 66599,
+    "transferOpportunityExamples": 1594078,
     "calendarDays": 29,
     "coverageDays": 28.1,
     "lineCounts": {
-      "U1": 381171,
-      "U2": 277865,
-      "U3": 269378,
-      "U4": 297395,
-      "U6": 366065
+      "U1": 381711,
+      "U2": 278266,
+      "U3": 269778,
+      "U4": 297766,
+      "U6": 366557
     }
   },
   "summary": {
@@ -59,19 +59,19 @@
         "incidents"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
-      "holdoutExamples": 58,
+      "trainingExamples": 1594078,
+      "holdoutExamples": 1200,
       "scores": {
-        "maeMinutes": 1.67,
-        "rmseMinutes": 2.29
+        "maeMinutes": 0.54,
+        "rmseMinutes": 1.03
       },
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "empirical line profile pending horizon-specific ridge",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
+            "samples": 381711,
             "mean": 1.6,
             "standardDeviation": 6.74,
             "p50": 0.07,
@@ -79,7 +79,7 @@
             "line": "U1"
           },
           "U2": {
-            "samples": 277865,
+            "samples": 278266,
             "mean": 1.23,
             "standardDeviation": 5.2,
             "p50": 0.4,
@@ -87,7 +87,7 @@
             "line": "U2"
           },
           "U3": {
-            "samples": 269378,
+            "samples": 269778,
             "mean": 0.2,
             "standardDeviation": 5.26,
             "p50": 0,
@@ -95,15 +95,15 @@
             "line": "U3"
           },
           "U4": {
-            "samples": 297395,
+            "samples": 297766,
             "mean": 0.62,
-            "standardDeviation": 3.94,
+            "standardDeviation": 3.93,
             "p50": 0,
             "p90": 1.85,
             "line": "U4"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 0.34,
             "standardDeviation": 3.11,
             "p50": 0,
@@ -135,17 +135,17 @@
         "observation age"
       ],
       "status": "candidate",
-      "trainingExamples": 609613,
+      "trainingExamples": 611288,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Journey keys are inferred from timetable fields; stable vehicle IDs would improve validation.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "empirical ETA distribution",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
-            "mean": 430.65,
+            "samples": 381711,
+            "mean": 430.66,
             "standardDeviation": 267.32,
             "p50": 425,
             "p90": 805,
@@ -153,8 +153,8 @@
             "unit": "seconds"
           },
           "U2": {
-            "samples": 277865,
-            "mean": 437.9,
+            "samples": 278266,
+            "mean": 437.91,
             "standardDeviation": 267.82,
             "p50": 437,
             "p90": 810,
@@ -162,8 +162,8 @@
             "unit": "seconds"
           },
           "U3": {
-            "samples": 269378,
-            "mean": 435.49,
+            "samples": 269778,
+            "mean": 435.51,
             "standardDeviation": 268.31,
             "p50": 436,
             "p90": 811,
@@ -171,18 +171,18 @@
             "unit": "seconds"
           },
           "U4": {
-            "samples": 297395,
-            "mean": 440.51,
-            "standardDeviation": 266.12,
+            "samples": 297766,
+            "mean": 440.5,
+            "standardDeviation": 266.13,
             "p50": 444,
             "p90": 805,
             "line": "U4",
             "unit": "seconds"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 431.52,
-            "standardDeviation": 267.4,
+            "standardDeviation": 267.41,
             "p50": 430,
             "p90": 805,
             "line": "U6",
@@ -205,54 +205,54 @@
         "vehicle identity"
       ],
       "status": "candidate",
-      "trainingExamples": 4126,
+      "trainingExamples": 4181,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "platform-observation profile",
         "lineProfiles": {
           "U1": {
-            "samples": 971,
-            "mean": 12.4,
-            "standardDeviation": 16.72,
+            "samples": 983,
+            "mean": 12.37,
+            "standardDeviation": 16.62,
             "p50": 9,
             "p90": 13,
             "line": "U1",
             "unit": "seconds"
           },
           "U2": {
-            "samples": 701,
-            "mean": 13.03,
-            "standardDeviation": 18.49,
+            "samples": 708,
+            "mean": 13.02,
+            "standardDeviation": 18.4,
             "p50": 10,
             "p90": 15,
             "line": "U2",
             "unit": "seconds"
           },
           "U3": {
-            "samples": 844,
-            "mean": 18.68,
-            "standardDeviation": 30.28,
+            "samples": 852,
+            "mean": 18.6,
+            "standardDeviation": 30.15,
             "p50": 11,
-            "p90": 22,
+            "p90": 21.9,
             "line": "U3",
             "unit": "seconds"
           },
           "U4": {
-            "samples": 679,
-            "mean": 15.22,
-            "standardDeviation": 21.87,
+            "samples": 692,
+            "mean": 15.38,
+            "standardDeviation": 22.07,
             "p50": 10,
             "p90": 16,
             "line": "U4",
             "unit": "seconds"
           },
           "U6": {
-            "samples": 931,
-            "mean": 15.85,
-            "standardDeviation": 34.03,
+            "samples": 946,
+            "mean": 15.78,
+            "standardDeviation": 33.78,
             "p50": 9,
             "p90": 16,
             "line": "U6",
@@ -275,55 +275,55 @@
         "recent event history"
       ],
       "status": "candidate",
-      "trainingExamples": 11300,
+      "trainingExamples": 11461,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "empirical event interval profile",
         "lineProfiles": {
           "U1": {
-            "samples": 3254,
-            "mean": 232.19,
-            "standardDeviation": 205.41,
+            "samples": 3295,
+            "mean": 230.9,
+            "standardDeviation": 204.92,
             "p50": 106,
             "p90": 504,
             "line": "U1",
             "unit": "seconds"
           },
           "U2": {
-            "samples": 2183,
-            "mean": 288.32,
-            "standardDeviation": 219.47,
-            "p50": 118,
+            "samples": 2210,
+            "mean": 286.57,
+            "standardDeviation": 219.07,
+            "p50": 117,
             "p90": 551,
             "line": "U2",
             "unit": "seconds"
           },
           "U3": {
-            "samples": 2000,
-            "mean": 287.29,
-            "standardDeviation": 203.09,
-            "p50": 421,
-            "p90": 506,
+            "samples": 2055,
+            "mean": 284.5,
+            "standardDeviation": 204.1,
+            "p50": 118,
+            "p90": 506.6,
             "line": "U3",
             "unit": "seconds"
           },
           "U4": {
-            "samples": 1469,
-            "mean": 340.61,
-            "standardDeviation": 199.58,
-            "p50": 450,
+            "samples": 1487,
+            "mean": 338.62,
+            "standardDeviation": 200.19,
+            "p50": 449,
             "p90": 527,
             "line": "U4",
             "unit": "seconds"
           },
           "U6": {
-            "samples": 2394,
-            "mean": 262.2,
-            "standardDeviation": 200.78,
-            "p50": 114,
+            "samples": 2414,
+            "mean": 260.89,
+            "standardDeviation": 200.47,
+            "p50": 113,
             "p90": 492,
             "line": "U6",
             "unit": "seconds"
@@ -352,54 +352,54 @@
         "headway duration"
       ],
       "status": "candidate",
-      "trainingExamples": 4589,
+      "trainingExamples": 4654,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "empirical recovery-duration profile",
         "lineProfiles": {
           "U1": {
-            "samples": 1217,
-            "mean": 33994.7,
-            "standardDeviation": 47726.68,
-            "p50": 16204,
+            "samples": 1225,
+            "mean": 33988.47,
+            "standardDeviation": 48022.12,
+            "p50": 16149,
             "p90": 86473,
             "line": "U1",
             "unit": "seconds"
           },
           "U2": {
-            "samples": 922,
-            "mean": 27698.94,
-            "standardDeviation": 38296.9,
+            "samples": 936,
+            "mean": 27312.22,
+            "standardDeviation": 38138.9,
             "p50": 14324,
-            "p90": 85966.9,
+            "p90": 85930,
             "line": "U2",
             "unit": "seconds"
           },
           "U3": {
-            "samples": 808,
-            "mean": 20448.35,
-            "standardDeviation": 22884.17,
+            "samples": 828,
+            "mean": 20004,
+            "standardDeviation": 22782.84,
             "p50": 14324,
             "p90": 64567,
             "line": "U3",
             "unit": "seconds"
           },
           "U4": {
-            "samples": 656,
-            "mean": 18762.88,
-            "standardDeviation": 20875.55,
+            "samples": 666,
+            "mean": 18507.67,
+            "standardDeviation": 20821.12,
             "p50": 10952,
             "p90": 40958,
             "line": "U4",
             "unit": "seconds"
           },
           "U6": {
-            "samples": 986,
-            "mean": 23077.75,
-            "standardDeviation": 31422.54,
+            "samples": 999,
+            "mean": 23339,
+            "standardDeviation": 33179.94,
             "p50": 14492,
             "p90": 64567,
             "line": "U6",
@@ -421,17 +421,17 @@
         "headway events"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
+      "trainingExamples": 1594078,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "incident-overlap profile",
         "incidentEpisodes": 3086,
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
+            "samples": 381711,
             "mean": 1.6,
             "standardDeviation": 6.74,
             "p50": 0.07,
@@ -439,7 +439,7 @@
             "line": "U1"
           },
           "U2": {
-            "samples": 277865,
+            "samples": 278266,
             "mean": 1.23,
             "standardDeviation": 5.2,
             "p50": 0.4,
@@ -447,7 +447,7 @@
             "line": "U2"
           },
           "U3": {
-            "samples": 269378,
+            "samples": 269778,
             "mean": 0.2,
             "standardDeviation": 5.26,
             "p50": 0,
@@ -455,15 +455,15 @@
             "line": "U3"
           },
           "U4": {
-            "samples": 297395,
+            "samples": 297766,
             "mean": 0.62,
-            "standardDeviation": 3.94,
+            "standardDeviation": 3.93,
             "p50": 0,
             "p90": 1.85,
             "line": "U4"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 0.34,
             "standardDeviation": 3.11,
             "p50": 0,
@@ -486,19 +486,19 @@
         "station"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
-      "holdoutExamples": 58,
+      "trainingExamples": 1594078,
+      "holdoutExamples": 1200,
       "scores": {
-        "accuracyPercent": 93.1,
-        "f1": 0.9
+        "accuracyPercent": 96.5,
+        "f1": 0.691
       },
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "empirical threshold profile",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
+            "samples": 381711,
             "mean": 1.6,
             "standardDeviation": 6.74,
             "p50": 0.07,
@@ -506,7 +506,7 @@
             "line": "U1"
           },
           "U2": {
-            "samples": 277865,
+            "samples": 278266,
             "mean": 1.23,
             "standardDeviation": 5.2,
             "p50": 0.4,
@@ -514,7 +514,7 @@
             "line": "U2"
           },
           "U3": {
-            "samples": 269378,
+            "samples": 269778,
             "mean": 0.2,
             "standardDeviation": 5.26,
             "p50": 0,
@@ -522,15 +522,15 @@
             "line": "U3"
           },
           "U4": {
-            "samples": 297395,
+            "samples": 297766,
             "mean": 0.62,
-            "standardDeviation": 3.94,
+            "standardDeviation": 3.93,
             "p50": 0,
             "p90": 1.85,
             "line": "U4"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 0.34,
             "standardDeviation": 3.11,
             "p50": 0,
@@ -553,18 +553,18 @@
         "time of day"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
+      "trainingExamples": 1594078,
       "holdoutExamples": 0,
       "scores": {
-        "withinOneMinutePercent": 41.4
+        "withinOneMinutePercent": 86.3
       },
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "empirical quantiles",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
+            "samples": 381711,
             "mean": 1.6,
             "standardDeviation": 6.74,
             "p50": 0.07,
@@ -572,7 +572,7 @@
             "line": "U1"
           },
           "U2": {
-            "samples": 277865,
+            "samples": 278266,
             "mean": 1.23,
             "standardDeviation": 5.2,
             "p50": 0.4,
@@ -580,7 +580,7 @@
             "line": "U2"
           },
           "U3": {
-            "samples": 269378,
+            "samples": 269778,
             "mean": 0.2,
             "standardDeviation": 5.26,
             "p50": 0,
@@ -588,15 +588,15 @@
             "line": "U3"
           },
           "U4": {
-            "samples": 297395,
+            "samples": 297766,
             "mean": 0.62,
-            "standardDeviation": 3.94,
+            "standardDeviation": 3.93,
             "p50": 0,
             "p90": 1.85,
             "line": "U4"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 0.34,
             "standardDeviation": 3.11,
             "p50": 0,
@@ -625,16 +625,16 @@
         "line and station"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
+      "trainingExamples": 1594078,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "line on-time profile",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
+            "samples": 381711,
             "mean": 1.6,
             "standardDeviation": 6.74,
             "p50": 0.07,
@@ -642,7 +642,7 @@
             "line": "U1"
           },
           "U2": {
-            "samples": 277865,
+            "samples": 278266,
             "mean": 1.23,
             "standardDeviation": 5.2,
             "p50": 0.4,
@@ -650,7 +650,7 @@
             "line": "U2"
           },
           "U3": {
-            "samples": 269378,
+            "samples": 269778,
             "mean": 0.2,
             "standardDeviation": 5.26,
             "p50": 0,
@@ -658,15 +658,15 @@
             "line": "U3"
           },
           "U4": {
-            "samples": 297395,
+            "samples": 297766,
             "mean": 0.62,
-            "standardDeviation": 3.94,
+            "standardDeviation": 3.93,
             "p50": 0,
             "p90": 1.85,
             "line": "U4"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 0.34,
             "standardDeviation": 3.11,
             "p50": 0,
@@ -696,11 +696,11 @@
         "official notices"
       ],
       "status": "collecting-labels",
-      "trainingExamples": 5238,
+      "trainingExamples": 5266,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Gap events are being collected as a proxy; a complete scheduled-versus-observed feed is still required for true cancellation labels.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": null
     },
     {
@@ -721,7 +721,7 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Station-hour service pressure is collected, but no validated passenger-count label is available.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": null
     },
     {
@@ -741,7 +741,7 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Weather is an observational covariate; causal attribution is not claimed.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": null,
       "production": {
         "stage": "monitored-production",
@@ -763,11 +763,11 @@
         "delay labels"
       ],
       "status": "collecting-labels",
-      "trainingExamples": 65641,
+      "trainingExamples": 66599,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Active official incident/event overlap is collected as a proxy; attendance or ridership labels are not available.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": null
     },
     {
@@ -782,11 +782,11 @@
         "opt-in outcome feedback"
       ],
       "status": "collecting-labels",
-      "trainingExamples": 1591874,
+      "trainingExamples": 1594078,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "Transfer opportunities are collected, but actual passenger outcomes require opt-in feedback or an operator connection feed.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": null
     },
     {
@@ -801,17 +801,17 @@
         "position confidence"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
+      "trainingExamples": 1594078,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "robust interval profile",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
-            "mean": 430.65,
+            "samples": 381711,
+            "mean": 430.66,
             "standardDeviation": 267.32,
             "p50": 425,
             "p90": 805,
@@ -819,8 +819,8 @@
             "unit": "seconds"
           },
           "U2": {
-            "samples": 277865,
-            "mean": 437.9,
+            "samples": 278266,
+            "mean": 437.91,
             "standardDeviation": 267.82,
             "p50": 437,
             "p90": 810,
@@ -828,8 +828,8 @@
             "unit": "seconds"
           },
           "U3": {
-            "samples": 269378,
-            "mean": 435.49,
+            "samples": 269778,
+            "mean": 435.51,
             "standardDeviation": 268.31,
             "p50": 436,
             "p90": 811,
@@ -837,18 +837,18 @@
             "unit": "seconds"
           },
           "U4": {
-            "samples": 297395,
-            "mean": 440.51,
-            "standardDeviation": 266.12,
+            "samples": 297766,
+            "mean": 440.5,
+            "standardDeviation": 266.13,
             "p50": 444,
             "p90": 805,
             "line": "U4",
             "unit": "seconds"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 431.52,
-            "standardDeviation": 267.4,
+            "standardDeviation": 267.41,
             "p50": 430,
             "p90": 805,
             "line": "U6",
@@ -877,16 +877,16 @@
         "line history"
       ],
       "status": "candidate",
-      "trainingExamples": 1591874,
+      "trainingExamples": 1594078,
       "holdoutExamples": 0,
       "scores": null,
       "blocker": null,
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": {
         "method": "residual coverage profile",
         "lineProfiles": {
           "U1": {
-            "samples": 381171,
+            "samples": 381711,
             "mean": 1.6,
             "standardDeviation": 6.74,
             "p50": 0.07,
@@ -894,7 +894,7 @@
             "line": "U1"
           },
           "U2": {
-            "samples": 277865,
+            "samples": 278266,
             "mean": 1.23,
             "standardDeviation": 5.2,
             "p50": 0.4,
@@ -902,7 +902,7 @@
             "line": "U2"
           },
           "U3": {
-            "samples": 269378,
+            "samples": 269778,
             "mean": 0.2,
             "standardDeviation": 5.26,
             "p50": 0,
@@ -910,15 +910,15 @@
             "line": "U3"
           },
           "U4": {
-            "samples": 297395,
+            "samples": 297766,
             "mean": 0.62,
-            "standardDeviation": 3.94,
+            "standardDeviation": 3.93,
             "p50": 0,
             "p90": 1.85,
             "line": "U4"
           },
           "U6": {
-            "samples": 366065,
+            "samples": 366557,
             "mean": 0.34,
             "standardDeviation": 3.11,
             "p50": 0,
@@ -943,13 +943,13 @@
       "holdoutExamples": 0,
       "scores": null,
       "blocker": "The current ÖBB source provides timetable/open-data archives, not a live vehicle-delay feed for this app.",
-      "evidence": "1591874 observations across 29 calendar days",
+      "evidence": "1594078 observations across 29 calendar days",
       "fittedParameters": null
     }
   ],
   "validation": {
     "schemaVersion": 1,
-    "generatedAt": "2026-10-08T13:10:08.298Z",
+    "generatedAt": "2026-10-08T13:29:08.988Z",
     "methodology": "chronological holdout by calendar day; newest day(s) are never used to fit the reported baseline",
     "split": {
       "trainingDays": [
@@ -986,75 +986,75 @@
         "2026-10-08"
       ],
       "trainingRows": 1386641,
-      "holdoutRows": 205233
+      "holdoutRows": 207437
     },
     "models": {
       "multi-horizon-delay": {
         "status": "validated-baseline",
-        "samples": 205233,
-        "maeMinutes": 0.949,
-        "rmseMinutes": 2.754,
+        "samples": 207437,
+        "maeMinutes": 0.961,
+        "rmseMinutes": 2.775,
         "note": "Uses a per-line historical median; the deployed ridge model remains the production delay model."
       },
       "delay-severity": {
         "status": "validated-baseline",
-        "samples": 205233,
-        "accuracyPercent": 78.1,
+        "samples": 207437,
+        "accuracyPercent": 77.9,
         "macroF1": 0.219
       },
       "delay-bands": {
         "status": "validated-baseline",
-        "samples": 205233,
-        "p10ToP90CoveragePercent": 82.2,
+        "samples": 207437,
+        "p10ToP90CoveragePercent": 82.1,
         "meanIntervalWidthMinutes": 3.63
       },
       "route-reliability": {
         "status": "validated-descriptive",
-        "samples": 205233,
+        "samples": 207437,
         "lines": [
           {
             "line": "U1",
             "trainingOnTimeRate": 0.641,
-            "holdoutOnTimeRate": 0.74,
-            "samples": 49305
+            "holdoutOnTimeRate": 0.737,
+            "samples": 49845
           },
           {
             "line": "U2",
             "trainingOnTimeRate": 0.659,
-            "holdoutOnTimeRate": 0.621,
-            "samples": 35761
+            "holdoutOnTimeRate": 0.62,
+            "samples": 36162
           },
           {
             "line": "U3",
             "trainingOnTimeRate": 0.91,
-            "holdoutOnTimeRate": 0.884,
-            "samples": 35150
+            "holdoutOnTimeRate": 0.877,
+            "samples": 35550
           },
           {
             "line": "U4",
             "trainingOnTimeRate": 0.751,
-            "holdoutOnTimeRate": 0.773,
-            "samples": 38255
+            "holdoutOnTimeRate": 0.772,
+            "samples": 38626
           },
           {
             "line": "U6",
             "trainingOnTimeRate": 0.881,
             "holdoutOnTimeRate": 0.876,
-            "samples": 46762
+            "samples": 47254
           }
         ]
       },
       "headway-bunching": {
         "status": "validated-descriptive",
-        "eventSamples": 871,
-        "gapEvents": 154,
-        "bunchEvents": 717,
+        "eventSamples": 1032,
+        "gapEvents": 182,
+        "bunchEvents": 850,
         "note": "Event lifecycle coverage is reported; a precision/recall score needs a complete no-event label stream."
       },
       "recovery-duration": {
         "status": "validated-descriptive",
-        "recoveredEventSamples": 255,
-        "medianRecoveryMinutes": 1076.12
+        "recoveredEventSamples": 320,
+        "medianRecoveryMinutes": 356.07
       }
     }
   }
