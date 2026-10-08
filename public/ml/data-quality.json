@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T10:22:45.432Z",
-  "status": "watch",
+  "generatedAt": "2026-10-08T13:09:11.976Z",
+  "status": "healthy",
   "sources": {
     "ubahn": {
-      "files": 28,
-      "rows": 76920,
+      "files": 50,
+      "rows": 1591874,
       "stations": 99,
-      "liveRows": 76920,
+      "liveRows": 1591874,
       "earliest": 1789038687406,
-      "latest": 1791368515418,
-      "ageMinutes": 1
+      "latest": 1791464805991,
+      "ageMinutes": 2
     },
     "workerSnapshots": {
-      "snapshots": 0,
-      "rows": 0,
-      "earliest": null,
-      "latest": null,
-      "ageMinutes": null
+      "snapshots": 6826,
+      "rows": 11371896,
+      "earliest": 1789720730027,
+      "latest": 1791464402959,
+      "ageMinutes": 9
     },
     "mobilityContextWorker": {
-      "snapshots": 0,
+      "snapshots": 1459,
       "rows": 0,
-      "earliest": null,
-      "latest": null,
-      "ageMinutes": null
+      "earliest": 1790952036650,
+      "latest": 1791464220666,
+      "ageMinutes": 12
     },
     "mobilityContextCollector": {
-      "snapshots": 8,
+      "snapshots": 11,
       "rows": 0,
       "earliest": null,
       "latest": null,
@@ -40,7 +40,7 @@
       "liveRows": 0,
       "earliest": 1788998400000,
       "latest": 1791414000000,
-      "ageMinutes": 0
+      "ageMinutes": 849
     },
     "sbahn": {
       "status": "blocked-live-source",
@@ -51,19 +51,17 @@
     "status": "ok",
     "stationsRequested": 469,
     "stationsSuccessful": 469,
-    "rowsCollected": 774
+    "rowsCollected": 968
   },
   "labels": {
-    "delayActual": 76920,
+    "delayActual": 1591874,
     "trafficJam": 0,
-    "incidentContext": 62766,
+    "incidentContext": 65641,
     "exactGps": 0,
-    "crowdProxy": 76920,
+    "crowdProxy": 1591874,
     "cancellation": "not available",
     "transferOutcome": "not available",
     "eventAttendance": "not available"
   },
-  "warnings": [
-    "no Worker snapshots restored from R2"
-  ]
+  "warnings": []
 }
