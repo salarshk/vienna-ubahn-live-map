@@ -183,7 +183,16 @@ jobs:
           git add public/ml/delay-model.json public/ml/delay-metrics.json public/ml/operational-models.json public/ml/operational-validation.json public/ml/collection-health.json public/ml/data-quality.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update U-Bahn delay model report"
-          git push
+          # The Worker/site may have advanced main while this long-running
+          # collection job trained. Replay only the report commit on top of
+          # the latest main before publishing; never force-push it.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
 
   deploy_report:
     needs: collect_and_train
