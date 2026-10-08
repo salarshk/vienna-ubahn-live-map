@@ -26,13 +26,18 @@ const median = (values) => {
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 };
-const quantile = (values, probability) => {
+const delayStats = (values) => {
+  // Sort each training population once. Previously every holdout row sorted
+  // the same line distribution three times, making daily validation quadratic.
   const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
-  if (!sorted.length) return null;
-  const index = (sorted.length - 1) * probability;
-  const low = Math.floor(index);
-  const high = Math.ceil(index);
-  return low === high ? sorted[low] : sorted[low] + (sorted[high] - sorted[low]) * (index - low);
+  if (!sorted.length) return { median: null, low: null, high: null };
+  const at = (probability) => {
+    const index = (sorted.length - 1) * probability;
+    const low = Math.floor(index);
+    const high = Math.ceil(index);
+    return low === high ? sorted[low] : sorted[low] + (sorted[high] - sorted[low]) * (index - low);
+  };
+  return { median: at(0.5), low: at(0.1), high: at(0.9) };
 };
 
 const readJsonlDir = async (directory) => {
@@ -69,7 +74,9 @@ for (const row of trainRows) {
   list.push(targetDelay(row) / 60);
   trainingByLine.set(lineOf(row), list);
 }
-const predictionFor = (row) => median(trainingByLine.get(lineOf(row)) || []) ?? median(globalTrainingDelays) ?? 0;
+const globalStats = delayStats(globalTrainingDelays);
+const statsByLine = new Map([...trainingByLine].map(([line, values]) => [line, delayStats(values)]));
+const predictionFor = (row) => statsByLine.get(lineOf(row))?.median ?? globalStats.median ?? 0;
 const errors = holdoutRows.map((row) => (predictionFor(row) - targetDelay(row) / 60));
 const mae = errors.length ? mean(errors.map((error) => Math.abs(error))) : null;
 const rmse = errors.length ? Math.sqrt(mean(errors.map((error) => error ** 2))) : null;
@@ -90,9 +97,7 @@ const f1ByClass = classes.map((name) => {
 const macroF1 = labels.length ? mean(f1ByClass) : null;
 
 const bandRows = holdoutRows.map((row) => {
-  const values = trainingByLine.get(lineOf(row)) || globalTrainingDelays;
-  const low = quantile(values, 0.1);
-  const high = quantile(values, 0.9);
+  const { low, high } = statsByLine.get(lineOf(row)) || globalStats;
   const actual = targetDelay(row) / 60;
   return { covered: low !== null && high !== null && actual >= low && actual <= high, width: high - low };
 });
