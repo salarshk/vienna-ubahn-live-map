@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-13T10:54:28.938Z",
-  "status": "healthy",
+  "generatedAt": "2026-10-14T08:57:28.287Z",
+  "status": "watch",
   "sources": {
     "ubahn": {
       "files": 52,
-      "rows": 910568,
+      "rows": 892642,
       "stations": 99,
-      "liveRows": 910568,
-      "earliest": 1789261808284,
-      "latest": 1791888733446,
+      "liveRows": 892642,
+      "earliest": 1789362694362,
+      "latest": 1791968131133,
       "ageMinutes": 2
     },
     "workerSnapshots": {
-      "snapshots": 3311,
-      "rows": 6405896,
-      "earliest": 1790127917536,
-      "latest": 1791888302406,
-      "ageMinutes": 9
+      "snapshots": 3267,
+      "rows": 6283877,
+      "earliest": 1790214317644,
+      "latest": 1791963315158,
+      "ageMinutes": 82
     },
     "mobilityContextWorker": {
-      "snapshots": 2872,
+      "snapshots": 3137,
       "rows": 0,
       "earliest": 1790952036650,
-      "latest": 1791888120553,
-      "ageMinutes": 12
+      "latest": 1791967630637,
+      "ageMinutes": 10
     },
     "mobilityContextCollector": {
-      "snapshots": 17,
+      "snapshots": 18,
       "rows": 0,
       "earliest": null,
       "latest": null,
@@ -40,7 +40,7 @@
       "liveRows": 0,
       "earliest": 1788998400000,
       "latest": 1791414000000,
-      "ageMinutes": 7914
+      "ageMinutes": 9237
     },
     "sbahn": {
       "status": "blocked-live-source",
@@ -51,17 +51,19 @@
     "status": "ok",
     "stationsRequested": 469,
     "stationsSuccessful": 469,
-    "rowsCollected": 800
+    "rowsCollected": 787
   },
   "labels": {
-    "delayActual": 910568,
+    "delayActual": 892642,
     "trafficJam": 0,
-    "incidentContext": 60118,
+    "incidentContext": 58181,
     "exactGps": 0,
-    "crowdProxy": 910568,
+    "crowdProxy": 892642,
     "cancellation": "not available",
     "transferOutcome": "not available",
     "eventAttendance": "not available"
   },
-  "warnings": []
+  "warnings": [
+    "Worker snapshots are older than 15 minutes"
+  ]
 }
