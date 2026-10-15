@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 892642,
-  "labelledJourneyCount": 148572,
+  "observationCount": 874725,
+  "labelledJourneyCount": 145719,
   "dataDays": 31,
-  "coverageHours": 723.7,
-  "firstObservation": "2026-09-14T05:11:34.362Z",
-  "lastObservation": "2026-10-14T08:55:31.133Z",
+  "coverageHours": 721.9,
+  "firstObservation": "2026-09-15T06:38:04.179Z",
+  "lastObservation": "2026-10-15T08:33:50.010Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 148572,
+    "officialLabelledJourneys": 145719,
     "fallbackLabelledJourneys": 0
   },
   "monitoring": {
@@ -48,40 +48,40 @@
     "maxAgeHours": 36,
     "maxMaeMinutes": 10,
     "maxRmseMinutes": 15,
-    "evaluatedAt": "2026-10-14T08:57:18.834Z",
+    "evaluatedAt": "2026-10-15T08:36:14.235Z",
     "beatsBaseline": true,
     "rollbackActive": false
   },
   "status": "ready",
   "validationStage": "validated",
-  "trainedAt": "2026-10-14T08:57:18.834Z",
+  "trainedAt": "2026-10-15T08:36:14.235Z",
   "algorithm": "Ridge regression",
   "split": {
     "method": "Chronological split by whole calendar days; the newest 20% of days are test-only",
-    "availableTrainingExamples": 123025,
-    "availableTestExamples": 25547,
+    "availableTrainingExamples": 121870,
+    "availableTestExamples": 23849,
     "trainingExamples": 6000,
     "testExamples": 1200,
     "sampling": "Deterministic, evenly spaced within each chronological split; all candidates use identical examples",
-    "testPeriodStarts": "2026-10-10T00:00:00.000Z"
+    "testPeriodStarts": "2026-10-11T00:00:00.000Z"
   },
   "model": {
     "sampleCount": 1200,
-    "maeMinutes": 0.56,
-    "rmseMinutes": 1,
-    "rSquared": 0.78,
-    "withinOneMinutePercent": 86.7,
-    "withinTwoMinutesPercent": 97.5,
+    "maeMinutes": 0.58,
+    "rmseMinutes": 1.2,
+    "rSquared": 0.841,
+    "withinOneMinutePercent": 86.4,
+    "withinTwoMinutesPercent": 97.1,
     "delayedThreeMinutes": {
-      "accuracyPercent": 97.3,
-      "precision": 0.865,
-      "recall": 0.643,
-      "f1": 0.738,
+      "accuracyPercent": 96.8,
+      "precision": 0.904,
+      "recall": 0.794,
+      "f1": 0.846,
       "confusionMatrix": {
-        "truePositive": 45,
-        "trueNegative": 1123,
-        "falsePositive": 7,
-        "falseNegative": 25
+        "truePositive": 104,
+        "trueNegative": 1058,
+        "falsePositive": 11,
+        "falseNegative": 27
       }
     }
   },
@@ -92,21 +92,21 @@
       "complexity": "linear regularized",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.57,
-        "rmseMinutes": 1,
-        "rSquared": 0.778,
-        "withinOneMinutePercent": 85.5,
-        "withinTwoMinutesPercent": 97.3,
+        "maeMinutes": 0.6,
+        "rmseMinutes": 1.2,
+        "rSquared": 0.843,
+        "withinOneMinutePercent": 85.4,
+        "withinTwoMinutesPercent": 97.2,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.2,
-          "precision": 0.833,
-          "recall": 0.643,
-          "f1": 0.726,
+          "accuracyPercent": 96.8,
+          "precision": 0.89,
+          "recall": 0.802,
+          "f1": 0.843,
           "confusionMatrix": {
-            "truePositive": 45,
-            "trueNegative": 1121,
-            "falsePositive": 9,
-            "falseNegative": 25
+            "truePositive": 105,
+            "trueNegative": 1056,
+            "falsePositive": 13,
+            "falseNegative": 26
           }
         }
       },
@@ -116,24 +116,24 @@
     {
       "id": "residual-ridge-ensemble",
       "name": "Residual ridge ensemble",
-      "complexity": "baseline correction, λ=0.25, blend=0.75",
+      "complexity": "baseline correction, λ=5, blend=0.75",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.56,
-        "rmseMinutes": 1,
-        "rSquared": 0.78,
-        "withinOneMinutePercent": 86.7,
-        "withinTwoMinutesPercent": 97.5,
+        "maeMinutes": 0.58,
+        "rmseMinutes": 1.2,
+        "rSquared": 0.841,
+        "withinOneMinutePercent": 86.4,
+        "withinTwoMinutesPercent": 97.1,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.3,
-          "precision": 0.865,
-          "recall": 0.643,
-          "f1": 0.738,
+          "accuracyPercent": 96.8,
+          "precision": 0.904,
+          "recall": 0.794,
+          "f1": 0.846,
           "confusionMatrix": {
-            "truePositive": 45,
-            "trueNegative": 1123,
-            "falsePositive": 7,
-            "falseNegative": 25
+            "truePositive": 104,
+            "trueNegative": 1058,
+            "falsePositive": 11,
+            "falseNegative": 27
           }
         }
       },
@@ -143,24 +143,24 @@
     {
       "id": "isotonic-delay-calibration",
       "name": "Isotonic delay calibration",
-      "complexity": "monotone non-parametric, blend=0.5",
+      "complexity": "monotone non-parametric, blend=0.4",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.57,
-        "rmseMinutes": 1.02,
-        "rSquared": 0.769,
-        "withinOneMinutePercent": 86,
-        "withinTwoMinutesPercent": 97.4,
+        "maeMinutes": 0.59,
+        "rmseMinutes": 1.23,
+        "rSquared": 0.833,
+        "withinOneMinutePercent": 85.9,
+        "withinTwoMinutesPercent": 96.6,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.2,
-          "precision": 0.86,
-          "recall": 0.614,
-          "f1": 0.717,
+          "accuracyPercent": 96.6,
+          "precision": 0.925,
+          "recall": 0.748,
+          "f1": 0.827,
           "confusionMatrix": {
-            "truePositive": 43,
-            "trueNegative": 1123,
-            "falsePositive": 7,
-            "falseNegative": 27
+            "truePositive": 98,
+            "trueNegative": 1061,
+            "falsePositive": 8,
+            "falseNegative": 33
           }
         }
       },
@@ -170,24 +170,24 @@
     {
       "id": "isotonic-daily-finetuned",
       "name": "Isotonic + daily fine-tuning",
-      "complexity": "daily recency correction, decay=0.5, blend=0.1",
+      "complexity": "daily recency correction, decay=0.5, blend=0.75",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.57,
-        "rmseMinutes": 1.02,
-        "rSquared": 0.77,
-        "withinOneMinutePercent": 86,
-        "withinTwoMinutesPercent": 97.5,
+        "maeMinutes": 0.6,
+        "rmseMinutes": 1.22,
+        "rSquared": 0.835,
+        "withinOneMinutePercent": 85.4,
+        "withinTwoMinutesPercent": 96.9,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.1,
-          "precision": 0.83,
-          "recall": 0.629,
-          "f1": 0.715,
+          "accuracyPercent": 96.5,
+          "precision": 0.901,
+          "recall": 0.763,
+          "f1": 0.826,
           "confusionMatrix": {
-            "truePositive": 44,
-            "trueNegative": 1121,
-            "falsePositive": 9,
-            "falseNegative": 26
+            "truePositive": 100,
+            "trueNegative": 1058,
+            "falsePositive": 11,
+            "falseNegative": 31
           }
         }
       },
@@ -197,24 +197,24 @@
     {
       "id": "stacked-delay-ensemble",
       "name": "Stacked isotonic + residual ensemble",
-      "complexity": "calibration + residual blend, isotonic weight=0",
+      "complexity": "calibration + residual blend, isotonic weight=0.3",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.56,
-        "rmseMinutes": 1,
-        "rSquared": 0.78,
-        "withinOneMinutePercent": 86.7,
-        "withinTwoMinutesPercent": 97.5,
+        "maeMinutes": 0.57,
+        "rmseMinutes": 1.21,
+        "rSquared": 0.84,
+        "withinOneMinutePercent": 86.3,
+        "withinTwoMinutesPercent": 97,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.3,
-          "precision": 0.865,
-          "recall": 0.643,
-          "f1": 0.738,
+          "accuracyPercent": 96.7,
+          "precision": 0.91,
+          "recall": 0.771,
+          "f1": 0.835,
           "confusionMatrix": {
-            "truePositive": 45,
-            "trueNegative": 1123,
-            "falsePositive": 7,
-            "falseNegative": 25
+            "truePositive": 101,
+            "trueNegative": 1059,
+            "falsePositive": 10,
+            "falseNegative": 30
           }
         }
       },
@@ -227,21 +227,21 @@
       "complexity": "sparse regularized linear",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.57,
-        "rmseMinutes": 1.01,
-        "rSquared": 0.777,
-        "withinOneMinutePercent": 85.8,
-        "withinTwoMinutesPercent": 97.4,
+        "maeMinutes": 0.6,
+        "rmseMinutes": 1.2,
+        "rSquared": 0.842,
+        "withinOneMinutePercent": 85.4,
+        "withinTwoMinutesPercent": 97.1,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.2,
-          "precision": 0.833,
-          "recall": 0.643,
-          "f1": 0.726,
+          "accuracyPercent": 96.8,
+          "precision": 0.89,
+          "recall": 0.802,
+          "f1": 0.843,
           "confusionMatrix": {
-            "truePositive": 45,
-            "trueNegative": 1121,
-            "falsePositive": 9,
-            "falseNegative": 25
+            "truePositive": 105,
+            "trueNegative": 1056,
+            "falsePositive": 13,
+            "falseNegative": 26
           }
         }
       },
@@ -254,21 +254,21 @@
       "complexity": "32 bagged depth-3 trees",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.7,
-        "rmseMinutes": 1.16,
-        "rSquared": 0.705,
-        "withinOneMinutePercent": 79.9,
-        "withinTwoMinutesPercent": 96.8,
+        "maeMinutes": 0.75,
+        "rmseMinutes": 1.3,
+        "rSquared": 0.814,
+        "withinOneMinutePercent": 78.2,
+        "withinTwoMinutesPercent": 95.7,
         "delayedThreeMinutes": {
-          "accuracyPercent": 96.8,
-          "precision": 0.97,
-          "recall": 0.457,
-          "f1": 0.621,
+          "accuracyPercent": 96.7,
+          "precision": 0.969,
+          "recall": 0.718,
+          "f1": 0.825,
           "confusionMatrix": {
-            "truePositive": 32,
-            "trueNegative": 1129,
-            "falsePositive": 1,
-            "falseNegative": 38
+            "truePositive": 94,
+            "trueNegative": 1066,
+            "falsePositive": 3,
+            "falseNegative": 37
           }
         }
       },
@@ -281,21 +281,21 @@
       "complexity": "40 residual depth-2 trees",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.78,
-        "rmseMinutes": 1.26,
-        "rSquared": 0.65,
-        "withinOneMinutePercent": 74,
-        "withinTwoMinutesPercent": 96.3,
+        "maeMinutes": 0.86,
+        "rmseMinutes": 1.47,
+        "rSquared": 0.763,
+        "withinOneMinutePercent": 73.3,
+        "withinTwoMinutesPercent": 93.7,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.3,
-          "precision": 1,
-          "recall": 0.543,
-          "f1": 0.704,
+          "accuracyPercent": 95.8,
+          "precision": 0.955,
+          "recall": 0.641,
+          "f1": 0.767,
           "confusionMatrix": {
-            "truePositive": 38,
-            "trueNegative": 1130,
-            "falsePositive": 0,
-            "falseNegative": 32
+            "truePositive": 84,
+            "trueNegative": 1065,
+            "falsePositive": 4,
+            "falseNegative": 47
           }
         }
       },
@@ -308,21 +308,21 @@
       "complexity": "25-neighbour distance model",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.63,
-        "rmseMinutes": 1.08,
-        "rSquared": 0.743,
-        "withinOneMinutePercent": 81.8,
-        "withinTwoMinutesPercent": 97.3,
+        "maeMinutes": 0.7,
+        "rmseMinutes": 1.27,
+        "rSquared": 0.822,
+        "withinOneMinutePercent": 80.5,
+        "withinTwoMinutesPercent": 95.6,
         "delayedThreeMinutes": {
-          "accuracyPercent": 97.2,
-          "precision": 0.974,
-          "recall": 0.529,
-          "f1": 0.685,
+          "accuracyPercent": 95.8,
+          "precision": 0.976,
+          "recall": 0.634,
+          "f1": 0.769,
           "confusionMatrix": {
-            "truePositive": 37,
-            "trueNegative": 1129,
-            "falsePositive": 1,
-            "falseNegative": 33
+            "truePositive": 83,
+            "trueNegative": 1067,
+            "falsePositive": 2,
+            "falseNegative": 48
           }
         }
       },
@@ -331,41 +331,41 @@
     }
   ],
   "bestAlternative": {
-    "id": "residual-ridge-ensemble",
-    "name": "Residual ridge ensemble",
-    "maeMinutes": 0.56,
-    "rmseMinutes": 1,
+    "id": "stacked-delay-ensemble",
+    "name": "Stacked isotonic + residual ensemble",
+    "maeMinutes": 0.57,
+    "rmseMinutes": 1.21,
     "beatsLiveBaseline": true
   },
   "dailyFineTuning": {
     "enabled": true,
     "method": "recency-weighted line residual correction learned after each completed day",
     "completedDays": 18,
-    "lastLabelDay": "2026-10-09",
+    "lastLabelDay": "2026-10-10",
     "updateCadence": "once per completed calendar day",
     "leakageControl": "The current test days never update the fine-tuning state.",
     "tuning": {
       "decay": 0.5,
-      "blend": 0.1
+      "blend": 0.75
     }
   },
   "currentEstimateBaseline": {
     "sampleCount": 1200,
-    "maeMinutes": 0.58,
-    "rmseMinutes": 1.06,
-    "rSquared": 0.753,
-    "withinOneMinutePercent": 82.8,
-    "withinTwoMinutesPercent": 97,
+    "maeMinutes": 0.61,
+    "rmseMinutes": 1.3,
+    "rSquared": 0.813,
+    "withinOneMinutePercent": 84.2,
+    "withinTwoMinutesPercent": 95.9,
     "delayedThreeMinutes": {
-      "accuracyPercent": 97.4,
-      "precision": 0.953,
-      "recall": 0.586,
-      "f1": 0.726,
+      "accuracyPercent": 96.6,
+      "precision": 0.941,
+      "recall": 0.733,
+      "f1": 0.824,
       "confusionMatrix": {
-        "truePositive": 41,
-        "trueNegative": 1128,
-        "falsePositive": 2,
-        "falseNegative": 29
+        "truePositive": 96,
+        "trueNegative": 1063,
+        "falsePositive": 6,
+        "falseNegative": 35
       }
     }
   },
@@ -379,46 +379,46 @@
   "onlineCalibration": {
     "status": "ready",
     "experimental": true,
-    "scoredJourneyCount": 148572,
+    "scoredJourneyCount": 145719,
     "minimumExamples": 30,
     "evaluationMethod": "Prequential: every prediction is recorded before its final label is available; the label is used only for later predictions.",
     "model": {
-      "sampleCount": 148572,
+      "sampleCount": 145719,
       "maeMinutes": 0.67,
       "rmseMinutes": 1.3,
-      "rSquared": 0.827,
-      "withinOneMinutePercent": 81.9,
+      "rSquared": 0.824,
+      "withinOneMinutePercent": 82.2,
       "withinTwoMinutesPercent": 96.4,
       "delayedThreeMinutes": {
         "accuracyPercent": 96.2,
-        "precision": 0.88,
-        "recall": 0.75,
-        "f1": 0.81,
+        "precision": 0.884,
+        "recall": 0.743,
+        "f1": 0.808,
         "confusionMatrix": {
-          "truePositive": 12157,
-          "trueNegative": 130702,
-          "falsePositive": 1664,
-          "falseNegative": 4049
+          "truePositive": 11569,
+          "trueNegative": 128636,
+          "falsePositive": 1519,
+          "falseNegative": 3995
         }
       }
     },
     "currentEstimateBaseline": {
-      "sampleCount": 148572,
+      "sampleCount": 145719,
       "maeMinutes": 0.65,
       "rmseMinutes": 1.35,
-      "rSquared": 0.813,
-      "withinOneMinutePercent": 81.8,
-      "withinTwoMinutesPercent": 95.5,
+      "rSquared": 0.811,
+      "withinOneMinutePercent": 81.9,
+      "withinTwoMinutesPercent": 95.6,
       "delayedThreeMinutes": {
-        "accuracyPercent": 96.1,
-        "precision": 0.938,
-        "recall": 0.689,
-        "f1": 0.794,
+        "accuracyPercent": 96.2,
+        "precision": 0.937,
+        "recall": 0.688,
+        "f1": 0.793,
         "confusionMatrix": {
-          "truePositive": 11167,
-          "trueNegative": 131626,
-          "falsePositive": 740,
-          "falseNegative": 5039
+          "truePositive": 10703,
+          "trueNegative": 129436,
+          "falsePositive": 719,
+          "falseNegative": 4861
         }
       }
     },
