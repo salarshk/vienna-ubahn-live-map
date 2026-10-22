@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T08:53:32.802Z",
-  "status": "watch",
+  "generatedAt": "2026-10-22T08:50:37.110Z",
+  "status": "healthy",
   "sources": {
     "ubahn": {
       "files": 52,
-      "rows": 708179,
+      "rows": 669965,
       "stations": 99,
-      "liveRows": 708179,
-      "earliest": 1789974797350,
-      "latest": 1792572679680,
+      "liveRows": 669965,
+      "earliest": 1790066244765,
+      "latest": 1792658923907,
       "ageMinutes": 2
     },
     "workerSnapshots": {
-      "snapshots": 2890,
-      "rows": 5166056,
-      "earliest": 1790819151291,
-      "latest": 1792570212954,
-      "ageMinutes": 43
+      "snapshots": 2773,
+      "rows": 4883592,
+      "earliest": 1790905556437,
+      "latest": 1792658733351,
+      "ageMinutes": 5
     },
     "mobilityContextWorker": {
-      "snapshots": 5147,
+      "snapshots": 5436,
       "rows": 0,
       "earliest": 1790952036650,
-      "latest": 1792572131406,
-      "ageMinutes": 11
+      "latest": 1792658552521,
+      "ageMinutes": 8
     },
     "mobilityContextCollector": {
-      "snapshots": 25,
+      "snapshots": 26,
       "rows": 0,
       "earliest": null,
       "latest": null,
@@ -40,7 +40,7 @@
       "liveRows": 0,
       "earliest": 1788998400000,
       "latest": 1791414000000,
-      "ageMinutes": 19314
+      "ageMinutes": 20751
     },
     "sbahn": {
       "status": "blocked-live-source",
@@ -51,19 +51,17 @@
     "status": "ok",
     "stationsRequested": 469,
     "stationsSuccessful": 469,
-    "rowsCollected": 765
+    "rowsCollected": 704
   },
   "labels": {
-    "delayActual": 708179,
+    "delayActual": 669965,
     "trafficJam": 0,
-    "incidentContext": 29196,
+    "incidentContext": 28000,
     "exactGps": 0,
-    "crowdProxy": 708179,
+    "crowdProxy": 669965,
     "cancellation": "not available",
     "transferOutcome": "not available",
     "eventAttendance": "not available"
   },
-  "warnings": [
-    "Worker snapshots are older than 15 minutes"
-  ]
+  "warnings": []
 }
