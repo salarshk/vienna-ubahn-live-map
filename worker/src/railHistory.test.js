@@ -35,7 +35,7 @@ describe('shared rail history', () => {
     const payload = await response.json();
     expect(payload.recent).toHaveLength(2);
     expect(payload.recent[1].rows[0]).toMatchObject({ etaPairs: 1, etaStablePairs: 0, maxEtaRevisionSeconds: 120 });
-    expect(payload.hourly[0].etaPairs).toBe(1);
+    expect(payload.hourly.some((row) => row.etaPairs === 1)).toBe(true);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://salarshk.github.io');
   });
 

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f4eb" />
+    <meta name="description" content="Vienna Rail adds network-wide train-position estimates, delay patterns, headway monitoring and experimental predictions to Vienna's public-transport information." />
+    <meta property="og:title" content="Vienna Rail — See the network differently" />
+    <meta property="og:description" content="A complementary analysis layer for Vienna's rail network: position estimates, delay patterns, headway signals and model transparency." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="./secession-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Vienna Rail — About the app</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" data-app-link href="/" aria-label="Vienna Rail home">
+        <img class="brand-logo" src="./secession-mark.svg" alt="" />
+        <span>VIENNA <b>RAIL</b></span>
+      </a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">
+        <span></span><span></span>
+      </button>
+      <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+        <a href="#platform">Platform</a>
+        <a href="#different">What’s different</a>
+        <a href="#screens">App screens</a>
+        <a href="#signals">Insights</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#trust">Data & trust</a>
+        <a class="nav-cta" data-app-link href="/">Open live map <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero section-shell">
+        <div class="hero-copy">
+          <div class="hero-ornament" aria-hidden="true"></div>
+          <div class="eyebrow"><span class="eyebrow-dot"></span> AN INDEPENDENT VIENNA RAIL PROJECT</div>
+          <h1>See Vienna<br /><span>in motion.</span></h1>
+          <p class="hero-lede">A network-analysis layer beyond route planning: transparent train-position estimates, delay patterns and service signals across Vienna.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" data-app-link href="/">Explore the live map <span aria-hidden="true">→</span></a>
+            <a class="button button-secondary" href="#platform">Discover the platform</a>
+          </div>
+          <div class="hero-note"><span class="note-icon">i</span><span>Departure data is live; train locations are estimates—not onboard GPS.</span></div>
+          <div class="hero-building" aria-hidden="true"><img src="./secession-architecture.webp" alt="" width="840" height="1260" /></div>
+        </div>
+
+        <div class="hero-stage">
+          <div class="hero-art">
+            <div class="art-topline"><span><i></i> VIENNA RAIL NETWORK</span><span>ILLUSTRATED NETWORK VIEW</span></div>
+            <a class="art-map" data-app-link href="/" aria-label="Open the interactive Vienna Rail map">
+              <img src="./network-illustration.svg" alt="Illustrated U-Bahn and S-Bahn lines across Vienna, using the app’s network geometry." width="800" height="640" fetchpriority="high" />
+              <span class="map-open">Open the live map <span aria-hidden="true">↗</span></span>
+            </a>
+            <div class="art-legend"><span><i class="legend-dot live"></i>U-Bahn departure timing</span><span><i class="legend-dot estimate"></i>Inferred movement</span><span><i class="legend-dot scheduled"></i>S-Bahn timetable</span></div>
+          </div>
+          <div class="hero-shortcuts" aria-label="Explore Vienna Rail">
+            <a class="hero-shortcut" href="#screens"><small>01 / Explore</small><strong>The map in use</strong><span>Real screens & details</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+            <a class="hero-shortcut" href="#different"><small>02 / Understand</small><strong>Delay patterns</strong><span>Across the network</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+            <a class="hero-shortcut" href="#signals"><small>03 / Anticipate</small><strong>Model insights</strong><span>Evidence & confidence</span><span class="shortcut-arrow" aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="network-strip" aria-label="Network coverage">
+        <div class="section-shell network-strip-inner">
+          <span class="strip-title">BUILT AROUND VIENNA’S NETWORK</span>
+          <div class="line-chip"><i class="line-color u1"></i>U-Bahn</div>
+          <div class="line-chip"><i class="line-color sbahn"></i>S-Bahn</div>
+          <div class="line-chip"><i class="line-color tram"></i>Trams</div>
+          <span class="strip-note">Show only the layers you need.</span>
+        </div>
+      </section>
+
+      <section id="different" class="different-section">
+        <div class="section-shell">
+          <div class="different-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-dot"></span> A COMPLEMENT TO OFFICIAL TRAVEL APPS</div>
+              <h2>From “how do I get there?”<br /><span>to “what is happening across the network?”</span></h2>
+            </div>
+            <p>WienMobil and ÖBB Scotty focus on passenger essentials such as journey planning, live travel information and service updates. Vienna Rail’s added layer is network-wide analysis: patterns, estimates and model signals in one place.</p>
+          </div>
+          <div class="different-grid">
+            <article class="different-card different-card-map">
+              <span class="different-index">01 / SEE THE NETWORK</span>
+              <h3>Train-position estimates, with the source exposed</h3>
+              <p>Follow U-Bahn movement inferred from departure updates alongside S-Bahn timetable estimates and optional tram layers. The map labels estimates as estimates—not as onboard GPS.</p>
+              <span class="different-tag">NETWORK-WIDE · SOURCE-LABELED</span>
+            </article>
+            <article class="different-card different-card-delay">
+              <span class="different-index">02 / FIND THE PATTERN</span>
+              <h3>Delay history beyond one journey</h3>
+              <p>Rank observed delay by train, station and line, compare rolling time windows, and build longer-term reports as the archive grows.</p>
+              <span class="different-tag">RANKINGS · ROLLING WINDOWS · HISTORY</span>
+            </article>
+            <article class="different-card different-card-headway">
+              <span class="different-index">03 / SPOT SERVICE SHAPE</span>
+              <h3>Where gaps or bunching may happen</h3>
+              <p>Headway monitoring points to the affected line and corridor or station. Dwell-time and recovery signals add context, with experimental status kept visible.</p>
+              <span class="different-tag">GAPS · BUNCHING · DWELL · RECOVERY</span>
+            </article>
+            <article class="different-card different-card-models">
+              <span class="different-index">04 / TEST WHAT-IFS</span>
+              <h3>Scenarios, spatial context and model transparency</h3>
+              <p>Explore a delay scenario, inspect the 200 m grid where observations exist, and see which models are collecting data, monitored or evaluated. Not every signal is a trained or validated model.</p>
+              <span class="different-tag">SCENARIOS · SPATIAL LAYERS · MODEL STATUS</span>
+            </article>
+          </div>
+          <div class="official-app-note">
+            <p><strong>Use the right tool for the job.</strong> Official apps remain the source for operator-issued notices, confirmed journey advice and ticketing. Vienna Rail is an independent analysis companion—not a replacement.</p>
+            <div class="official-app-links">
+              <a href="https://www.wienerlinien.at/de/wienmobil" target="_blank" rel="noreferrer">WienMobil features ↗</a>
+              <a href="https://www.oebb.at/de/fahrplan/fahrplanauskunft/scottymobil" target="_blank" rel="noreferrer">ÖBB Scotty features ↗</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screens" class="section-shell section-block screenshot-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">REAL APP SCREENS · CAPTURED 15 OCT 2026</div><h2>See what the map<br />actually shows.</h2></div>
+          <p>These are captures of the live Vienna Rail interface—not concept artwork. The displayed feed and counts change over time; the notes explain how to read each view.</p>
+        </div>
+        <div class="screenshot-grid">
+          <figure class="screenshot-card screenshot-card-wide">
+            <a class="screenshot-image" href="./screenshots/network-map.jpg" target="_blank" rel="noreferrer" aria-label="Open the full-size network map screenshot">
+              <img src="./screenshots/network-map.jpg" alt="Actual Vienna Rail map screen with U-Bahn and S-Bahn routes, train markers, search and a source-status legend." width="1440" height="960" fetchpriority="high" />
+              <span class="image-zoom" aria-hidden="true">↗</span>
+            </a>
+            <figcaption>
+              <span class="screenshot-kicker">01 · NETWORK MAP</span>
+              <h3>One map, multiple evidence types</h3>
+              <p>Route colours distinguish lines; the map legend separates live departure timing with inferred positions from scheduled timetable estimates. A train marker is not an onboard GPS fix.</p>
+            </figcaption>
+          </figure>
+          <figure class="screenshot-card">
+            <a class="screenshot-image" href="./screenshots/delay-desk.jpg" target="_blank" rel="noreferrer" aria-label="Open the full-size delay desk screenshot">
+              <img src="./screenshots/delay-desk.jpg" alt="Actual Vienna Rail delay desk open over the map, ranking available official delay observations." width="1440" height="960" loading="lazy" />
+              <span class="image-zoom" aria-hidden="true">↗</span>
+            </a>
+            <figcaption>
+              <span class="screenshot-kicker">02 · DELAY DESK</span>
+              <h3>Find the largest reported delays</h3>
+              <p>Rank the operator-reported observations by train, station or line and choose a time window. Missing station metadata can appear as “unknown”; the ranking only covers records the source provides.</p>
+            </figcaption>
+          </figure>
+          <figure class="screenshot-card">
+            <a class="screenshot-image" href="./screenshots/rail-intelligence.jpg" target="_blank" rel="noreferrer" aria-label="Open the full-size rail intelligence screenshot">
+              <img src="./screenshots/rail-intelligence.jpg" alt="Actual Vienna Rail intelligence panel showing gap and bunching signals, a delay leaderboard and spatial grid summaries." width="1440" height="960" loading="lazy" />
+              <span class="image-zoom" aria-hidden="true">↗</span>
+            </a>
+            <figcaption>
+              <span class="screenshot-kicker">03 · RAIL INTELLIGENCE</span>
+              <h3>Explore service patterns and context</h3>
+              <p>Monitoring signals highlight possible headway gaps and close-running trains; the grid summarizes observations where data exists. These are decision-support indicators, not verified causes or operating instructions.</p>
+            </figcaption>
+          </figure>
+        </div>
+        <p class="screenshot-footnote">Screens captured from the public app on 15 October 2026. Live values, train counts and source coverage can change after capture.</p>
+      </section>
+
+      <section id="platform" class="section-shell section-block">
+        <div class="section-heading">
+          <div><div class="eyebrow">ONE CITY, MORE CONTEXT</div><h2>A map that opens<br />into a control room.</h2></div>
+          <p>Start with the network. Then move from a train or station into the information behind it—from departures and delay history to emerging service patterns.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card feature-map">
+            <div class="feature-number">01 / SEE</div>
+            <div class="feature-icon icon-map"><span></span><span></span><span></span></div>
+            <h3>Follow the whole network</h3>
+            <p>Explore U-Bahn, S-Bahn and optional tram layers, search for favourite stations, and open a train or station for its available details.</p>
+            <ul><li>Line filters and uncluttered optional layers</li><li>Station departures and selected-train details</li><li>Nearby stations with optional device GPS</li></ul>
+            <div class="feature-tag">MAP · STATIONS · TRAINS</div>
+          </article>
+          <article class="feature-card feature-delay">
+            <div class="feature-number">02 / UNDERSTAND</div>
+            <div class="feature-icon icon-bars"><i></i><i></i><i></i><i></i></div>
+            <h3>See where delays collect</h3>
+            <p>Rank reported delay patterns by train, station and line. Explore rolling time windows and compare recent conditions with the wider history being collected.</p>
+            <ul><li>Delay summaries and station/line rankings</li><li>Prediction ranges beside live departure evidence</li><li>Hourly and longer-period reporting as history grows</li></ul>
+            <div class="feature-tag">DELAY DESK · HISTORY · COMPARISON</div>
+          </article>
+          <article class="feature-card feature-predict">
+            <div class="feature-number">03 / ANTICIPATE</div>
+            <div class="feature-icon icon-pulse"><span></span></div>
+            <h3>Spot patterns earlier</h3>
+            <p>Model and rule-based signals turn repeated observations into useful prompts—not automatic operational commands.</p>
+            <ul><li>Delay and dwell-time estimates</li><li>Headway gaps, bunching and recovery signals</li><li>Scenario exploration and service-impact context</li></ul>
+            <div class="feature-tag">PREDICTIONS · SCENARIOS · SIGNALS</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="signals" class="insight-band">
+        <div class="section-shell insight-layout">
+          <div class="insight-copy">
+            <div class="eyebrow">FROM DOTS TO DECISIONS</div>
+            <h2>Useful signals.<br /><span>Honest confidence.</span></h2>
+            <p>Vienna Rail brings several kinds of evidence into one place. Each signal keeps its source and certainty visible, so a timetable estimate is never dressed up as a GPS fix.</p>
+            <a class="text-link" data-app-link href="/">Open the map and explore <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="signal-list">
+            <article class="signal-row"><span class="signal-index">A</span><div><h3>Delay outlook</h3><p>Estimate how a reported delay may evolve, and compare the model with the live departure estimate.</p></div><span class="signal-state state-model">MODEL</span></article>
+            <article class="signal-row"><span class="signal-index">B</span><div><h3>Headway & bunching</h3><p>Flag unusually large or small gaps, with the station or corridor where the pattern appears.</p></div><span class="signal-state state-watch">MONITORED</span></article>
+            <article class="signal-row"><span class="signal-index">C</span><div><h3>Delay, dwell & recovery</h3><p>Explore station-level delay summaries, dwell-time indicators and post-disruption recovery signals.</p></div><span class="signal-state state-watch">EARLY SIGNAL</span></article>
+            <article class="signal-row"><span class="signal-index">D</span><div><h3>Network context</h3><p>Bring together service messages and available weather, mobility or event context where a source is connected.</p></div><span class="signal-state state-context">CONTEXT</span></article>
+            <p class="signal-disclaimer">Model availability and validation status can vary by feature. The in-app model dashboard shows the current status and evaluation metrics; experimental signals should be read as indicators, not guarantees.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" class="section-shell section-block process-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">HOW THE SIGNALS ARE MADE</div><h2>Evidence in.<br />Estimates out.</h2></div>
+          <p>The platform keeps published facts, derived estimates and model outputs distinct. That separation is central to understanding what a marker or prediction can—and cannot—tell you.</p>
+        </div>
+        <div class="process-grid">
+          <article><span class="process-step">01</span><h3>Collect</h3><p>Read public Wiener Linien departure and service-message feeds, plus published ÖBB timetable data and other connected open sources.</p></article>
+          <article><span class="process-step">02</span><h3>Align</h3><p>Match departures to stations, lines and planned times. Keep source timestamps and known coverage gaps alongside the observations.</p></article>
+          <article><span class="process-step">03</span><h3>Estimate</h3><p>Interpolate train movement from departure predictions and route timings. A marker describes an estimate, not a device installed on the train.</p></article>
+          <article><span class="process-step">04</span><h3>Evaluate</h3><p>Train on earlier observations, test on later held-out data, compare with a simple baseline, and show the scores in the app.</p></article>
+        </div>
+        <div class="confidence-panel">
+          <div class="confidence-head"><span class="eyebrow">READ THE MARKER, NOT JUST THE MAP</span><span class="confidence-caption">SOURCE → DISPLAY</span></div>
+          <div class="confidence-columns">
+            <div><span class="confidence-symbol symbol-live">●</span><div><b>Live departure</b><small>Operator-reported departure timing</small></div><span class="confidence-label">OBSERVED FEED</span></div>
+            <div><span class="confidence-symbol symbol-inferred">◉</span><div><b>U-Bahn position</b><small>Estimated from departures and route timing</small></div><span class="confidence-label">INFERRED</span></div>
+            <div><span class="confidence-symbol symbol-scheduled">○</span><div><b>S-Bahn movement</b><small>Interpolated between timetable calls</small></div><span class="confidence-label">SCHEDULED</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="trust" class="trust-section">
+        <div class="section-shell trust-layout">
+          <div>
+            <div class="eyebrow">OPEN DATA · CLEAR LIMITS</div>
+            <h2>Built to be useful.<br /><span>Designed to be candid.</span></h2>
+            <p class="trust-lede">Vienna Rail is an independent project—not an official Wiener Linien or ÖBB service. It complements operator information with map-based estimates and experimental analysis.</p>
+            <div class="trust-links">
+              <a href="https://www.wienerlinien.at/open-data" target="_blank" rel="noreferrer">Wiener Linien Open Data <span>↗</span></a>
+              <a href="https://data.oebb.at/de/datensaetze~soll-fahrplan-gtfs~" target="_blank" rel="noreferrer">ÖBB timetable data <span>↗</span></a>
+              <a href="https://github.com/salarshk/vienna-ubahn-live-map" target="_blank" rel="noreferrer">Source code on GitHub <span>↗</span></a>
+            </div>
+          </div>
+          <div class="trust-cards">
+            <article class="trust-card"><span class="trust-card-icon">⌖</span><div><h3>Your location stays yours</h3><p>GPS is optional. The app compares your device location with the station list on your device; it does not send the coordinates to the app server.</p></div></article>
+            <article class="trust-card"><span class="trust-card-icon">↗</span><div><h3>Signals are decision support</h3><p>Predictions can be wrong. They are not operator instructions, a safety system or a substitute for official service notices.</p></div></article>
+            <article class="trust-card"><span class="trust-card-icon">AI</span><div><h3>AI advisor status</h3><p>The optional GPT-based advisor is currently disabled in the public app. No AI API key is exposed in the website.</p></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-shell section-block faq-section">
+        <div class="section-heading">
+          <div><div class="eyebrow">GOOD QUESTIONS</div><h2>Before you ride.</h2></div>
+          <p>A few important details for using the map and reading its predictions.</p>
+        </div>
+        <div class="faq-grid">
+          <details><summary>Are the train dots exact GPS locations?</summary><p>No. Wiener Linien’s public real-time feed provides departure predictions, not train GPS. U-Bahn locations are estimated from those predictions and route timing. ÖBB S-Bahn locations are scheduled timetable interpolations.</p></details>
+          <details><summary>How quickly does the map refresh?</summary><p>The app polls its shared snapshot frequently (about every 1.5 seconds). That describes the app’s request cycle, not how often an operator changes its source data; network delays and source updates can affect the information shown.</p></details>
+          <details><summary>Can I install Vienna Rail on my phone?</summary><p>Yes. The site is a Progressive Web App. On iPhone, open it in Safari, choose Share, then Add to Home Screen. GPS works only after you choose a location feature and grant permission.</p></details>
+          <details><summary>Are the predictions all fully trained machine-learning models?</summary><p>No. Some are rule-based or monitored baselines; other candidates may still be collecting labels or awaiting validation. Check the in-app model dashboard for current status, sample counts and scores.</p></details>
+        </div>
+      </section>
+
+      <section class="closing-cta">
+        <div class="section-shell closing-inner">
+          <div class="closing-orbit orbit-one"></div><div class="closing-orbit orbit-two"></div>
+          <div class="closing-copy"><div class="eyebrow">YOUR CITY, WITH MORE CONTEXT</div><h2>Take a closer look.</h2><p>Open the map, choose a line, and follow the evidence from station to station.</p></div>
+          <a class="button button-primary" data-app-link href="/">Open Vienna Rail <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="section-shell footer-inner">
+        <a class="brand footer-brand" data-app-link href="/"><img class="brand-logo" src="./secession-mark.svg" alt="" /><span>VIENNA <b>RAIL</b></span></a>
+        <p>Independent rail map & intelligence for Vienna.</p>
+        <div><a href="https://github.com/salarshk/vienna-ubahn-live-map" target="_blank" rel="noreferrer">GitHub ↗</a><span>Not affiliated with Wiener Linien or ÖBB.</span></div>
+      </div>
+    </footer>
+    <script src="./site.js" defer></script>
+  </body>
+</html>

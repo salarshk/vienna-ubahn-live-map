@@ -20,6 +20,7 @@ import { networkSnapshotStore, NETWORK_SNAPSHOT_INTERVAL_MS } from './services/n
 import { mobilityContextStore } from './services/mobilityContextStore';
 import { notificationState, notifyDisruption } from './services/notifications';
 import { lineColor } from './utils/lineColor';
+import { applyTheme, getSavedTheme } from './utils/appTheme';
 import { Activity, Sun, Moon, X, TrainFront, Menu, Download, Navigation2, Star, RefreshCw, BellRing, MapPinned, Route, Clock3, Radio, TrafficCone } from 'lucide-react';
 import './index.css';
 
@@ -43,7 +44,7 @@ const PanelFallback = () => <div className="panel-loading glass-panel" role="sta
 const LOCATE_NOTICE_MS = 6000;
 
 function App() {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(getSavedTheme);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedStation, setSelectedStation] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -317,7 +318,7 @@ function App() {
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
+    applyTheme(newTheme, { persist: true });
   };
 
   // Station click — just opens the detail card, does NOT move the map

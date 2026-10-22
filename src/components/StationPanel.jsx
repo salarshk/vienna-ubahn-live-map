@@ -184,7 +184,7 @@ const StationPanel = ({ station, theme, userLocation, disruptions = [], onClose,
             display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
             padding: '2px 7px', borderRadius: 999, fontSize: '.62rem', fontWeight: 700,
             letterSpacing: '.03em', whiteSpace: 'nowrap',
-            color: scheduledOnly ? '#00B4D8' : focus.isFresh ? '#4CAF50' : '#00B4D8',
+            color: scheduledOnly ? 'var(--status-info)' : focus.isFresh ? 'var(--status-ok)' : 'var(--status-info)',
             background: scheduledOnly ? 'rgba(0,180,216,.15)' : focus.isFresh ? 'rgba(76,175,80,.15)' : 'rgba(0,180,216,.15)',
           }}>
             {scheduledOnly

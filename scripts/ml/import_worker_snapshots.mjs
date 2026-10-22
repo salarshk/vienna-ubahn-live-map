@@ -65,7 +65,7 @@ for (const relative of await filesRecursive(INPUT_DIR)) {
       exactGpsAvailable: false,
       positionSource: 'inferred-from-departure-prediction',
       positionConfidence: 0.45,
-      feedServerTime: null,
+      feedServerTime: snapshot.sourceServerTime || null,
       feedAgeSeconds: Math.max(0, Math.round((observedAt - Number(item.fetchedAt || observedAt)) / 1000)),
     };
     row.eventKey = eventKey(row);

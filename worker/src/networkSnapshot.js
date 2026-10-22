@@ -5,6 +5,7 @@ const LINES = ['U1', 'U2', 'U3', 'U4', 'U6'];
 // gives the map live tram departures.
 const TRAM_LINES = ['1', '2', '5', '6', '9', '10', '11', '12', 'E4', '18', '25', '26', '27', '30', '31', '37', '38', '40', '41', '42', '43', '44', '46', '49', '52', '60', '62', '71', 'D', 'O', 'WLB', '26E', '71E'];
 const LIVE_LINES = new Set([...LINES, ...TRAM_LINES]);
+const TRAINING_LINES = new Set(LINES);
 // The same distributed reference stations used by the browser position
 // engine. One Worker request now aggregates the U-Bahn plus central tram
 // corridors without polling every street stop.
@@ -206,7 +207,33 @@ export const archiveSnapshot = async (env, snapshot) => {
   if (!env?.RAIL_ARCHIVE?.put) return null;
   const date = new Date(snapshot.generatedAt);
   const key = `vienna-rail/worker-snapshots/${date.toISOString().slice(0, 10)}/${date.toISOString().replace(/[:.]/g, '-')}.json`;
-  await env.RAIL_ARCHIVE.put(key, JSON.stringify(snapshot), { httpMetadata: { contentType: 'application/json' } });
+  // This archive feeds the U-Bahn delay trainer, not the public map. Keep the
+  // training fields only: tram observations and UI-only fields used to inflate
+  // both Worker CPU time and long-term R2 storage, then were discarded by the
+  // importer anyway. Public snapshots still contain every live transport line.
+  const archived = {
+    schemaVersion: 2,
+    generatedAt: snapshot.generatedAt,
+    source: snapshot.source,
+    sourceServerTime: snapshot.sourceServerTime || null,
+    completeness: snapshot.completeness || null,
+    observations: (Array.isArray(snapshot.observations) ? snapshot.observations : [])
+      .filter((item) => TRAINING_LINES.has(String(item.line || '').toUpperCase()))
+      .map((item) => ({
+        stationId: item.stationId ?? null,
+        stationName: item.stationName || null,
+        line: item.line,
+        destination: item.destination || null,
+        direction: item.direction || null,
+        plannedTimestamp: item.plannedTimestamp ?? null,
+        realtimeTimestamp: item.realtimeTimestamp ?? null,
+        reportedDelaySeconds: item.reportedDelaySeconds ?? null,
+        countdownSeconds: item.countdownSeconds ?? null,
+        vehicleId: item.vehicleId || null,
+        fetchedAt: item.fetchedAt ?? snapshot.generatedAt,
+      })),
+  };
+  await env.RAIL_ARCHIVE.put(key, JSON.stringify(archived), { httpMetadata: { contentType: 'application/json' } });
   return key;
 };
 

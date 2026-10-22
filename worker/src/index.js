@@ -275,10 +275,17 @@ const scheduledSnapshot = async (env, archive = false) => {
   }
   const { snapshot } = collected;
   try {
-    if (archive) await archiveSnapshot(env, snapshot);
-    else await updateRailHistory(env, snapshot);
+    await updateRailHistory(env, snapshot);
   } catch (error) {
-    console.error(archive ? 'Scheduled raw snapshot archive failed' : 'Scheduled rail history failed', error?.message || 'unknown');
+    console.error('Scheduled rail history failed', error?.message || 'unknown');
+  }
+  if (archive) {
+    try {
+      const key = await archiveSnapshot(env, snapshot);
+      if (key) console.log('Scheduled U-Bahn training snapshot archived', key);
+    } catch (error) {
+      console.error('Scheduled raw snapshot archive failed', error?.message || 'unknown');
+    }
   }
 };
 
@@ -299,12 +306,19 @@ const scheduledMobilityContext = async (env) => {
   }
 };
 
+export const isRawSnapshotArchiveMinute = (scheduledTime) => {
+  const timestamp = Number(scheduledTime);
+  const date = Number.isFinite(timestamp) ? new Date(timestamp) : new Date();
+  return date.getUTCMinutes() % 5 === 0;
+};
+
 export default {
   fetch: (request, env, executionContext) => handleRequest(request, env, fetch, executionContext),
   scheduled: (controller, env, executionContext) => {
     const jobs = {
-      '* * * * *': () => scheduledSnapshot(env),
-      '*/5 * * * *': () => scheduledSnapshot(env, true),
+      // One upstream poll per minute. At five-minute boundaries the same
+      // validated snapshot feeds both the minute history and the raw archive.
+      '* * * * *': () => scheduledSnapshot(env, isRawSnapshotArchiveMinute(controller.scheduledTime)),
       '1-56/5 * * * *': () => collectBikeHistory(env),
       '2-57/5 * * * *': () => scheduledMobilityContext(env),
       '3-58/15 * * * *': () => publishRailHistory(env),

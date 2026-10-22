@@ -63,16 +63,12 @@ const Sidebar = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '10px',
-              background: 'linear-gradient(135deg, #FFD100 0%, #E2001A 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, color: '#fff', fontSize: '1.1rem'
-            }}>
-              V
+            <div className="secession-brand-mark" aria-hidden="true">
+              <img src={`${import.meta.env.BASE_URL}overview/secession-mark.svg`} alt="" width="30" height="40" />
             </div>
-            <div>
-              <h1 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Vienna Rail</h1>
+            <div className="secession-brand-title">
+              <span className="secession-brand-kicker">WIEN · IN MOTION</span>
+              <h1>Vienna Rail</h1>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>U-Bahn live timing · predicted position · S-Bahn timetable</div>
             </div>
           </div>
@@ -130,7 +126,7 @@ const Sidebar = ({
               {Array.isArray(activeLineFilter) && activeLineFilter.length > 0 && (
                 <button 
                   onClick={() => onSelectLine(null)}
-                  style={{ fontSize: '0.75rem', color: '#FFD100', textDecoration: 'underline' }}
+                  style={{ fontSize: '0.75rem', color: 'var(--accent)', textDecoration: 'underline' }}
                 >
                   Show All
                 </button>
@@ -174,8 +170,8 @@ const Sidebar = ({
 
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{line.properties.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: line.properties.mode === 'sbahn' ? '#00B4D8' : '#4CAF50', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: line.properties.mode === 'sbahn' ? '#00B4D8' : '#4CAF50' }}></span>
+                      <div style={{ fontSize: '0.75rem', color: line.properties.mode === 'sbahn' ? 'var(--status-info)' : 'var(--status-ok)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }}></span>
                         {line.properties.mode === 'sbahn' ? 'Scheduled positions' : 'Live departures'}
                       </div>
                     </div>
@@ -217,7 +213,7 @@ const Sidebar = ({
                 flex: 1, padding: '10px 12px', borderRadius: '10px',
                 background: 'var(--bg-hover)', textAlign: 'center',
               }}>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#4CAF50', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--status-ok)', lineHeight: 1 }}>
                   {trainStats.live}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -228,7 +224,7 @@ const Sidebar = ({
                 flex: 1, padding: '10px 12px', borderRadius: '10px',
                 background: 'var(--bg-hover)', textAlign: 'center',
               }}>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFD100', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
                   {trainStats.scheduled}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -244,6 +240,13 @@ const Sidebar = ({
               <span className="data-freshness-dot" />
               {freshness.message}
             </div>
+            <a
+              href={`${import.meta.env.BASE_URL}overview/`}
+              className="sidebar-about-link"
+              aria-label="Learn about Vienna Rail"
+            >
+              About Vienna Rail <span aria-hidden="true">↗</span>
+            </a>
           </div>
 
         </div>

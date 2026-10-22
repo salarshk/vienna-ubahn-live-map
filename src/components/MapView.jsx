@@ -557,7 +557,9 @@ const buildRasterStyle = (tiles, tileSourceId) => ({
     'mobility-events': { type: 'geojson', data: emptyFeatureCollection },
   },
   layers: [
-    { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId },
+    { id: 'secession-ground', type: 'background', paint: { 'background-color': tileSourceId === 'basemap-light' ? '#f7f4eb' : '#1c2119' } },
+    { id: `${tileSourceId}-tiles`, type: 'raster', source: tileSourceId,
+      paint: { 'raster-opacity': tileSourceId === 'basemap-light' ? 0.86 : 0.94 } },
     {
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
@@ -626,7 +628,9 @@ const buildVectorStyle = (flavour) => ({
   },
   // Basemap geometry, then the Lines, then the basemap's labels on top.
   layers: [
-    ...noLabels('protomaps', flavour),
+    ...noLabels('protomaps', flavour).map((layer) => layer.type === 'background'
+      ? { ...layer, paint: { ...layer.paint, 'background-color': flavour === 'white' ? '#f7f4eb' : '#1c2119' } }
+      : layer),
     {
       id: 'cell-intelligence-fill', type: 'fill', source: 'cell-intelligence',
       paint: {
@@ -752,10 +756,10 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"]/g, (c) => (
 ));
 
 const renderFocusNode = (focus, theme) => {
-  const panel = theme === 'light' ? '#ffffff' : '#1e1e24';
-  const text = theme === 'light' ? '#121212' : '#ffffff';
-  const muted = theme === 'light' ? '#5f6368' : '#a0a0b0';
-  const border = theme === 'light' ? 'rgba(0,0,0,.14)' : 'rgba(255,255,255,.16)';
+  const panel = 'var(--bg-panel-solid)';
+  const text = 'var(--text-primary)';
+  const muted = 'var(--text-secondary)';
+  const border = 'var(--border-color)';
 
   // No destination text here — only badge, arrow and countdown. The full
   // The combined destination label lives in the docked Station
@@ -786,10 +790,10 @@ const renderFocusNode = (focus, theme) => {
   }).join(`<div style="height:1px;background:${border}"></div>`);
 
   return `
-    <div style="min-width:150px;max-width:200px;border-radius:12px;background:${panel};border:1px solid ${border};box-shadow:0 10px 30px rgba(0,0,0,.45);overflow:hidden">
+    <div style="min-width:150px;max-width:200px;border-radius:12px;background:${panel};border:1px solid ${border};box-shadow:var(--shadow-panel);overflow:hidden">
       <div style="padding:8px 10px 6px;border-bottom:1px solid ${border}">
         <div style="font:800 13px/1.2 system-ui;color:${text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(focus.name)}</div>
-        <div style="font:600 9px/1.2 system-ui;letter-spacing:.1em;text-transform:uppercase;color:${focus.isFresh ? '#4CAF50' : '#00B4D8'};margin-top:3px">${focus.isFresh ? 'Live API' : 'From memory'}</div>
+        <div style="font:600 9px/1.2 system-ui;letter-spacing:.1em;text-transform:uppercase;color:${focus.isFresh ? 'var(--status-ok)' : 'var(--status-info)'};margin-top:3px">${focus.isFresh ? 'Live API' : 'From memory'}</div>
       </div>
       ${arms || `<div style="padding:9px 10px;font:600 11px/1 system-ui;color:${muted}">No live trains</div>`}
     </div>`;
@@ -918,6 +922,7 @@ const MapView = ({
   const markerMapRef    = useRef(new globalThis.Map());
   const trailHistoryRef = useRef(new globalThis.Map());
   const themeRef        = useRef(theme);
+  const applyMapThemeRef = useRef(null);
   const filterRef       = useRef(activeLineFilter);
   const hoverRef        = useRef(null);
   const visibilityRef   = useRef(mapVisibility);
@@ -1118,7 +1123,6 @@ const MapView = ({
   // Inner child element handles scale and visuals so MapLibre transform is NEVER overwritten.
   const initStationMarkers = (map) => {
     clearStationMarkers();
-    const isDark = themeRef.current === 'dark';
     const activeFilter = filterRef.current;
     const requestedLines = Array.isArray(activeFilter) && activeFilter.length > 0
       ? new Set(activeFilter.map(String))
@@ -1164,7 +1168,7 @@ const MapView = ({
       inner.style.cssText = `
         width:16px; height:16px; border-radius:5px;
         background:${ring};
-        box-shadow:0 0 0 3px ${isDark ? '#171722' : '#ffffff'}, 0 3px 10px rgba(0,0,0,.55);
+        box-shadow:0 0 0 3px var(--bg-panel-solid), 0 2px 6px rgba(41,48,32,.25);
         transition:transform .1s ease;
         transform: scale(${Math.min(1.2, scale).toFixed(3)});
         visibility: ${isHidden ? 'hidden' : ''};
@@ -1175,8 +1179,8 @@ const MapView = ({
       `;
       centre.style.cssText = `
         width:6px; height:6px; border-radius:50%;
-        background:${isDark ? '#1a1a2e' : '#ffffff'};
-        border:1.5px solid ${isDark ? '#ffffff' : '#111827'};
+        background:var(--bg-panel-solid);
+        border:1.5px solid var(--text-primary);
         box-sizing:border-box; pointer-events:none;
       `;
       inner.appendChild(centre);
@@ -1556,6 +1560,19 @@ const MapView = ({
     updateTrainCount();
     mapRef.current = map;
 
+    // Dynamic GeoJSON updates can keep isStyleLoaded() false even after the
+    // style is ready. Track style.load instead, and queue the latest choice
+    // during startup or a switch so the basemap never keeps the old theme.
+    let styleReady = false;
+    let appliedTheme = theme;
+    const applyMapTheme = () => {
+      if (!styleReady || appliedTheme === themeRef.current) return;
+      appliedTheme = themeRef.current;
+      styleReady = false;
+      map.setStyle(styleFor(appliedTheme), { diff: false });
+    };
+    applyMapThemeRef.current = applyMapTheme;
+
     const updateZoomScale = () => {
       const zoom = map.getZoom();
       // At zoom 11.5 scale = 1.0, at zoom 9 scale ~0.5, at zoom 7.5 scale = 0 (fully hidden)
@@ -1625,6 +1642,11 @@ const MapView = ({
       // across instances, so letting a stale callback through would clear the
       // live map's markers and re-attach them to the removed one.
       if (mapRef.current !== map) return;
+      styleReady = true;
+      if (appliedTheme !== themeRef.current) {
+        applyMapTheme();
+        return;
+      }
       initStationMarkers(map);
       initAlertMarkers(map);
       initVehicleLoop(map);
@@ -1656,6 +1678,7 @@ const MapView = ({
       clearAlertMarkers();
       trainCount.remove();
       trainCountRef.current = null;
+      applyMapThemeRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -1663,23 +1686,7 @@ const MapView = ({
   }, []);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    // The map is constructed with the style matching the initial `theme`, so
-    // this effect's mount-time run has nothing to do — and calling setStyle
-    // before that initial style has loaded triggers a second style.load cycle
-    // (and a "Style is not done loading" console warning) that only widens
-    // the StrictMode double-mount race above. A theme flip that lands in that
-    // narrow pre-load window is silently missed, which is an acceptable trade
-    // for removing the race.
-    if (!map.isStyleLoaded()) return;
-    // diff:false because the two vector styles differ by more than paint: each
-    // flavour names its own sprite file, and MapLibre's style diffing cannot
-    // express a sprite change. Left to diff, a flip repainted some of the 56
-    // basemap layers and not others, landing on a light ground wearing dark
-    // labels. A full reload costs one re-read of the archive header and is the
-    // only way to be sure the whole basemap changed.
-    map.setStyle(styleFor(theme), { diff: false });
+    applyMapThemeRef.current?.();
   }, [theme]);
 
   useEffect(() => {

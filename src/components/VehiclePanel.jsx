@@ -178,17 +178,17 @@ const VehiclePanel = ({ vehicle, onClose }) => {
     && lastDataAgeSeconds <= CLICKED_TRAIN_MAX_DATA_AGE_SECONDS;
   const lastDataAt = Number.isFinite(Number(current.lastDataAt)) ? new Date(Number(current.lastDataAt)) : null;
   const source = current.isReplay
-    ? { label: 'REPLAY', icon: Clock3, color: '#ffb74d', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
+    ? { label: 'REPLAY', icon: Clock3, color: 'var(--status-warn)', detail: `Recorded estimate from ${new Date(current.replayedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.` }
     : current.isLive
     ? { label: current.sourceFreshness === 'stale'
       ? 'STALE LIVE TIMING · PREDICTED POSITION'
       : dataWithinThreeSeconds ? 'LIVE TIMING · PREDICTED POSITION'
         : 'WAITING FOR ≤3s LIVE DATA', icon: Radio,
-      color: current.sourceFreshness === 'stale' || !dataWithinThreeSeconds ? '#ffb74d' : '#4CAF50',
+      color: current.sourceFreshness === 'stale' || !dataWithinThreeSeconds ? 'var(--status-warn)' : 'var(--status-ok)',
       detail: `Wiener Linien timeReal/timePlanned; last data ${preciseAgeLabel(lastDataAgeSeconds)}${focusedRefresh.error ? ` (${focusedRefresh.error})` : ''}; location is inferred from station departures, not GPS.` }
     : current.isScheduled
-      ? { label: 'SCHEDULED TIMETABLE · NO LIVE FEED', icon: Database, color: '#00B4D8', detail: 'Interpolated from the ÖBB timetable — no live S-Bahn delay or GPS feed is connected.' }
-      : { label: 'SIMULATED', icon: Database, color: '#ffb74d', detail: 'Fallback movement shown because no usable live prediction is available.' };
+      ? { label: 'SCHEDULED TIMETABLE · NO LIVE FEED', icon: Database, color: 'var(--status-info)', detail: 'Interpolated from the ÖBB timetable — no live S-Bahn delay or GPS feed is connected.' }
+      : { label: 'SIMULATED', icon: Database, color: 'var(--status-warn)', detail: 'Fallback movement shown because no usable live prediction is available.' };
   const SourceIcon = source.icon;
   const futureStops = useMemo(
     () => (current.upcomingStations || []).filter((name) => name && name !== current.targetStation).slice(0, 2),

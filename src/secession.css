@@ -1,0 +1,165 @@
+/* Vienna Secession: ornament belongs to the frame, never to transit evidence.
+   Line badges, map Lines, charts and risk scales retain their source colours. */
+:root, [data-theme='light'] {
+  color-scheme: light;
+  --bg-base: #f7f4eb;
+  --bg-panel: rgba(255, 253, 247, .96);
+  --bg-panel-solid: #fffdf7;
+  --bg-hover: rgba(99, 110, 73, .07);
+  --bg-hover-active: rgba(162, 133, 66, .16);
+  --text-primary: #293020;
+  --text-secondary: #626858;
+  --border-color: rgba(111, 93, 49, .24);
+  --accent: #806323;
+  --accent-ornament: #a28542;
+  --accent-soft: rgba(162, 133, 66, .1);
+  --status-ok: #28703b;
+  --status-warn: #925500;
+  --status-error: #ad3030;
+  --status-info: #246c80;
+  --shadow-panel: 0 8px 30px rgba(57, 53, 32, .13), 0 1px 3px rgba(57, 53, 32, .06);
+  --overlay-scrim: rgba(41, 48, 32, .32);
+  --heading-font: Georgia, 'Times New Roman', serif;
+  /* Some intelligence cards use these aliases rather than the shell tokens. */
+  --bg-primary: var(--bg-base);
+  --bg-card: var(--bg-panel-solid);
+  --radius: 12px;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-base: #1c2119;
+  --bg-panel: rgba(35, 41, 30, .96);
+  --bg-panel-solid: #23291e;
+  --bg-hover: rgba(239, 233, 213, .065);
+  --bg-hover-active: rgba(195, 166, 99, .18);
+  --text-primary: #f2eddf;
+  --text-secondary: #b7bbaa;
+  --border-color: rgba(193, 167, 105, .27);
+  --accent: #d4b773;
+  --accent-ornament: #bca05e;
+  --accent-soft: rgba(195, 166, 99, .1);
+  --status-ok: #91d19c;
+  --status-warn: #f1c077;
+  --status-error: #ff9b94;
+  --status-info: #8ecbd5;
+  --shadow-panel: 0 10px 32px rgba(8, 12, 5, .38);
+  --overlay-scrim: rgba(12, 17, 9, .7);
+}
+
+body { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+button, input, select, textarea { font-family: inherit; }
+input, select, textarea { accent-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text-secondary); opacity: .85; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+::selection { color: var(--text-primary); background: var(--bg-hover-active); }
+
+.glass-panel { box-shadow: var(--shadow-panel); }
+.sidebar { border-top: 3px solid var(--accent-ornament); }
+.secession-brand-mark {
+  width: 42px; min-width: 42px; height: 52px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 22px 22px 3px 3px;
+  background: var(--accent-soft);
+}
+.secession-brand-mark img { display: block; object-fit: contain; }
+.secession-brand-title { min-width: 0; }
+.secession-brand-kicker { display: block; color: var(--accent); font-size: .55rem; font-weight: 750; letter-spacing: .15em; }
+.secession-brand-title h1 { font-family: var(--heading-font); font-size: 1.4rem; font-weight: 500; letter-spacing: -.035em; line-height: 1.25; margin: 2px 0 4px; }
+.sidebar h2 { font-weight: 650; }
+.sidebar-about-link { background: var(--accent-soft); }
+.sidebar-about-link:hover, .sidebar-about-link:focus-visible { border-color: var(--accent-ornament); background: var(--bg-hover-active); }
+.sidebar-about-link > span, .sidebar-about-link span:last-child { color: var(--accent); }
+.layer-control-button[aria-pressed='true'] { color: var(--accent); border-color: var(--accent-ornament); background: var(--accent-soft); }
+.line-card-hover:hover { box-shadow: inset 0 0 0 1px var(--border-color); }
+
+/* Calm, consistent controls. Service warnings remain red/amber/green. */
+.top-action-button { border-color: var(--border-color); background: var(--bg-panel-solid); }
+.top-action-button:is(.fleet-action, .pulse-action, .station-action, .scenario-action, .intelligence-action, .commute-action, .mobility-action, .theme-action) { color: var(--accent); }
+.top-action-button.delay-action { color: var(--status-error); }
+.top-action-button.alert-action { color: var(--status-warn); }
+.top-action-button.top-action-active { color: var(--text-primary); border-color: var(--accent-ornament); background: var(--bg-hover-active); box-shadow: inset 0 -2px 0 var(--accent-ornament); }
+.sidebar-toggle-btn { color: var(--accent); }
+.maplibregl-ctrl-group { background: var(--bg-panel-solid); border: 1px solid var(--border-color); box-shadow: var(--shadow-panel); }
+.maplibregl-ctrl-group button + button { border-top-color: var(--border-color); }
+[data-theme='dark'] .maplibregl-ctrl-icon { filter: invert(.85); }
+.maplibregl-ctrl-attrib { color: var(--text-secondary); background: var(--bg-panel); }
+.maplibregl-ctrl-attrib a { color: inherit; }
+.maplibregl-popup-content { color: var(--text-primary); background: var(--bg-panel-solid); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: var(--shadow-panel); }
+.maplibregl-popup-close-button { color: var(--text-secondary); }
+.data-provenance-legend { box-shadow: var(--shadow-panel); }
+
+/* Serif only for editorial hierarchy; dense data keeps the readable UI face. */
+:is(.fleet-tracker-title, .alert-center-heading, .station-hub-heading, .scenario-simulator-heading) h1,
+.dashboard-hero h2, .vienna-pulse-heading h2, .station-hub-departures-header h2 {
+  font-family: var(--heading-font); font-weight: 500; letter-spacing: -.035em;
+}
+.intelligence-title strong, .model-dashboard-title strong,
+.urban-mobility-header strong, .cell-detail-title strong,
+.vehicle-heading, .vehicle-next-stop > strong, .commute-dashboard > header strong {
+  font-family: var(--heading-font); font-weight: 500; font-size: 1.12rem; line-height: 1.25;
+}
+.model-dashboard-title strong { font-size: 1.25rem; }
+.intelligence-header, .model-dashboard-header, .fleet-tracker-header,
+.alert-center-header, .station-hub-header, .scenario-simulator-header,
+.urban-mobility-header, .cell-detail-header, .commute-dashboard > header {
+  border-bottom: 1px solid var(--accent-ornament);
+  background: linear-gradient(110deg, var(--bg-panel-solid), var(--accent-soft));
+}
+.model-dashboard-overlay, .fleet-tracker-overlay, .alert-center-overlay,
+.station-hub-overlay, .scenario-simulator-overlay { background: var(--overlay-scrim); }
+.model-dashboard, .fleet-tracker, .alert-center, .station-hub, .scenario-simulator { border-top: 3px solid var(--accent-ornament); box-shadow: var(--shadow-panel); }
+.model-dashboard-title, .dashboard-kicker, .dashboard-updated, .dashboard-stat-grid > div,
+.dashboard-card-heading, .fleet-tracker-kicker, .alert-center-kicker, .station-hub-kicker,
+.scenario-simulator-kicker, .cell-detail-title, .urban-mobility-header > div { color: var(--accent); }
+.dashboard-card { background: var(--accent-soft); }
+.dashboard-section-nav button.active, .intelligence-tabs button.active,
+.alert-center-scope button.active, .delay-panel-tabs button.active,
+.delay-panel-compact-tabs button.active, .cell-intelligence-tabs button.active,
+.cell-grid-toggle.active {
+  color: var(--text-primary); border-color: var(--accent-ornament);
+  background: var(--bg-hover-active); box-shadow: inset 0 -2px 0 var(--accent-ornament);
+}
+.intelligence-tabs button.active { outline: 1px solid var(--border-color); outline-offset: -1px; }
+.intelligence-tabs, .intelligence-tabs.advisor-disabled { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.intelligence-tabs button[data-tab='operations'], .intelligence-tabs button[data-tab='predictions'] { margin-left: 0; }
+.intelligence-drag-handle::before { background: var(--accent-ornament); }
+.dashboard-stat-grid strong, .vehicle-detail-grid strong { font-variant-numeric: tabular-nums; }
+
+/* Retain semantic colour, with darker values for readable light-mode text. */
+.intelligence-ok, .replay-time-row, .replay-time-row button,
+.connection-probability.comfortable, .dashboard-quality-status.healthy,
+.dashboard-quality-status.ready, .model-collection-stats strong,
+.intelligence-section-title em.model-ready, .leave-now-card,
+.urban-mobility-hero strong.routine, .urban-mobility-horizons b.routine { color: var(--status-ok); }
+.connection-probability.tight, .replay-active-banner, .dashboard-quality-warning,
+.dashboard-quality-status.watch, .dashboard-quality-status.stale,
+.urban-mobility-hero strong.watch, .urban-mobility-horizons b.watch { color: var(--status-warn); }
+.connection-probability.unlikely, .dashboard-quality-status.unavailable,
+.dashboard-quality-status.error, .service-alert-title-row,
+.urban-mobility-hero strong.high, .urban-mobility-horizons b.high { color: var(--status-error); }
+.replay-slider { accent-color: var(--accent); }
+.commute-card-label { color: var(--accent); }
+.follow-gps-button.active { color: var(--status-info); border-color: var(--status-info); background: var(--bg-hover-active); }
+.vienna-pulse-card, .vienna-pulse-chart-section { border-color: var(--border-color); background: var(--bg-panel); box-shadow: var(--shadow-panel); }
+.vienna-pulse-kicker, .vienna-pulse-clock { color: var(--accent); }
+.vienna-pulse-clock { border-color: var(--border-color); background: var(--accent-soft); }
+.vienna-pulse-chart button { background: var(--bg-hover-active); }
+.vienna-pulse-chart button:hover, .vienna-pulse-chart button.active { background: var(--accent-ornament); }
+[data-theme='light'] .vienna-network-pulse { background: linear-gradient(180deg, rgba(247,244,235,.5), transparent 28%, transparent 72%, rgba(247,244,235,.4)); }
+
+@media (max-width: 768px) {
+  .secession-brand-title h1 { font-size: 1.3rem; }
+  .model-dashboard-title strong { font-size: 1.05rem; }
+  .intelligence-title strong { font-size: 1.1rem; }
+  /* Keep existing sheet height, safe-area insets and drag/scroll boundaries. */
+  .intelligence-panel, .station-panel, .commute-dashboard { border-top-color: var(--accent-ornament); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-action-button { transition: none; }
+}

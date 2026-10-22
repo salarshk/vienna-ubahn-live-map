@@ -2,6 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import './secession.css'
+import { applyTheme, getSavedTheme } from './utils/appTheme.js'
+
+// Initialise before React creates the map so its canvas and controls agree.
+applyTheme(getSavedTheme());
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildOpenAIRequest, handleRequest } from './index';
-import { collectNetworkSnapshot, monitorStationIds, parseMonitorPayload } from './networkSnapshot';
+import { buildOpenAIRequest, handleRequest, isRawSnapshotArchiveMinute } from './index';
+import { archiveSnapshot, collectNetworkSnapshot, monitorStationIds, parseMonitorPayload } from './networkSnapshot';
 import { parseCounterLocations } from './mobilityContext';
 
 const origin = 'https://salarshk.github.io';
@@ -12,6 +12,11 @@ const advisorRequest = (body, options = {}) => new Request('https://worker.examp
 });
 
 describe('advisor worker', () => {
+  it('archives on five-minute boundaries from the same minute poll', () => {
+    expect(isRawSnapshotArchiveMinute(Date.parse('2026-10-14T12:10:00Z'))).toBe(true);
+    expect(isRawSnapshotArchiveMinute(Date.parse('2026-10-14T12:11:00Z'))).toBe(false);
+  });
+
   it('normalises the public traffic-counter catalog', () => {
     expect(parseCounterLocations({ features: [{ geometry: { coordinates: [16.37, 48.21] }, properties: { ZST_ID: '1', ZST_NAME: 'Ring' } }] })).toMatchObject({
       stationCount: 1, locations: [{ id: '1', lat: 48.21, lon: 16.37 }],
@@ -90,6 +95,61 @@ describe('advisor worker', () => {
     expect(archived.status).toBe(200);
     expect(archived.snapshot.observations).toHaveLength(6);
     expect(archived.snapshot.models).toBeUndefined();
+  });
+
+  it('archives only U-Bahn training observations and keeps every trainer input', async () => {
+    let stored;
+    const snapshot = {
+      generatedAt: Date.parse('2026-10-14T12:00:00Z'),
+      source: 'wiener-linien-monitor',
+      sourceServerTime: '2026-10-14T12:00:00Z',
+      completeness: { complete: true },
+      models: { shouldNotBeStored: true },
+      observations: [
+        { stationId: 1, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', direction: 'N', plannedTimestamp: 10, realtimeTimestamp: 20, reportedDelaySeconds: 10, countdownSeconds: 5, vehicleId: 'v1', fetchedAt: 30, onStop: true },
+        { stationId: 2, stationName: 'Karlsplatz', line: 'D', plannedTimestamp: 10, realtimeTimestamp: 20 },
+      ],
+    };
+    const key = await archiveSnapshot({ RAIL_ARCHIVE: { put: vi.fn(async (_key, value) => { stored = JSON.parse(value); }) } }, snapshot);
+    expect(key).toContain('worker-snapshots/2026-10-14/');
+    expect(stored.schemaVersion).toBe(2);
+    expect(stored.sourceServerTime).toBe(snapshot.sourceServerTime);
+    expect(stored.observations).toEqual([{
+      stationId: 1, stationName: 'Stephansplatz', line: 'U1', destination: 'Leopoldau', direction: 'N',
+      plannedTimestamp: 10, realtimeTimestamp: 20, reportedDelaySeconds: 10, countdownSeconds: 5,
+      vehicleId: 'v1', fetchedAt: 30,
+    }]);
+    expect(stored.models).toBeUndefined();
+  });
+
+  it('reuses a verified fresh network snapshot from the edge cache', async () => {
+    const payload = {
+      data: { monitors: monitorStationIds.map((id, index) => ({
+        locationStop: { properties: { name: String(id), title: `Station ${index}` } },
+        lines: index === 0 ? ['U1', 'U2', 'U3', 'U4', 'U6'].map((name) => ({
+          name, departures: { departure: [{ departureTime: { timePlanned: '2026-10-14T12:05:00Z', timeReal: '2026-10-14T12:05:00Z' } }] },
+        })) : [],
+      })) },
+    };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    const entries = new Map();
+    vi.stubGlobal('caches', { default: {
+      match: vi.fn(async (key) => entries.get(key.url)?.clone() || null),
+      put: vi.fn(async (key, value) => { entries.set(key.url, value.clone()); }),
+      delete: vi.fn(async (key) => entries.delete(key.url)),
+    } });
+    try {
+      const request = () => new Request('https://worker.example/network-snapshot', {
+        method: 'GET', headers: { Origin: origin, 'CF-Connecting-IP': crypto.randomUUID() },
+      });
+      const first = await handleRequest(request(), env, fetchMock);
+      const second = await handleRequest(request(), env, fetchMock);
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('falls back to smaller monitor batches when the full request fails', async () => {
