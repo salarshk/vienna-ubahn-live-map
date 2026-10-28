@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-27T09:16:27.740Z",
-  "status": "healthy",
+  "generatedAt": "2026-10-28T09:59:27.683Z",
+  "status": "watch",
   "sources": {
     "ubahn": {
       "files": 52,
-      "rows": 781807,
+      "rows": 805232,
       "stations": 99,
-      "liveRows": 781807,
-      "earliest": 1790500857534,
-      "latest": 1793092458380,
+      "liveRows": 805232,
+      "earliest": 1790589262512,
+      "latest": 1793181421381,
       "ageMinutes": 2
     },
     "workerSnapshots": {
-      "snapshots": 3303,
-      "rows": 4845478,
-      "earliest": 1791337559441,
-      "latest": 1793092241248,
-      "ageMinutes": 6
+      "snapshots": 3394,
+      "rows": 4794759,
+      "earliest": 1791423919538,
+      "latest": 1793181341368,
+      "ageMinutes": 4
     },
     "mobilityContextWorker": {
-      "snapshots": 6881,
+      "snapshots": 7178,
       "rows": 0,
       "earliest": 1790952036650,
-      "latest": 1793092077340,
-      "ageMinutes": 9
+      "latest": 1793181177235,
+      "ageMinutes": 7
     },
     "mobilityContextCollector": {
-      "snapshots": 32,
+      "snapshots": 33,
       "rows": 0,
       "earliest": null,
       "latest": null,
@@ -40,7 +40,7 @@
       "liveRows": 0,
       "earliest": 1788998400000,
       "latest": 1791414000000,
-      "ageMinutes": 27976
+      "ageMinutes": 29459
     },
     "sbahn": {
       "status": "blocked-live-source",
@@ -48,20 +48,22 @@
     }
   },
   "collectionHealth": {
-    "status": "ok",
+    "status": "degraded",
     "stationsRequested": 469,
-    "stationsSuccessful": 469,
-    "rowsCollected": 655
+    "stationsSuccessful": 325,
+    "rowsCollected": 679
   },
   "labels": {
-    "delayActual": 781807,
+    "delayActual": 805232,
     "trafficJam": 0,
-    "incidentContext": 27265,
+    "incidentContext": 27126,
     "exactGps": 0,
-    "crowdProxy": 781807,
+    "crowdProxy": 805232,
     "cancellation": "not available",
     "transferOutcome": "not available",
     "eventAttendance": "not available"
   },
-  "warnings": []
+  "warnings": [
+    "6 Wiener Linien station batches failed"
+  ]
 }
