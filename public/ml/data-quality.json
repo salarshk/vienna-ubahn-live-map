@@ -1,33 +1,33 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-31T09:56:48.078Z",
+  "generatedAt": "2026-11-01T10:45:16.075Z",
   "status": "healthy",
   "sources": {
     "ubahn": {
       "files": 52,
-      "rows": 900890,
+      "rows": 934880,
       "stations": 99,
-      "liveRows": 900890,
-      "earliest": 1790849674411,
-      "latest": 1793440477643,
+      "liveRows": 934880,
+      "earliest": 1790934722505,
+      "latest": 1793529785593,
       "ageMinutes": 2
     },
     "workerSnapshots": {
-      "snapshots": 3670,
-      "rows": 4904912,
-      "earliest": 1791676801791,
-      "latest": 1793440241153,
-      "ageMinutes": 6
+      "snapshots": 3809,
+      "rows": 4992733,
+      "earliest": 1791769501662,
+      "latest": 1793529640530,
+      "ageMinutes": 5
     },
     "mobilityContextWorker": {
-      "snapshots": 8041,
+      "snapshots": 8339,
       "rows": 0,
       "earliest": 1790952036650,
-      "latest": 1793440077273,
-      "ageMinutes": 9
+      "latest": 1793529477590,
+      "ageMinutes": 7
     },
     "mobilityContextCollector": {
-      "snapshots": 36,
+      "snapshots": 37,
       "rows": 0,
       "earliest": null,
       "latest": null,
@@ -40,7 +40,7 @@
       "liveRows": 0,
       "earliest": 1788998400000,
       "latest": 1791414000000,
-      "ageMinutes": 33777
+      "ageMinutes": 35265
     },
     "sbahn": {
       "status": "blocked-live-source",
@@ -51,14 +51,14 @@
     "status": "ok",
     "stationsRequested": 469,
     "stationsSuccessful": 469,
-    "rowsCollected": 636
+    "rowsCollected": 631
   },
   "labels": {
-    "delayActual": 900890,
+    "delayActual": 934880,
     "trafficJam": 0,
-    "incidentContext": 25796,
+    "incidentContext": 25698,
     "exactGps": 0,
-    "crowdProxy": 900890,
+    "crowdProxy": 934880,
     "cancellation": "not available",
     "transferOutcome": "not available",
     "eventAttendance": "not available"
