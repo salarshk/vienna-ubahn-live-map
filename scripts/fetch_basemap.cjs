@@ -68,15 +68,23 @@ const ensurePmtilesCli = async () => {
 
   const platform = os.platform() === 'darwin' ? 'Darwin' : 'Linux';
   const arch = os.arch() === 'arm64' ? 'arm64' : 'x86_64';
-  const asset = `go-pmtiles-${PMTILES_VERSION}_${platform}_${arch}.zip`;
+  // The release uses ZIP archives on macOS/Windows and tar.gz on Linux.
+  const isLinux = platform === 'Linux';
+  const asset = isLinux
+    ? `go-pmtiles_${PMTILES_VERSION}_${platform}_${arch}.tar.gz`
+    : `go-pmtiles-${PMTILES_VERSION}_${platform}_${arch}.zip`;
   const url = `https://github.com/protomaps/go-pmtiles/releases/download/v${PMTILES_VERSION}/${asset}`;
 
   console.log(`  fetching the pmtiles CLI (${platform}/${arch})`);
-  const zip = path.join(cacheDir, asset);
-  await download(url, zip);
-  execFileSync('unzip', ['-o', '-q', zip, 'pmtiles', '-d', cacheDir]);
+  const archive = path.join(cacheDir, asset);
+  await download(url, archive);
+  if (isLinux) {
+    execFileSync('tar', ['-xzf', archive, '-C', cacheDir]);
+  } else {
+    execFileSync('unzip', ['-o', '-q', archive, 'pmtiles', '-d', cacheDir]);
+  }
   fs.chmodSync(cached, 0o755);
-  fs.unlinkSync(zip);
+  fs.unlinkSync(archive);
   return cached;
 };
 
