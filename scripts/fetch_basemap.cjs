@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Fetches the offline basemap: a PMTiles extract of the Valencia region plus
+// Fetches the offline basemap: a PMTiles extract of the Vienna region plus
 // the glyphs and sprites its style needs.
 //
-// The app is a Metrovalencia map and nothing else, so the basemap it needs is
+// The app is a Vienna rail map and nothing else, so the basemap it needs is
 // one region rather than a planet — small enough to ship with the app and read
 // from disk with no network at all. On the web the same archive is read by HTTP
 // range request, so a visitor downloads the few tiles they look at rather than
@@ -22,7 +22,7 @@ const { execFileSync } = require('node:child_process');
 
 // The network's own bounding box is lon -0.590..-0.326, lat 39.084..39.623.
 // Padded so panning off the end of a line does not run off the edge of the map.
-const BBOX = '-0.65,39.02,-0.25,39.68';
+const BBOX = '15.80,47.95,16.90,48.55';
 
 const PMTILES_VERSION = '1.31.2';
 const ASSETS = 'https://protomaps.github.io/basemaps-assets';
@@ -90,7 +90,7 @@ const mb = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
   const build = await findLatestBuild();
   console.log(`Extracting ${BBOX} from ${build}`);
 
-  const archive = path.join(outDir, 'valencia.pmtiles');
+  const archive = path.join(outDir, 'vienna.pmtiles');
   execFileSync(cli, ['extract', build, archive, `--bbox=${BBOX}`], { stdio: 'inherit' });
   console.log(`  ${path.relative(root, archive)} — ${mb(fs.statSync(archive).size)}`);
 
