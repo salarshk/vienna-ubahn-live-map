@@ -27,6 +27,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Fetch offline basemap
+        run: npm run fetch:basemap
       - name: Build website
         run: npx vite build
         env:
