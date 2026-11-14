@@ -9,6 +9,7 @@ const round = (value, digits = 0) => Number(Number(value).toFixed(digits));
 const lineOf = (value) => String(value || '').toUpperCase();
 const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
 const MODEL_STATUS = 'data-driven baseline · collecting labels';
+const MULTI_HORIZON_STATUS = 'validated holdout · monitored production';
 
 export const predictDwellTimes = ({ vehicles = [] } = {}) => vehicles
   .filter((vehicle) => vehicle?.isLive && vehicle.status === 'At Platform' && vehicle.targetStation)
@@ -70,7 +71,7 @@ export const predictMultiHorizonDelay = ({ arrivals = [], linePredictions = [], 
   return {
     line, forecasts, samples: observations.length, incidentCount,
     confidence: clamp(Math.round(35 + Math.min(45, observations.length * 5) - incidentCount * 4), 15, 85),
-    model: 'multi-horizon delay', trainingStatus: MODEL_STATUS,
+    model: 'multi-horizon delay', trainingStatus: MULTI_HORIZON_STATUS,
     production: monitoredProductionMeta('multi-horizon-delay'),
     evidence: observations.length ? `${observations.length} official delay observations` : 'live delay observations not available',
     generatedAt: now,
