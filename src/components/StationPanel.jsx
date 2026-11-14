@@ -308,14 +308,14 @@ const StationPanel = ({ station, theme, userLocation, disruptions = [], onClose,
 
       <section className="station-camera-card" aria-label="Nearby public street cameras">
         <div className="station-camera-card-title"><Camera size={14} /><div><strong>Nearby public street cameras</strong><span>Road view near this station · not station surveillance</span></div></div>
-        <p>Vienna and ITS Vienna Region publish public traffic-camera views around busy roads. Use the official map to check street congestion, weather and surface access near this station.</p>
+        <p>Vienna and ITS Vienna Region publish public traffic-camera views around busy roads. Open the live traffic map directly to check street congestion, weather and surface access near this station.</p>
         <a
           className="station-camera-link"
-          href="https://www.wien.gv.at/verkehr/verkehrsdaten-echtzeit"
+          href="https://www.wien.gv.at/verkehr/verkehrslage"
           target="_blank"
           rel="noreferrer"
         >
-          <ExternalLink size={13} /> Open Vienna traffic cameras
+          <ExternalLink size={13} /> Open live Vienna traffic cameras
         </a>
         <small>Source: Stadt Wien / ITS Vienna Region. Camera availability and reuse terms are controlled by the publisher.</small>
       </section>
