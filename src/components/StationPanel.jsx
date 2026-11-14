@@ -6,7 +6,7 @@
 // tablet that is where a thumb rests; bottom in portrait, because on a phone it
 // is the only place a thumb reaches at all.
 import React, { useEffect, useState } from 'react';
-import { X, Radio, Database, Navigation, Timer } from 'lucide-react';
+import { X, Radio, Database, Navigation, Timer, Camera, ExternalLink } from 'lucide-react';
 import arrivalStore from '../services/arrivalStore';
 import officialSnapshotStore from '../services/officialSnapshotStore';
 import { fetchRailHistory, stationDelayWindowsFromHistory, buildDelayOnsets } from '../services/sharedRailHistory';
@@ -304,6 +304,20 @@ const StationPanel = ({ station, theme, userLocation, disruptions = [], onClose,
           <p className="station-delay-history-empty">Collecting the first official station samples.</p>
         )}
         <small>{hasStationDelayHistory ? `Averages use Wiener Linien timeReal − timePlanned. ${cloudHasLabels ? 'Shared Cloudflare collector checks every minute and retains changed official predictions; repeated departures are sampled observations, not distinct trains.' : 'Device-local fallback, sampled about every 10 minutes.'}` : 'The first window appears after an official archive sample.'}</small>
+      </section>
+
+      <section className="station-camera-card" aria-label="Nearby public street cameras">
+        <div className="station-camera-card-title"><Camera size={14} /><div><strong>Nearby public street cameras</strong><span>Road view near this station · not station surveillance</span></div></div>
+        <p>Vienna and ITS Vienna Region publish public traffic-camera views around busy roads. Use the official map to check street congestion, weather and surface access near this station.</p>
+        <a
+          className="station-camera-link"
+          href="https://www.wien.gv.at/verkehr/verkehrsdaten-echtzeit"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ExternalLink size={13} /> Open Vienna traffic cameras
+        </a>
+        <small>Source: Stadt Wien / ITS Vienna Region. Camera availability and reuse terms are controlled by the publisher.</small>
       </section>
 
       <details className="station-insight-strip" aria-label="Station reliability and access insights">
