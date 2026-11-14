@@ -16,7 +16,8 @@ export const MONITORED_PRODUCTION_MODELS = Object.freeze({
   'multi-horizon-delay': {
     name: 'Multi-horizon delay',
     output: '2, 5, 10 and 15 minute delay outlooks',
-    mode: 'guarded baseline',
+    mode: 'validated monitored production',
+    validation: 'Chronological holdout passed; horizon drift remains under scheduled monitoring.',
     guardrail: 'Falls back to the current operator estimate when live delay evidence is missing.',
   },
   'delay-bands': {
