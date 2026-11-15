@@ -2099,14 +2099,28 @@ button:active {
     max-width: none;
     flex: 1;
     min-width: 0;
-    flex-wrap: wrap !important;
-    gap: 6px !important;
-    overflow: visible;
+    flex-wrap: nowrap !important;
+    gap: 7px !important;
+    overflow-x: auto;
+    overflow-y: visible;
     padding: 7px 8px !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
-  .search-bar-container > div:first-child { flex: 1 0 100%; min-width: 0; }
+  .search-bar-container > div:first-child { flex: 0 0 min(48vw, 260px); min-width: 0; }
   .search-bar-container > div:nth-child(2) { display: none; }
-  .top-action-button { width: 34px; height: 34px; min-width: 34px; flex-basis: 34px; border-radius: 9px; }
+  .top-action-button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    flex-basis: 44px;
+    border-radius: 11px;
+  }
+  .top-action-button::before { content: attr(data-label); position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); color: var(--text-secondary); font-size: .46rem; font-weight: 800; white-space: nowrap; pointer-events: none; }
+  .top-action-button svg { width: 19px; height: 19px; }
+  .sidebar-toggle-btn { min-width: 44px; min-height: 44px; }
+  .maplibregl-ctrl-bottom-right { right: 12px; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .maplibregl-ctrl-group button { width: 44px; height: 44px; }
 
 
   .station-detail-card {
