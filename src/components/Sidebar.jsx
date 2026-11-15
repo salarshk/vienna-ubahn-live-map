@@ -141,7 +141,15 @@ const Sidebar = ({
                 return (
                   <div
                     key={lineId}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
                     onClick={() => onSelectLine(lineId)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      onSelectLine(lineId);
+                    }}
                     onMouseEnter={() => onHoverLine && onHoverLine(lineId)}
                     onMouseLeave={() => onHoverLine && onHoverLine(null)}
                     style={{
