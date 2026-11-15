@@ -14,6 +14,16 @@ export const CAMERA_DIRECTORY_URL = 'https://www.wien.gv.at/verkehr/verkehrslage
 export const VERIFIED_STATION_CAMERAS = Object.freeze({
   'Schönbrunn': [camera('itscam20', 'Schlossallee · Linke Wienzeile')],
   'Kagran': [camera('itscam21', 'Wagramer Straße · Donaustadtstraße')],
+  'Alte Donau': [camera('itscam45', 'Wagramer Straße · Schüttaustraße')],
+  'Schottenring': [
+    camera('itscam1', 'Franz-Josefs-Kai · Börse'),
+    camera('itscam2', 'Franz-Josefs-Kai · Salztorbrücke'),
+  ],
+  'Schwedenplatz': [camera('itscam24', 'Untere Donaustraße · Aspernbrückengasse')],
+  'Stadtpark': [camera('itscam27', 'Am Heumarkt · Johannesgasse')],
+  'Nußdorfer Straße': [camera('itscam16', 'Währinger Gürtel · Nußdorfer Straße')],
+  'Michelbeuern-AKH': [camera('itscam5', 'Währinger Gürtel · Lazarettgasse')],
+  'Westbahnhof': [camera('itscam17', 'Europaplatz · Mariahilfer Straße')],
   'Handelskai': [
     camera('itscam42', 'Handelskai · southbound'),
     camera('itscam43', 'Handelskai · northbound'),
