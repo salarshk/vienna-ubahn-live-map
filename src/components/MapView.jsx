@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Map as MapLibreMap, Marker, LngLatBounds, addProtocol, setWorkerUrl } from 'maplibre-gl';
+import { Map as MapLibreMap, Marker, NavigationControl, LngLatBounds, addProtocol, setWorkerUrl } from 'maplibre-gl';
 import { Protocol } from 'pmtiles';
 import { noLabels, labels } from 'protomaps-themes-base';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -1551,6 +1551,8 @@ const MapView = ({
       // largest, easiest-to-tap size rather than the network's full extent.
       zoom: 11.4,
     });
+    // Keep zoom controls visible and touch-sized on both desktop and mobile.
+    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
 
     const trainCount = document.createElement('div');
     trainCount.className = 'line3-train-count glass-panel';
