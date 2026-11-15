@@ -2237,3 +2237,31 @@ button:active {
 .station-camera-link { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 9px; border-radius: 7px; color: var(--text-primary); background: rgba(0,180,216,.14); font-size: .59rem; font-weight: 800; text-decoration: none; }
 .station-camera-link:hover { background: rgba(0,180,216,.25); }
 .station-camera-card small { display: block; margin-top: 6px; color: var(--text-secondary); font-size: .5rem; line-height: 1.35; }
+
+.station-camera-grid {
+  display: grid;
+  gap: 10px;
+}
+.station-camera-item {
+  min-width: 0;
+}
+.station-camera-item-title {
+  margin-bottom: 5px;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.station-camera-empty {
+  margin: 8px 0 0;
+  font-size: .72rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.station-camera-empty a {
+  display: block;
+  margin-top: 6px;
+  color: var(--status-info);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
