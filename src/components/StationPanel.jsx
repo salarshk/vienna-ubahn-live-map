@@ -18,6 +18,7 @@ import { countdownHeat, countdownLabel } from '../utils/countdownHeat';
 import { lineColor } from '../utils/lineColor';
 import { LANDSCAPE_BREAKPOINT_PX } from '../utils/layout';
 import { estimateLeaveNow } from '../services/transitModels';
+import { CAMERA_DIRECTORY_URL, getStationCameras } from '../services/stationCameras';
 
 // Landscape docks the panel right, portrait docks it bottom. Measured rather
 // than read from an orientation media query, because a narrow landscape window
@@ -104,6 +105,7 @@ const StationPanel = ({ station, theme, userLocation, disruptions = [], onClose,
   if (!station) return null;
 
   const focus = getStationFocus(station.properties, now);
+  const stationCameras = getStationCameras(focus.name);
   const sharedHistory = sharedHistoryState.station === station.properties.name ? sharedHistoryState.data : null;
   const selectArrival = (arrival) => onSelectArrival?.(arrival);
   const leaveNow = estimateLeaveNow(station.properties, userLocation, now);
@@ -308,22 +310,31 @@ const StationPanel = ({ station, theme, userLocation, disruptions = [], onClose,
 
       <section className="station-camera-card" aria-label="Nearby public street cameras">
         <div className="station-camera-card-title"><Camera size={14} /><div><strong>Nearby public street cameras</strong><span>Road view near this station · not station surveillance</span></div></div>
-        <p>Vienna and ITS Vienna Region publish public traffic-camera views around busy roads. Open a live ITS Vienna road-camera image directly. The camera shows the surrounding road, not the station interior.</p>
-        <iframe
-          className="station-camera-frame"
-          title="Live ITS Vienna road camera"
-          src="https://cam1.its-viennaregion.at/itswebcamviewer/SingleScreen.aspx?camname=itscam20&noITS=true"
-          loading="lazy"
-        />
-        <a
-          className="station-camera-link"
-          href="https://cam1.its-viennaregion.at/itswebcamviewer/SingleScreen.aspx?camname=itscam20&noITS=true"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <ExternalLink size={13} /> Open camera separately
-        </a>
-        <small>Source: Stadt Wien / ITS Vienna Region. The embedded frame refreshes from the publisher; availability and reuse terms are controlled by the publisher.</small>
+        <p>These are verified public road views near selected stations. They show the surrounding street, not the station interior.</p>
+        {stationCameras.length > 0 ? (
+          <div className="station-camera-grid">
+            {stationCameras.map((camera) => (
+              <article className="station-camera-item" key={camera.id}>
+                <div className="station-camera-item-title">{camera.label}</div>
+                <iframe
+                  className="station-camera-frame"
+                  title={`Live ITS Vienna road camera · ${camera.label}`}
+                  src={camera.url}
+                  loading="lazy"
+                />
+                <a className="station-camera-link" href={camera.url} target="_blank" rel="noreferrer">
+                  <ExternalLink size={13} /> Open live image
+                </a>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="station-camera-empty">
+            No verified public camera is currently mapped to this station.
+            <a href={CAMERA_DIRECTORY_URL} target="_blank" rel="noreferrer">Browse the official Vienna camera map</a>
+          </p>
+        )}
+        <small>Source: Stadt Wien / ITS Vienna Region. Availability and reuse terms are controlled by the publisher.</small>
       </section>
 
       <details className="station-insight-strip" aria-label="Station reliability and access insights">
