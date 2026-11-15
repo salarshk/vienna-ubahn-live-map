@@ -37,11 +37,28 @@ const STATION_ALIASES = Object.freeze({
   'Altes Landgut': 'Altes Landgut',
 });
 
+const normalizeStationName = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\\u0300-\\u036f]/g, '')
+  .toLocaleLowerCase('de-AT')
+  .replace(/\\s*\\(.*?\\)\\s*/g, ' ')
+  .replace(/\\s+/g, ' ')
+  .trim();
+
+const NORMALIZED_CAMERA_KEYS = Object.freeze(
+  Object.keys(VERIFIED_STATION_CAMERAS).reduce((result, key) => {
+    result[normalizeStationName(key)] = key;
+    return result;
+  }, {}),
+);
+
 export const getStationCameras = (stationName) => {
   const name = String(stationName || '').trim();
-  return VERIFIED_STATION_CAMERAS[name]
-    || VERIFIED_STATION_CAMERAS[STATION_ALIASES[name]]
-    || [];
+  const normalized = normalizeStationName(name);
+  const key = NORMALIZED_CAMERA_KEYS[normalized]
+    || STATION_ALIASES[name]
+    || Object.keys(NORMALIZED_CAMERA_KEYS).find((candidate) => normalized.startsWith(candidate));
+  return key ? VERIFIED_STATION_CAMERAS[NORMALIZED_CAMERA_KEYS[key] || key] || [] : [];
 };
 
 export default getStationCameras;
