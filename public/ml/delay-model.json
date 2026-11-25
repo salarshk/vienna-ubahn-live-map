@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "target": "Final Wiener Linien reported delay, in minutes, near departure",
-  "observationCount": 1524580,
-  "labelledJourneyCount": 290287,
+  "observationCount": 1524006,
+  "labelledJourneyCount": 289988,
   "dataDays": 31,
-  "coverageHours": 725.5,
-  "firstObservation": "2026-10-25T08:37:24.499Z",
-  "lastObservation": "2026-11-24T14:07:23.843Z",
+  "coverageHours": 724.2,
+  "firstObservation": "2026-10-26T09:11:19.134Z",
+  "lastObservation": "2026-11-25T13:25:54.113Z",
   "requirements": {
     "minimumDays": 7,
     "minimumCoverageHours": 144,
@@ -39,7 +39,7 @@
   "labelQuality": {
     "officialDelayField": "officialDelaySeconds",
     "source": "Wiener Linien timeReal minus timePlanned near departure",
-    "officialLabelledJourneys": 290287,
+    "officialLabelledJourneys": 289988,
     "fallbackLabelledJourneys": 0
   },
   "monitoring": {
@@ -52,9 +52,9 @@
   "status": "ready",
   "validationStage": "validated",
   "algorithm": "residual-ridge-ensemble",
-  "trainedAt": "2026-11-24T14:09:57.599Z",
+  "trainedAt": "2026-11-25T13:29:05.008Z",
   "deployed": true,
-  "trainedThrough": "2026-11-19T23:43:00.000Z",
+  "trainedThrough": "2026-11-20T23:59:30.000Z",
   "featureNames": [
     "intercept",
     "currentDelayMinutes",
@@ -86,44 +86,12 @@
       "scale": 1
     },
     {
-      "mean": 1.19125,
-      "scale": 3.95172424
+      "mean": 1.24169167,
+      "scale": 3.90941549
     },
     {
-      "mean": 7.82986389,
-      "scale": 1.6707775
-    },
-    {
-      "mean": 0,
-      "scale": 1
-    },
-    {
-      "mean": 0,
-      "scale": 1
-    },
-    {
-      "mean": 0,
-      "scale": 1
-    },
-    {
-      "mean": 0,
-      "scale": 1
-    },
-    {
-      "mean": 0,
-      "scale": 1
-    },
-    {
-      "mean": 0,
-      "scale": 1
-    },
-    {
-      "mean": 0.002,
-      "scale": 0.04467662
-    },
-    {
-      "mean": 0.00016667,
-      "scale": 0.01290887
+      "mean": 7.83718889,
+      "scale": 1.66754847
     },
     {
       "mean": 0,
@@ -150,54 +118,86 @@
       "scale": 1
     },
     {
-      "mean": 17.03520102,
-      "scale": 91.78401247
+      "mean": 0.00233333,
+      "scale": 0.05472253
     },
     {
-      "mean": 64.09826597,
-      "scale": 27.18517093
-    },
-    {
-      "mean": 9.6284506,
-      "scale": 32.97461013
-    },
-    {
-      "mean": 1.403175,
-      "scale": 3.85038571
+      "mean": 0.0005,
+      "scale": 0.02235509
     },
     {
       "mean": 0,
       "scale": 1
     },
     {
-      "mean": 0.65115936,
-      "scale": 3.17907919
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 16.82532764,
+      "scale": 90.19977978
+    },
+    {
+      "mean": 64.20224759,
+      "scale": 27.01643625
+    },
+    {
+      "mean": 9.80574319,
+      "scale": 31.39369018
+    },
+    {
+      "mean": 1.43999722,
+      "scale": 3.811422
+    },
+    {
+      "mean": 0,
+      "scale": 1
+    },
+    {
+      "mean": 0.76133731,
+      "scale": 3.20879393
     }
   ],
   "weights": [
-    0.33201573,
-    -0.33654144,
-    2.31610121,
-    -0.04923484,
-    -0.1373062,
-    -0.0558178,
-    -0.14552674,
+    0.35616056,
+    -0.48892747,
+    1.61599768,
+    -0.06633392,
+    -0.12557392,
+    -0.00732937,
+    -0.14730866,
     0,
-    -0.02743028,
-    -0.02587786,
-    0.00434312,
-    0,
-    0.12539886,
-    -0.0417726,
-    -0.17835513,
-    -0.17009902,
-    0.2648279,
-    -0.78199848,
-    -2.11002766,
-    -0.40133347,
-    1.34456253,
-    1.13797056,
-    -0.05427255
+    0.00034557,
+    -0.00126067,
+    0.00650894,
+    -0.35911074,
+    0.08026889,
+    -0.02624385,
+    -0.0502042,
+    -0.21881505,
+    0.21499421,
+    -0.68708267,
+    -1.43875864,
+    -0.12442079,
+    1.21662539,
+    0.58430866,
+    -0.06290134
   ],
   "selectedModel": "residual-ridge-ensemble",
   "selectedModelParameters": {
@@ -208,7 +208,7 @@
   "dailyFineTuning": {
     "enabled": true,
     "completedDays": 16,
-    "lastLabelDay": "2026-11-19",
+    "lastLabelDay": "2026-11-20",
     "updateCadence": "once per completed calendar day"
   },
   "predictionRangeMinutes": [
@@ -222,21 +222,21 @@
       "complexity": "linear regularized",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.69,
-        "rmseMinutes": 1.52,
-        "rSquared": 0.766,
-        "withinOneMinutePercent": 82.2,
-        "withinTwoMinutesPercent": 95.3,
+        "maeMinutes": 0.68,
+        "rmseMinutes": 1.46,
+        "rSquared": 0.725,
+        "withinOneMinutePercent": 83.3,
+        "withinTwoMinutesPercent": 96.1,
         "delayedThreeMinutes": {
-          "accuracyPercent": 95.2,
-          "precision": 0.867,
-          "recall": 0.799,
-          "f1": 0.831,
+          "accuracyPercent": 95.7,
+          "precision": 0.916,
+          "recall": 0.8,
+          "f1": 0.854,
           "confusionMatrix": {
-            "truePositive": 143,
-            "trueNegative": 999,
-            "falsePositive": 22,
-            "falseNegative": 36
+            "truePositive": 152,
+            "trueNegative": 996,
+            "falsePositive": 14,
+            "falseNegative": 38
           }
         }
       },
@@ -250,20 +250,20 @@
       "metrics": {
         "sampleCount": 1200,
         "maeMinutes": 0.67,
-        "rmseMinutes": 1.52,
-        "rSquared": 0.765,
-        "withinOneMinutePercent": 83.7,
-        "withinTwoMinutesPercent": 95.2,
+        "rmseMinutes": 1.47,
+        "rSquared": 0.72,
+        "withinOneMinutePercent": 84.5,
+        "withinTwoMinutesPercent": 95.8,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.6,
-          "precision": 0.87,
-          "recall": 0.749,
-          "f1": 0.805,
+          "accuracyPercent": 95.8,
+          "precision": 0.932,
+          "recall": 0.789,
+          "f1": 0.855,
           "confusionMatrix": {
-            "truePositive": 134,
-            "trueNegative": 1001,
-            "falsePositive": 20,
-            "falseNegative": 45
+            "truePositive": 150,
+            "trueNegative": 999,
+            "falsePositive": 11,
+            "falseNegative": 40
           }
         }
       },
@@ -276,48 +276,48 @@
       "complexity": "monotone non-parametric, blend=0.8",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.69,
-        "rmseMinutes": 1.53,
-        "rSquared": 0.761,
-        "withinOneMinutePercent": 82.6,
-        "withinTwoMinutesPercent": 94.7,
+        "maeMinutes": 0.71,
+        "rmseMinutes": 1.48,
+        "rSquared": 0.717,
+        "withinOneMinutePercent": 81.5,
+        "withinTwoMinutesPercent": 95.4,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.7,
-          "precision": 0.853,
-          "recall": 0.777,
-          "f1": 0.813,
+          "accuracyPercent": 95.4,
+          "precision": 0.919,
+          "recall": 0.779,
+          "f1": 0.843,
           "confusionMatrix": {
-            "truePositive": 139,
+            "truePositive": 148,
             "trueNegative": 997,
-            "falsePositive": 24,
-            "falseNegative": 40
+            "falsePositive": 13,
+            "falseNegative": 42
           }
         }
       },
-      "beatsLiveBaseline": true,
+      "beatsLiveBaseline": false,
       "deployed": false
     },
     {
       "id": "isotonic-daily-finetuned",
       "name": "Isotonic + daily fine-tuning",
-      "complexity": "daily recency correction, decay=0.7, blend=0.75",
+      "complexity": "daily recency correction, decay=0.5, blend=1",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.7,
-        "rmseMinutes": 1.52,
-        "rSquared": 0.765,
-        "withinOneMinutePercent": 81.7,
-        "withinTwoMinutesPercent": 95.2,
+        "maeMinutes": 0.77,
+        "rmseMinutes": 1.47,
+        "rSquared": 0.718,
+        "withinOneMinutePercent": 78.4,
+        "withinTwoMinutesPercent": 95.8,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.6,
-          "precision": 0.848,
-          "recall": 0.777,
-          "f1": 0.81,
+          "accuracyPercent": 95.7,
+          "precision": 0.906,
+          "recall": 0.811,
+          "f1": 0.856,
           "confusionMatrix": {
-            "truePositive": 139,
-            "trueNegative": 996,
-            "falsePositive": 25,
-            "falseNegative": 40
+            "truePositive": 154,
+            "trueNegative": 994,
+            "falsePositive": 16,
+            "falseNegative": 36
           }
         }
       },
@@ -331,20 +331,20 @@
       "metrics": {
         "sampleCount": 1200,
         "maeMinutes": 0.67,
-        "rmseMinutes": 1.52,
-        "rSquared": 0.765,
-        "withinOneMinutePercent": 83.7,
-        "withinTwoMinutesPercent": 95.2,
+        "rmseMinutes": 1.47,
+        "rSquared": 0.72,
+        "withinOneMinutePercent": 84.5,
+        "withinTwoMinutesPercent": 95.8,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.6,
-          "precision": 0.87,
-          "recall": 0.749,
-          "f1": 0.805,
+          "accuracyPercent": 95.8,
+          "precision": 0.932,
+          "recall": 0.789,
+          "f1": 0.855,
           "confusionMatrix": {
-            "truePositive": 134,
-            "trueNegative": 1001,
-            "falsePositive": 20,
-            "falseNegative": 45
+            "truePositive": 150,
+            "trueNegative": 999,
+            "falsePositive": 11,
+            "falseNegative": 40
           }
         }
       },
@@ -358,20 +358,20 @@
       "metrics": {
         "sampleCount": 1200,
         "maeMinutes": 0.68,
-        "rmseMinutes": 1.52,
-        "rSquared": 0.766,
-        "withinOneMinutePercent": 82.8,
-        "withinTwoMinutesPercent": 95.4,
+        "rmseMinutes": 1.46,
+        "rSquared": 0.724,
+        "withinOneMinutePercent": 83.6,
+        "withinTwoMinutesPercent": 96,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.7,
-          "precision": 0.848,
-          "recall": 0.782,
-          "f1": 0.814,
+          "accuracyPercent": 95.7,
+          "precision": 0.916,
+          "recall": 0.8,
+          "f1": 0.854,
           "confusionMatrix": {
-            "truePositive": 140,
+            "truePositive": 152,
             "trueNegative": 996,
-            "falsePositive": 25,
-            "falseNegative": 39
+            "falsePositive": 14,
+            "falseNegative": 38
           }
         }
       },
@@ -384,21 +384,21 @@
       "complexity": "32 bagged depth-3 trees",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.83,
-        "rmseMinutes": 1.6,
-        "rSquared": 0.74,
-        "withinOneMinutePercent": 74,
-        "withinTwoMinutesPercent": 92.9,
+        "maeMinutes": 0.81,
+        "rmseMinutes": 1.48,
+        "rSquared": 0.716,
+        "withinOneMinutePercent": 75.3,
+        "withinTwoMinutesPercent": 94,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.8,
-          "precision": 0.855,
-          "recall": 0.788,
-          "f1": 0.82,
+          "accuracyPercent": 95.6,
+          "precision": 0.891,
+          "recall": 0.821,
+          "f1": 0.855,
           "confusionMatrix": {
-            "truePositive": 141,
-            "trueNegative": 997,
-            "falsePositive": 24,
-            "falseNegative": 38
+            "truePositive": 156,
+            "trueNegative": 991,
+            "falsePositive": 19,
+            "falseNegative": 34
           }
         }
       },
@@ -411,21 +411,21 @@
       "complexity": "40 residual depth-2 trees",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.94,
-        "rmseMinutes": 1.68,
-        "rSquared": 0.712,
-        "withinOneMinutePercent": 69.2,
-        "withinTwoMinutesPercent": 91.7,
+        "maeMinutes": 0.92,
+        "rmseMinutes": 1.52,
+        "rSquared": 0.699,
+        "withinOneMinutePercent": 68.8,
+        "withinTwoMinutesPercent": 92.5,
         "delayedThreeMinutes": {
-          "accuracyPercent": 94.3,
-          "precision": 0.951,
-          "recall": 0.648,
-          "f1": 0.771,
+          "accuracyPercent": 94.1,
+          "precision": 0.976,
+          "recall": 0.642,
+          "f1": 0.775,
           "confusionMatrix": {
-            "truePositive": 116,
-            "trueNegative": 1015,
-            "falsePositive": 6,
-            "falseNegative": 63
+            "truePositive": 122,
+            "trueNegative": 1007,
+            "falsePositive": 3,
+            "falseNegative": 68
           }
         }
       },
@@ -438,21 +438,21 @@
       "complexity": "25-neighbour distance model",
       "metrics": {
         "sampleCount": 1200,
-        "maeMinutes": 0.85,
-        "rmseMinutes": 1.66,
-        "rSquared": 0.72,
-        "withinOneMinutePercent": 73.4,
-        "withinTwoMinutesPercent": 91.7,
+        "maeMinutes": 0.79,
+        "rmseMinutes": 1.54,
+        "rSquared": 0.692,
+        "withinOneMinutePercent": 77.2,
+        "withinTwoMinutesPercent": 94,
         "delayedThreeMinutes": {
-          "accuracyPercent": 92.8,
-          "precision": 0.918,
-          "recall": 0.564,
-          "f1": 0.699,
+          "accuracyPercent": 94.2,
+          "precision": 0.969,
+          "recall": 0.653,
+          "f1": 0.78,
           "confusionMatrix": {
-            "truePositive": 101,
-            "trueNegative": 1012,
-            "falsePositive": 9,
-            "falseNegative": 78
+            "truePositive": 124,
+            "trueNegative": 1006,
+            "falsePositive": 4,
+            "falseNegative": 66
           }
         }
       },
@@ -465,7 +465,7 @@
     "status": "ready",
     "algorithm": "prequential-hierarchical-calibration",
     "experimental": true,
-    "scoredJourneyCount": 290287,
+    "scoredJourneyCount": 289988,
     "minimumExamples": 30,
     "deployed": false,
     "predictionRangeMinutes": [
@@ -474,47 +474,47 @@
     ],
     "state": {
       "global": {
-        "count": 290287,
-        "sum": 128400.8833333467,
-        "sumSquares": 740786.0436110629
+        "count": 289988,
+        "sum": 131697.21666667535,
+        "sumSquares": 772787.6136110461
       },
       "lines": {
         "U6": {
-          "count": 68768,
-          "sum": 17798.158409647676,
-          "sumSquares": 200667.88082372284
-        },
-        "U3": {
-          "count": 48293,
-          "sum": -5742.4792487672785,
-          "sumSquares": 104059.85963446122
-        },
-        "U2": {
-          "count": 50829,
-          "sum": 2313.3662497686673,
-          "sumSquares": 63884.042484020014
-        },
-        "U1": {
-          "count": 70763,
-          "sum": 7652.700942545796,
-          "sumSquares": 235215.62138477596
+          "count": 68685,
+          "sum": 17367.38639638765,
+          "sumSquares": 209256.79900753757
         },
         "U4": {
-          "count": 51634,
-          "sum": -9425.163527807365,
-          "sumSquares": 80364.26167425468
+          "count": 51611,
+          "sum": -10785.767774322605,
+          "sumSquares": 81281.13027287417
+        },
+        "U3": {
+          "count": 48189,
+          "sum": -7101.983790093742,
+          "sumSquares": 103248.9945760027
+        },
+        "U2": {
+          "count": 50771,
+          "sum": 1196.6644546696973,
+          "sumSquares": 63287.54274432429
+        },
+        "U1": {
+          "count": 70732,
+          "sum": 7874.588546424867,
+          "sumSquares": 256208.41682381954
         }
       },
       "contexts": {
         "normal": {
-          "count": 289755,
-          "sum": 1900.837367929632,
-          "sumSquares": 676354.5924985767
+          "count": 289443,
+          "sum": 4658.426193201712,
+          "sumSquares": 705035.5318955833
         },
         "incident": {
-          "count": 532,
-          "sum": -23.11287281788166,
-          "sumSquares": 430.79208216981834
+          "count": 545,
+          "sum": -14.767473934245599,
+          "sumSquares": 438.63344755183095
         }
       }
     }
